@@ -26,11 +26,26 @@ def parse_pdf(path: str | Path) -> ParsedInput:
         raise PdfParseError(f"Could not parse PDF file '{file_path}': {exc}") from exc
 
     text = "\n\n".join(page.strip() for page in pages if page.strip()).strip()
-    if not text:
-        raise PdfParseError(f"PDF file '{file_path}' contains no extractable text.")
-    return ParsedInput(
-        source_type="pdf",
-        source_name=str(file_path),
-        text=text,
-        metadata={"page_count": len(pages)},
-    )
+    if len(text.strip()) >= 50:
+        return ParsedInput(
+            source_type="pdf",
+            source_name=str(file_path),
+            text=text,
+            metadata={"page_count": len(pages)},
+        )
+
+    try:
+        from parsers.ocr_engine import OcrEngine, OcrError
+
+        engine = OcrEngine()
+        ocr_text = engine.extract_text_from_pdf(file_path)
+        return ParsedInput(
+            source_type="pdf",
+            source_name=f"{file_path.name} (OCR)",
+            text=ocr_text,
+            metadata={"page_count": len(pages), "ocr": True},
+        )
+    except OcrError as exc:
+        raise ValueError(
+            f"PDF '{file_path}' appears to be scanned but OCR failed: {exc}"
+        ) from exc
