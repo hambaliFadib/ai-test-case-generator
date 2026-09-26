@@ -171,7 +171,7 @@ id,title,category,priority,preconditions,steps,expected_result,technique,require
 
 ## Roadmap
 
-- [ ] v1.1 — PDF scanned document support (OCR)
+- [x] v1.1 — PDF scanned document support (OCR)
 - [ ] v1.2 — Web UI (optional, alongside CLI)
 - [ ] v1.3 — Direct export to Jira/TestRail
 - [ ] v2.0 — Multi-requirement parallel generation
