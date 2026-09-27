@@ -69,6 +69,66 @@
       }
     }
 
+    [data-theme="light"] {
+      color-scheme: light;
+      --bg: #F8F9FA;
+      --surface: #FFFFFF;
+      --border: #E2E8F0;
+      --text-primary: #1A202C;
+      --text-secondary: #64748B;
+      --text-muted: #94A3B8;
+      --accent: #6366F1;
+      --accent-hover: #4F46E5;
+      --accent-text: #FFFFFF;
+      --positive: #D1FAE5;
+      --positive-text: #065F46;
+      --negative: #FEE2E2;
+      --negative-text: #991B1B;
+      --boundary: #DBEAFE;
+      --boundary-text: #1E40AF;
+      --edge: #FEF3C7;
+      --edge-text: #92400E;
+      --security: #EDE9FE;
+      --security-text: #5B21B6;
+      --focus: #6366F1;
+      --focus-ring: rgba(99, 102, 241, .15);
+      --row-hover: rgba(99, 102, 241, .05);
+      --row-selected: rgba(99, 102, 241, .08);
+      --drop-hover: rgba(99, 102, 241, .06);
+      --spinner-track: rgba(255, 255, 255, .45);
+      --shadow: 0 1px 3px rgba(15, 23, 42, .06);
+    }
+
+    [data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #0F172A;
+      --surface: #1E293B;
+      --border: #334155;
+      --text-primary: #F1F5F9;
+      --text-secondary: #94A3B8;
+      --text-muted: #64748B;
+      --accent: #818CF8;
+      --accent-hover: #6366F1;
+      --accent-text: #FFFFFF;
+      --positive: #064E3B;
+      --positive-text: #6EE7B7;
+      --negative: #7F1D1D;
+      --negative-text: #FCA5A5;
+      --boundary: #1E3A5F;
+      --boundary-text: #93C5FD;
+      --edge: #78350F;
+      --edge-text: #FCD34D;
+      --security: #3B0764;
+      --security-text: #C4B5FD;
+      --focus: #818CF8;
+      --focus-ring: rgba(129, 140, 248, .2);
+      --row-hover: rgba(129, 140, 248, .08);
+      --row-selected: rgba(129, 140, 248, .12);
+      --drop-hover: rgba(129, 140, 248, .1);
+      --spinner-track: rgba(255, 255, 255, .45);
+      --shadow: 0 1px 3px rgba(0, 0, 0, .22);
+    }
+
     * { box-sizing: border-box; }
     body {
       margin: 0;
@@ -85,14 +145,18 @@
       outline: 3px solid var(--focus);
       outline-offset: 3px;
     }
-    .shell { max-width: 1160px; margin: 0 auto; padding: 28px 20px 64px; }
+    .shell { margin: 0; padding: 28px 0 64px; }
     .topbar {
-      align-items: center;
       background: var(--surface);
       border-bottom: 1px solid var(--border);
+      margin: -28px 0 28px;
+    }
+    .topbar-inner {
+      align-items: center;
       display: flex;
       justify-content: space-between;
-      margin: -28px -20px 28px;
+      margin: 0 auto;
+      max-width: 860px;
       padding: 16px 24px;
     }
     .brand { align-items: center; display: flex; gap: 12px; }
@@ -114,6 +178,22 @@
     h2 { font-size: 1rem; font-weight: 600; letter-spacing: .01em; margin-bottom: 4px; }
     .eyebrow { color: var(--accent); font-size: .6875rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
     .subtle { color: var(--text-secondary); font-size: .8125rem; }
+    .header-actions { align-items: center; display: flex; gap: 10px; }
+    .theme-toggle {
+      align-items: center;
+      background: transparent;
+      border: 0;
+      border-radius: 8px;
+      color: var(--text-secondary);
+      display: inline-flex;
+      font-size: 1rem;
+      height: 32px;
+      justify-content: center;
+      padding: 0;
+      width: 32px;
+    }
+    .theme-toggle:hover { background: var(--row-hover); color: var(--accent); }
+    .theme-icon { line-height: 1; }
     .version { border: 1px solid var(--border); border-radius: 999px; color: var(--text-secondary); font-size: .8125rem; padding: 4px 10px; }
     .stack { display: grid; gap: 18px; }
     .card {
@@ -121,7 +201,10 @@
       border: 1px solid var(--border);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
+      margin: 0 auto;
+      max-width: 860px;
       padding: 24px;
+      width: 100%;
     }
     .section-heading { align-items: end; display: flex; justify-content: space-between; margin-bottom: 18px; }
     .section-heading p { margin-bottom: 0; }
@@ -214,10 +297,9 @@
     .empty { color: var(--text-muted); padding: 24px; text-align: center; }
     .footer-note { color: var(--text-muted); font-size: .8125rem; margin: 22px 0 0; text-align: center; }
     @media (max-width: 700px) {
-      .shell { padding-inline: 14px; }
-      .topbar { margin-inline: -14px; padding-inline: 18px; }
+      .topbar-inner { padding-inline: 24px; }
       .config-grid, .detail-grid { grid-template-columns: 1fr; }
-      .topbar { align-items: flex-start; gap: 12px; }
+      .topbar-inner { align-items: flex-start; gap: 12px; }
       .actions { align-items: stretch; flex-direction: column; }
       .primary, .secondary { width: 100%; }
     }
@@ -226,14 +308,21 @@
 <body>
   <div class="shell">
     <header class="topbar">
-      <div class="brand">
-        <span class="brand-mark" aria-hidden="true">AI</span>
-        <div>
-          <h1>AI Test Case Generator</h1>
-          <p class="subtle" style="margin-bottom:0">Turn requirements into traceable QA coverage.</p>
+      <div class="topbar-inner">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">AI</span>
+          <div>
+            <h1>AI Test Case Generator</h1>
+            <p class="subtle" style="margin-bottom:0">Turn requirements into traceable QA coverage.</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark mode" title="Switch to dark mode" aria-pressed="false">
+            <span class="theme-icon" id="theme-icon" aria-hidden="true">☀️</span>
+          </button>
+          <span class="version">v1.2</span>
         </div>
       </div>
-      <span class="version">v1.2</span>
     </header>
 
     <main class="stack">
@@ -342,6 +431,9 @@
 
       const state = { mode: "text", testCases: [], selectedIndex: -1 };
       const $ = (selector) => document.querySelector(selector);
+      const themePreferenceKey = "theme-preference";
+      const themeToggle = $("#theme-toggle");
+      const themeIcon = $("#theme-icon");
       const provider = $("#provider");
       const model = $("#model");
       const language = $("#language");
@@ -356,6 +448,26 @@
       const summary = $("#summary");
       const generateButton = $("#generate-button");
       const downloadButton = $("#download-button");
+
+      function systemTheme() {
+        return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+
+      function applyTheme(theme, persist = false) {
+        const nextTheme = theme === "dark" ? "light" : "dark";
+        document.documentElement.dataset.theme = theme;
+        themeIcon.textContent = theme === "dark" ? "🌙" : "☀️";
+        themeToggle.title = `Switch to ${nextTheme} mode`;
+        themeToggle.setAttribute("aria-label", `Switch to ${nextTheme} mode`);
+        themeToggle.setAttribute("aria-pressed", String(theme === "dark"));
+        if (persist) localStorage.setItem(themePreferenceKey, theme);
+      }
+
+      const savedTheme = localStorage.getItem(themePreferenceKey);
+      applyTheme(savedTheme === "dark" || savedTheme === "light" ? savedTheme : systemTheme());
+      themeToggle.addEventListener("click", () => {
+        applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark", true);
+      });
 
       function escapeHtml(value) {
         return String(value ?? "").replace(/[&<>"']/g, (character) => ({
