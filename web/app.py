@@ -1,5 +1,9 @@
 """FastAPI application entrypoint for the v1.2 web interface."""
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from pathlib import Path
 
 from fastapi import FastAPI
