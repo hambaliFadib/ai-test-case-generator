@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and uses [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] - 2026-09-27
+
+### Added
+
+- Web UI via FastAPI and vanilla HTML/CSS/JS on port 8001
+- Text paste and `.docx` / `.pdf` / `.md` file upload input
+- Provider, model, and language configuration controls
+- Live test-case preview with expandable row details
+- Category badges and CSV download from the browser
+- API health, configuration, generation, and CSV export endpoints
+- `web_server.py` entrypoint for starting the web UI
+
+### Changed
+
+- `requirements.txt`: added `fastapi`, `uvicorn`, and `python-multipart`
+
+### Notes
+
+- The existing CLI remains intact and unchanged
+- The Web UI and CLI share the same generation pipeline
+
 ## [1.1.0] - 2026-09-26
 
 ### Added
