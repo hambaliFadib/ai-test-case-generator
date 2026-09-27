@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and uses [Semantic Versioning](https://semver.org/).
 
+## [1.2.3] - 2026-09-27
+
+### Changed
+
+- Web UI: removed the Configuration section from the UI
+- Provider, model, and language are now configured via `.env` only
+- Language target hardcoded to `"manual"` in all API calls
+- Web UI redesigned with an Impeccable MCP audit (0 findings)
+- Dark/light mode toggle with `localStorage` persistence
+- Header and content container alignment fixed
+
+## [1.2.2] - 2026-09-27
+
+### Fixed
+
+- Header aligned with the content container (max-width: 780px)
+- Dark/light mode manual toggle added to the header
+- `localStorage` persistence for the theme preference
+
+## [1.2.1] - 2026-09-27
+
+### Fixed
+
+- `load_dotenv()` called before FastAPI startup
+- `OPENAI_BASE_URL` and `x-opencode-session` now correctly loaded for Web UI requests
+
 ## [1.2.0] - 2026-09-27
 
 ### Added

@@ -1,24 +1,32 @@
 # AI Test Case Generator
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Python: 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/) [![Contributions: By Approval Only](https://img.shields.io/badge/Contributions-By%20Approval%20Only-orange.svg)](CONTRIBUTING.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Python: 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/) [![Version: 1.2.3](https://img.shields.io/badge/Version-1.2.3-blue.svg)](CHANGELOG.md) [![Contributions: By Approval Only](https://img.shields.io/badge/Contributions-By%20Approval%20Only-orange.svg)](CONTRIBUTING.md)
 
-## What is this?
+---
 
-AI Test Case Generator is a CLI tool that accepts requirements documents (`.docx`, `.pdf`, `.md`) or plain text and generates structured, categorized test cases using any supported LLM through BYOK (Bring Your Own Key). Validated test cases are exported to CSV for QA use.
+## What is this? / Apa ini?
 
-## Apa ini? (Bahasa Indonesia)
+**English** — A CLI and Web UI tool that accepts requirements documents (`.docx`, `.pdf`, `.md`, or plain text) and generates structured, categorized test cases using any LLM via BYOK (Bring Your Own Key). Output is CSV. Scanned PDF documents are supported through OCR (Tesseract).
 
-AI Test Case Generator adalah alat CLI yang menerima dokumen requirement (`.docx`, `.pdf`, `.md`) atau teks biasa, lalu menghasilkan test case yang terstruktur dan dikategorikan menggunakan LLM yang didukung melalui BYOK (Bring Your Own Key). Test case yang telah divalidasi diekspor ke CSV untuk kebutuhan QA.
+**Bahasa Indonesia** — Tools CLI dan Web UI yang menerima dokumen requirement (`.docx`, `.pdf`, `.md`, atau plain text) dan menghasilkan test case terstruktur menggunakan LLM pilihan kamu (BYOK — Bring Your Own Key). Output berupa CSV. PDF hasil scan didukung melalui OCR (Tesseract).
+
+---
 
 ## Features
 
-- Flexible input: plain text, `.md`, `.docx`, and `.pdf`
+- Flexible input: plain text, `.md`, `.docx`, `.pdf`
+- Scanned PDF support via Tesseract OCR (auto-detected)
 - BYOK: Anthropic, OpenAI, Ollama, and OpenCode-compatible providers
-- Test design techniques: EP, BVA, Negative, Edge, and Security
-- Deterministic validation using Python logic, not LLM trust
-- Traceability: each test case is linked to a source requirement
+- Web UI: clean interface with a dark/light mode toggle
+- CLI: full command-line support
+- Test design techniques: EP, BVA, Negative, Edge, Security
+- Requirement traceability: each test case is linked to a `REQ-` ID
+- Deterministic validation (Python contract checks, not LLM trust)
 - Deduplication before export
-- CSV output with an exact 11-column schema
+- CSV output with the exact 11-column schema
+- Configuration via `.env` (no UI configuration panel)
+
+---
 
 ## Architecture
 
@@ -27,11 +35,24 @@ INPUT LAYER -> ANALYSIS LAYER -> GENERATION LAYER
       -> VALIDATION LAYER -> OUTPUT LAYER
 ```
 
-- **Input layer** — `input_resolver.py` detects inline text or file paths; `parsers/` handles Markdown, DOCX, PDF, and plain text; `models/input_model.py` defines parsed input.
+- **Input layer** — `input_resolver.py` detects inline text or file paths; `parsers/` handles Markdown, DOCX, PDF (text-based and scanned), and plain text; `models/input_model.py` defines parsed input.
 - **Analysis layer** — `requirement_analyzer.py` extracts requirements, acceptance criteria, constraints, and traceability IDs into `models/requirement_model.py`.
-- **Generation layer** — `prompt_builder.py` creates the QA prompt, `llm_adapter.py` provides swappable BYOK providers, `response_parser.py` defensively parses responses, and `models/test_case_model.py` defines test cases.
+- **Generation layer** — `prompt_builder.py` builds the QA prompt, `llm_adapter.py` provides swappable BYOK providers, `response_parser.py` defensively parses responses, and `models/test_case_model.py` defines test cases.
 - **Validation layer** — `validator.py` applies deterministic contract checks and `deduplicator.py` removes duplicate titles.
 - **Output layer** — `csv_exporter.py` writes validated cases using the schema in `models/csv_schema.py`.
+
+**Web UI layer (v1.2+)**
+
+```text
+WEB UI -> same generation pipeline as the CLI
+FastAPI backend (port 8001) + single-page HTML frontend
+```
+
+- FastAPI backend (`web/app.py`, `web/router.py`) serving a single-page HTML/CSS/JS frontend (`web/static/index.html`).
+- Shares the same generation pipeline as the CLI — one code path, two entrypoints.
+- Configuration via `.env` only: there is no configuration panel in the UI.
+
+---
 
 ## Installation
 
@@ -39,6 +60,8 @@ INPUT LAYER -> ANALYSIS LAYER -> GENERATION LAYER
 
 - Python 3.11+
 - pip
+- Tesseract OCR — required for scanned PDFs only
+- Poppler — required for scanned PDFs only (Windows)
 
 ### Steps
 
@@ -61,67 +84,54 @@ INPUT LAYER -> ANALYSIS LAYER -> GENERATION LAYER
    Copy-Item .env.example .env
    ```
 
-4. Fill in the provider settings in `.env`.
+4. Fill in the values in `.env` (see below).
+
+---
 
 ## Configuration (`.env`)
 
-Example configuration:
+All provider and model settings live in `.env`, for both the CLI and the Web UI. Start from the shareable template in [`.env.example`](.env.example).
 
-```dotenv
-LLM_PROVIDER=anthropic
-LLM_MODEL=claude-sonnet-4-6
-LLM_TIMEOUT_SECONDS=120
-ANTHROPIC_API_KEY=sk-ant-your-key-here
-OPENAI_API_KEY=sk-your-key-here
-OPENAI_BASE_URL=https://opencode.ai/zen/go/v1
-OLLAMA_BASE_URL=http://localhost:11434
-```
+| Variable | Required | Description |
+|---|---|---|
+| `LLM_PROVIDER` | Yes | `anthropic` / `openai` / `ollama`. Defaults to `anthropic` when unset. |
+| `LLM_MODEL` | Yes | Model string, e.g. `mimo-v2.5`, `claude-sonnet-4-6`, or `gpt-4o`. Defaults to `claude-sonnet-4-6` when unset. |
+| `LLM_TIMEOUT_SECONDS` | No | Request timeout in seconds. Default: `120`. |
+| `ANTHROPIC_API_KEY` | If `anthropic` | Anthropic API key. |
+| `OPENAI_API_KEY` | If `openai` | OpenAI or OpenCode-compatible API key. |
+| `OPENAI_BASE_URL` | No | Custom OpenAI-compatible base URL (e.g. OpenCode Zen). Defaults to `https://opencode.ai/zen/go/v1` when unset. |
+| `OLLAMA_BASE_URL` | No | Ollama server URL. Default: `http://localhost:11434`. |
+| `TESSERACT_CMD` | If OCR | Path to `tesseract.exe` (Windows). |
+| `POPPLER_PATH` | If OCR | Path to the Poppler `bin/` directory (Windows). |
 
-| Variable | Description |
-|---|---|
-| `LLM_PROVIDER` | Provider name: `anthropic`, `openai`, or `ollama`. |
-| `LLM_MODEL` | Provider-specific model string, such as `claude-sonnet-4-6`, `gpt-4o`, or `mimo-v2.5`. |
-| `LLM_TIMEOUT_SECONDS` | Request timeout in seconds; default is `120`. |
-| `ANTHROPIC_API_KEY` | Required when `LLM_PROVIDER=anthropic`. |
-| `OPENAI_API_KEY` | Required when `LLM_PROVIDER=openai`. |
-| `OPENAI_BASE_URL` | Optional endpoint for OpenAI-compatible providers such as OpenCode/MiMo. |
-| `OLLAMA_BASE_URL` | Required when `LLM_PROVIDER=ollama`; defaults to `http://localhost:11434`. |
+Never commit `.env` or expose API keys.
 
-Never commit `.env` or expose API keys. Use `.env.example` as the shareable template.
+---
 
-## Usage
-
-From plain text:
+## Usage — CLI
 
 ```powershell
+# From plain text
 python main.py --text "As a user I want to log in so that I can access my account." --output output/test.csv
-```
 
-From a Markdown file:
-
-```powershell
+# From a .md file
 python main.py --input requirements.md --output output/test.csv
-```
 
-From a DOCX file:
-
-```powershell
+# From a .docx file
 python main.py --input requirements.docx --output output/test.csv
-```
 
-From a PDF file:
-
-```powershell
+# From a .pdf file (text-based or scanned — auto-detected)
 python main.py --input requirements.pdf --output output/test.csv
 ```
 
 With verbose output:
 
 ```powershell
-python main.py --input requirements.md --output output/test.csv --verbose
+python main.py --input requirements.md `
+               --output output/test.csv --verbose
 ```
 
-Override provider and model:
+Override provider and model (otherwise `.env` is used):
 
 ```powershell
 python main.py --input requirements.md `
@@ -130,13 +140,45 @@ python main.py --input requirements.md `
                --output output/test.csv
 ```
 
-Specify a language target:
+Set a language target (optional; defaults to `manual`):
 
 ```powershell
 python main.py --input requirements.md `
                --language python `
                --output output/test.csv
 ```
+
+If `--output` is omitted, the CSV is written to `output/test_cases_<timestamp>.csv`.
+
+---
+
+## Usage — Web UI (v1.2+)
+
+Start the web server:
+
+```powershell
+python web_server.py
+```
+
+Open in the browser:
+
+```text
+http://localhost:8001
+```
+
+Features:
+
+- Paste text or upload a file (`.docx`, `.pdf`, `.md`)
+- Generate test cases with one click
+- Preview results in the browser with category badges
+- Expand rows to see full steps and expected result
+- Download CSV directly from the browser
+- Dark/light mode toggle (preference saved in `localStorage`)
+- Configuration via `.env` only — provider, model, and language are never shown in the UI
+
+Note: the Web UI and the CLI share the same generation pipeline. The Web UI always sends `language: "manual"`.
+
+---
 
 ## CSV Output Schema
 
@@ -151,14 +193,16 @@ python main.py --input requirements.md `
 | `expected_result` | Expected outcome |
 | `technique` | `EP` / `BVA` / `negative` / `exploratory` / `security` |
 | `requirement_ref` | Source requirement ID |
-| `language_target` | `python` / `javascript` / `typescript` / `java` / `manual` |
+| `language_target` | `python` / `javascript` / `typescript` / `java` / `manual` (the Web UI always writes `manual`) |
 | `generated_at` | ISO 8601 UTC timestamp |
 
-The columns are written in this exact order:
+Columns are written in this exact order:
 
 ```text
 id,title,category,priority,preconditions,steps,expected_result,technique,requirement_ref,language_target,generated_at
 ```
+
+---
 
 ## Supported Providers
 
@@ -169,19 +213,48 @@ id,title,category,priority,preconditions,steps,expected_result,technique,require
 | OpenCode | `openai` | `OPENAI_API_KEY` | Set `OPENAI_BASE_URL` to the OpenCode endpoint |
 | Ollama | `ollama` | - | Local models; set `OLLAMA_BASE_URL` |
 
+---
+
+## OCR Support (v1.1+)
+
+Scanned PDFs are detected automatically: when a PDF yields fewer than 50 characters of extractable text, the OCR path is used instead.
+
+Install:
+
+- Tesseract OCR — https://github.com/UB-Mannheim/tesseract/wiki (select the Indonesian language pack during installation)
+- Poppler for Windows — https://github.com/oschwartz10612/poppler-windows/releases
+
+`.env` configuration:
+
+```dotenv
+TESSERACT_CMD=C:\Program Files\Tesseract-OCR\tesseract.exe
+POPPLER_PATH=C:\poppler\Library\bin
+```
+
+OCR runs bilingually: English + Bahasa Indonesia (`eng+ind`).
+
+---
+
 ## Roadmap
 
-- [x] v1.1 — PDF scanned document support (OCR)
-- [x] v1.2 — Web UI (optional, alongside CLI)
-- [ ] v1.3 — Direct export to Jira/TestRail
+- [x] v1.0.0 — Core CLI tool
+- [x] v1.1.0 — Scanned PDF OCR support
+- [x] v1.2.0 — Web UI with dark/light mode
+- [ ] v1.3 — Export to Jira / TestRail
 - [ ] v2.0 — Multi-requirement parallel generation
 - [ ] v2.1 — Existing test framework context injection
+- [ ] v2.2 — Language-aware generation (python -> pytest, js -> Jest, java -> JUnit)
+- [ ] v2.3 — Configuration UI with BYOK API key input (provider + model selectable in the UI, key stored in session only)
+
+---
 
 ## Contributing
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening an issue or pull request.
 
-Contributions are by approval only. All pull requests require review and approval from [@hambaliFadib](https://github.com/hambaliFadib).
+Contributions are by approval only. An issue must be opened and approved first, and all pull requests require review and approval from [@hambaliFadib](https://github.com/hambaliFadib).
+
+---
 
 ## License
 
