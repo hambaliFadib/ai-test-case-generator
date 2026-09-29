@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and uses [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] - 2026-09-29
+
+### Added
+
+- Structured requirement parsing with explicit IDs and atomic/evidence-boundary behavior
+- Deterministic coverage profiles, scenario planning, and bounded batch generation
+- Scenario traceability, completeness auditing, and targeted backfill
+- CLI and Web API integration through `generate_test_suite()`
+- Coverage status and missing-scenario summaries in the Web UI
+- v1.3 traceable CSV export with `requirement_ref` and `scenario_ref`
+
+### Changed
+
+- CLI exit codes now distinguish complete (`0`), failed (`1`), and partial (`2`) generation
+
 ## [1.2.3] - 2026-09-27
 
 ### Changed

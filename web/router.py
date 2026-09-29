@@ -2,7 +2,6 @@
 
 from dataclasses import asdict
 from datetime import datetime, timezone
-import os
 from pathlib import Path
 import re
 import tempfile
@@ -13,14 +12,12 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
 from config import SUPPORTED_PROVIDERS, load_settings
-from csv_exporter import export_to_csv
-from deduplicator import deduplicate_test_cases
+from csv_exporter import export_to_csv, export_traceable_to_csv
+from coverage_planner import SUPPORTED_PROFILES
+from generation_orchestrator import generate_test_suite
 from input_resolver import resolve_input
-from llm_adapter import create_adapter
 from models.test_case_model import TestCase
-from prompt_builder import build_prompt
-from requirement_analyzer import analyze_requirements
-from response_parser import parse_response
+from security_utils import redact_sensitive_detail
 from validator import validate_test_cases
 
 
@@ -35,6 +32,7 @@ class TextGenerationRequest(BaseModel):
     model: str | None = None
     language: str = "manual"
     output_language: str = "en"
+    profile: str = "balanced"
 
 
 class ExportRequest(BaseModel):
@@ -48,7 +46,7 @@ class ExportRequest(BaseModel):
 def health() -> dict[str, str]:
     """Return the web API health status and version."""
 
-    return {"status": "ok", "version": "1.2.0"}
+    return {"status": "ok", "version": "1.3.0"}
 
 
 @router.get("/config", response_model=None)
@@ -78,6 +76,7 @@ def generate_text(request: TextGenerationRequest) -> dict[str, Any] | JSONRespon
             request.model,
             request.language,
             request.output_language,
+            request.profile,
         )
     except Exception as exc:
         return _error_response("Generation failed", exc)
@@ -90,6 +89,7 @@ async def generate_file(
     model: str | None = Form(default=None),
     language: str = Form(default="manual"),
     output_language: str = Form(default="en"),
+    profile: str = Form(default="balanced"),
 ) -> dict[str, Any] | JSONResponse:
     """Generate test cases from a temporary uploaded DOCX, PDF, or Markdown file."""
 
@@ -110,7 +110,7 @@ async def generate_file(
             input_path = Path(temp_dir) / f"input{suffix}"
             input_path.write_bytes(content)
             parsed_input = resolve_input(input_path=input_path)
-            return _generate(parsed_input, provider, model, language, output_language)
+            return _generate(parsed_input, provider, model, language, output_language, profile)
     except Exception as exc:
         return _error_response("Generation failed", exc)
     finally:
@@ -127,7 +127,12 @@ def export_csv(request: ExportRequest) -> Response | JSONResponse:
         safe_base = _safe_filename(request.filename)
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
         with tempfile.TemporaryDirectory(prefix="ai-tcg-export-") as temp_dir:
-            csv_path = export_to_csv(cases, Path(temp_dir) / "test_cases.csv")
+            exporter = (
+                export_traceable_to_csv
+                if all(test_case.scenario_ref.strip() for test_case in cases)
+                else export_to_csv
+            )
+            csv_path = exporter(cases, Path(temp_dir) / "test_cases.csv")
             csv_bytes = csv_path.read_bytes()
         headers = {
             "Content-Disposition": f'attachment; filename="{safe_base}_{timestamp}.csv"',
@@ -143,23 +148,54 @@ def _generate(
     model: str | None,
     language: str,
     output_language: str = "en",
+    profile: str = "balanced",
 ) -> dict[str, Any]:
-    """Run the shared requirement-to-test-case generation pipeline."""
+    """Run the shared Phase 3 generation engine for one Web request."""
 
     if output_language not in ("en", "id"):
         output_language = "en"  # safe fallback for unsupported output languages
-    requirements = analyze_requirements(parsed_input)
+    if profile not in SUPPORTED_PROFILES:
+        supported = ", ".join(SUPPORTED_PROFILES)
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Invalid profile", "detail": f"Choose one of: {supported}."},
+        )
     settings = load_settings(provider_override=provider, model_override=model)
-    prompt = build_prompt(requirements, language_target=language, output_language=output_language)
-    raw_response = create_adapter(settings).generate(prompt)
-    generated_cases = parse_response(raw_response)
-    validate_test_cases(generated_cases)
-    unique_cases = deduplicate_test_cases(generated_cases)
-    validate_test_cases(unique_cases)
+    result = generate_test_suite(
+        parsed_input,
+        settings,
+        language_target=language,
+        output_language=output_language,
+        profile=profile,
+    )
+    payload = _serialize_result(result, profile)
+    if result.status == "failed":
+        payload["error"] = "Generation failed"
+        return JSONResponse(status_code=500, content=payload)
+    return payload
+
+
+def _serialize_result(result: Any, profile: str) -> dict[str, Any]:
+    """Expose stable, non-sensitive GenerationResult metadata to Web clients."""
+
     return {
-        "test_cases": [asdict(test_case) for test_case in unique_cases],
-        "count": len(unique_cases),
-        "requirement_count": len(requirements),
+        "status": result.status,
+        "profile": profile,
+        "requirement_count": result.requirement_count,
+        "testable_requirement_count": result.testable_requirement_count,
+        "excluded_requirement_count": result.excluded_requirement_count,
+        "scenario_count": result.scenario_count,
+        "generated_count": result.generated_count,
+        "coverage_percentage": result.coverage_percentage,
+        "batch_count": result.batch_count,
+        "backfill_count": result.backfill_count,
+        "missing_scenarios": list(result.missing_scenarios),
+        "test_cases": [asdict(test_case) for test_case in result.test_cases],
+        "unexpected_scenarios": list(result.unexpected_scenarios),
+        "duplicate_scenarios": list(result.duplicate_scenarios),
+        "initial_generated_count": result.initial_generated_count,
+        "initial_missing_scenarios": list(result.initial_missing_scenarios),
+        "diagnostics": [_redact(diagnostic) for diagnostic in result.diagnostics],
     }
 
 
@@ -184,9 +220,4 @@ def _error_response(message: str, error: Exception, status_code: int = 400) -> J
 def _redact(detail: str) -> str:
     """Remove API key values from error details before returning them to clients."""
 
-    redacted = detail
-    for variable in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY"):
-        secret = os.environ.get(variable)
-        if secret:
-            redacted = redacted.replace(secret, "[REDACTED]")
-    return redacted
+    return redact_sensitive_detail(detail)

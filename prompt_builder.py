@@ -2,6 +2,7 @@
 
 import json
 
+from models.coverage_model import ScenarioIntent
 from models.requirement_model import Requirement
 from models.test_case_model import TestCase
 
@@ -83,4 +84,90 @@ expected_result must be a non-empty string. generated_at must be an ISO 8601 tim
 
 Requirements:
 {json.dumps(requirement_payload, ensure_ascii=False, indent=2)}
+""".strip()
+
+
+def build_batch_prompt(
+    requirements: list[Requirement],
+    scenarios: list[ScenarioIntent],
+    language_target: str = "manual",
+    output_language: str = "en",
+) -> str:
+    """Build a bounded prompt for exactly the supplied scenario intents."""
+
+    if not requirements:
+        raise ValueError("At least one requirement is required to build a batch prompt.")
+    if not scenarios:
+        raise ValueError("At least one scenario is required to build a batch prompt.")
+    if language_target not in TestCase.LANGUAGES:
+        supported = ", ".join(TestCase.LANGUAGES)
+        raise ValueError(f"Unsupported language target '{language_target}'. Choose: {supported}.")
+    if output_language not in ("en", "id"):
+        raise ValueError("Unsupported output language. Choose: en, id.")
+
+    known_requirements = {requirement.id: requirement for requirement in requirements}
+    missing = sorted(
+        {
+            scenario.requirement_ref
+            for scenario in scenarios
+            if scenario.requirement_ref not in known_requirements
+        }
+    )
+    if missing:
+        raise ValueError(
+            "Scenarios reference unknown requirement(s): " + ", ".join(missing)
+        )
+
+    selected_requirements = [
+        requirement
+        for requirement in requirements
+        if requirement.id in {scenario.requirement_ref for scenario in scenarios}
+    ]
+    requirement_payload = [
+        {
+            "id": requirement.id,
+            "title": requirement.title,
+            "statement": requirement.statement,
+            "details": requirement.details,
+            "acceptance_criteria": requirement.acceptance_criteria,
+            "constraints": requirement.constraints,
+            "source_section": requirement.source_section,
+            "numeric_limits": requirement.numeric_limits,
+        }
+        for requirement in selected_requirements
+    ]
+    scenario_payload = [
+        {
+            "scenario_ref": scenario.id,
+            "requirement_ref": scenario.requirement_ref,
+            "category": scenario.category,
+            "technique": scenario.technique,
+            "intent": scenario.intent,
+            "priority": scenario.priority,
+        }
+        for scenario in scenarios
+    ]
+    language_instruction = (
+        "Write generated natural-language fields in Bahasa Indonesia."
+        if output_language == "id"
+        else "Write generated natural-language fields in English."
+    )
+    return f"""You are an expert QA engineer generating traceable test-case content.
+
+Generate exactly one test case for each supplied scenario.
+Do not add scenarios.
+Do not omit scenarios.
+Use the exact requirement_ref and scenario_ref supplied for each test case.
+Every object must contain all existing test-case fields plus scenario_ref.
+The supplied scenario_ref is required and must be copied exactly; do not invent or omit it.
+The supplied id is not the final application ID and may be replaced after coverage is finalized.
+Use only supplied requirement facts and scenario intents.
+Do not invent unsupported business rules, error wording, permissions, status transitions, formulas, or dependencies.
+{language_instruction}
+
+Requirements for this batch:
+{json.dumps(requirement_payload, ensure_ascii=False, indent=2)}
+
+Planned scenarios for this batch:
+{json.dumps(scenario_payload, ensure_ascii=False, indent=2)}
 """.strip()

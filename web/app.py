@@ -1,4 +1,4 @@
-"""FastAPI application entrypoint for the v1.2 web interface."""
+"""FastAPI application entrypoint for the v1.3 web interface."""
 
 from dotenv import load_dotenv
 
@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from web.router import router
 
 
-app = FastAPI(title="AI Test Case Generator", version="1.2.0")
+app = FastAPI(title="AI Test Case Generator", version="1.3.0")
 
 app.add_middleware(
     CORSMiddleware,

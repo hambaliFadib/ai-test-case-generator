@@ -7,6 +7,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from config import ConfigurationError, Settings
+from models.llm_result import LLMResult
 
 class LLMError(RuntimeError):
     """Raised when an LLM provider cannot generate a response."""
@@ -18,6 +19,11 @@ class LLMAdapter(ABC):
     @abstractmethod
     def generate(self, prompt: str) -> str:
         """Generate a text response for a prompt."""
+
+    def generate_result(self, prompt: str) -> LLMResult:
+        """Return a result object while preserving legacy adapter subclasses."""
+
+        return LLMResult(text=self.generate(prompt), model=getattr(self, "_model", ""))
 
 
 class AnthropicAdapter(LLMAdapter):
@@ -41,6 +47,11 @@ class AnthropicAdapter(LLMAdapter):
     def generate(self, prompt: str) -> str:
         """Generate text using Anthropic without exposing the API key."""
 
+        return self.generate_result(prompt).text
+
+    def generate_result(self, prompt: str) -> LLMResult:
+        """Generate text and map available Anthropic metadata."""
+
         try:
             response = self._client.messages.create(
                 model=self._model,
@@ -54,7 +65,14 @@ class AnthropicAdapter(LLMAdapter):
             raise LLMError(f"Anthropic request failed: {exc}") from exc
         if not result.strip():
             raise LLMError("Anthropic returned an empty response.")
-        return result
+        usage = getattr(response, "usage", None)
+        return LLMResult(
+            text=result,
+            model=_field(response, "model") or self._model,
+            finish_reason=_field(response, "stop_reason"),
+            input_tokens=_field(usage, "input_tokens"),
+            output_tokens=_field(usage, "output_tokens"),
+        )
 
 
 import os
@@ -81,18 +99,31 @@ class OpenAIAdapter(LLMAdapter):
     def generate(self, prompt: str) -> str:
         """Generate text using OpenAI without exposing the API key."""
 
+        return self.generate_result(prompt).text
+
+    def generate_result(self, prompt: str) -> LLMResult:
+        """Generate text and map optional OpenAI-compatible metadata."""
+
         try:
             response = self._client.chat.completions.create(
                 model=self._model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.2,
             )
-            result = response.choices[0].message.content or ""
+            choice = response.choices[0]
+            result = choice.message.content or ""
         except Exception as exc:
             raise LLMError(f"OpenAI request failed: {exc}") from exc
         if not result.strip():
             raise LLMError("OpenAI returned an empty response.")
-        return result
+        usage = getattr(response, "usage", None)
+        return LLMResult(
+            text=result,
+            model=_field(response, "model") or self._model,
+            finish_reason=_field(choice, "finish_reason"),
+            input_tokens=_field(usage, "prompt_tokens"),
+            output_tokens=_field(usage, "completion_tokens"),
+        )
 
 
 class OllamaAdapter(LLMAdapter):
@@ -107,6 +138,11 @@ class OllamaAdapter(LLMAdapter):
 
     def generate(self, prompt: str) -> str:
         """Generate text through Ollama's local `/api/generate` endpoint."""
+
+        return self.generate_result(prompt).text
+
+    def generate_result(self, prompt: str) -> LLMResult:
+        """Generate text and map Ollama metadata when present."""
 
         payload = json.dumps({"model": self._model, "prompt": prompt, "stream": False}).encode("utf-8")
         request = Request(
@@ -124,7 +160,13 @@ class OllamaAdapter(LLMAdapter):
             raise LLMError(f"Ollama request failed: {exc}") from exc
         if not isinstance(result, str) or not result.strip():
             raise LLMError("Ollama returned an empty response.")
-        return result
+        return LLMResult(
+            text=result,
+            model=decoded.get("model") or self._model,
+            finish_reason=decoded.get("done_reason"),
+            input_tokens=decoded.get("prompt_eval_count"),
+            output_tokens=decoded.get("eval_count"),
+        )
 
 
 def create_adapter(settings: Settings) -> LLMAdapter:
@@ -139,3 +181,11 @@ def create_adapter(settings: Settings) -> LLMAdapter:
     if adapter_type is None:
         raise ConfigurationError(f"Unsupported LLM provider '{settings.provider}'.")
     return adapter_type(settings)
+
+
+def _field(value: Any, name: str, default: Any = None) -> Any:
+    """Read provider metadata from SDK objects or test-friendly mappings."""
+
+    if isinstance(value, dict):
+        return value.get(name, default)
+    return getattr(value, name, default)

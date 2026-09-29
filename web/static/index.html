@@ -560,6 +560,8 @@
 
     .summary { color: var(--text-secondary); font-size: 15px; margin-bottom: 16px; }
     .summary strong { color: var(--accent); font-weight: 600; }
+    .summary[data-status="partial"] strong { color: var(--priority-medium); }
+    .summary[data-status="failed"] strong { color: var(--priority-high); }
 
     .table-wrap { overflow-x: auto; }
 
@@ -722,7 +724,7 @@
         </div>
       </div>
       <div class="header-actions">
-        <span class="version">v1.2</span>
+        <span class="version">v1.3.0</span>
         <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark mode" title="Switch to dark mode" aria-pressed="false">
           <span class="theme-icon" id="theme-icon" aria-hidden="true">☀️</span>
         </button>
@@ -745,6 +747,15 @@
             <select id="outputLanguage" aria-label="Output language for test cases">
               <option value="en" selected>English</option>
               <option value="id">Bahasa Indonesia</option>
+            </select>
+          </div>
+          <div class="lang-selector">
+            <label for="profile">Coverage</label>
+            <select id="profile" aria-label="Coverage profile">
+              <option value="balanced" selected>Balanced</option>
+              <option value="minimal">Minimal</option>
+              <option value="comprehensive">Comprehensive</option>
+              <option value="security">Security</option>
             </select>
           </div>
         </div>
@@ -780,6 +791,10 @@
         <p class="card-label">Results</p>
         <h2 id="results-title">Generated coverage</h2>
         <p class="summary" id="summary" aria-live="polite"></p>
+        <details class="coverage-details" id="missing-details" hidden>
+          <summary id="missing-summary">Missing coverage</summary>
+          <ul id="missing-list"></ul>
+        </details>
         <div class="table-wrap">
           <table>
             <caption>Select a row to view full steps and expected result.</caption>
@@ -791,6 +806,7 @@
                 <th scope="col">Priority</th>
                 <th scope="col">Technique</th>
                 <th scope="col">Requirement</th>
+                <th scope="col">Scenario</th>
               </tr>
             </thead>
             <tbody id="results-body"></tbody>
@@ -798,7 +814,7 @@
         </div>
         <div class="detail" id="detail" aria-live="polite" hidden></div>
         <div class="actions">
-          <span class="hint">CSV uses the exact QA export schema.</span>
+          <span class="hint">CSV includes requirement and scenario traceability.</span>
           <button class="secondary" id="download-button" type="button" aria-label="Download CSV">Download CSV</button>
         </div>
       </section>
@@ -830,6 +846,10 @@
       const generateButton = $("#generate-button");
       const downloadButton = $("#download-button");
       const outputLanguageSelect = $("#outputLanguage");
+      const profileSelect = $("#profile");
+      const missingDetails = $("#missing-details");
+      const missingSummary = $("#missing-summary");
+      const missingList = $("#missing-list");
 
       function systemTheme() {
         return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
@@ -893,11 +913,23 @@
       function renderResults(data) {
         state.testCases = Array.isArray(data.test_cases) ? data.test_cases : [];
         state.selectedIndex = -1;
-        summary.innerHTML = `<strong>${data.count}</strong> cases from <strong>${data.requirement_count}</strong> requirements`;
+        const status = String(data.status || "failed").toLowerCase();
+        const statusLabel = status === "complete" ? "Generation complete" : status === "partial" ? "Partial coverage" : "Generation failed";
+        summary.innerHTML = `<strong>${escapeHtml(statusLabel)}</strong> · ${data.requirement_count} Requirements · ${data.testable_requirement_count} Testable · ${data.scenario_count} Planned Scenarios · ${data.generated_count} Test Cases · ${Number(data.coverage_percentage || 0).toFixed(2)}% Coverage · ${data.batch_count} Initial Batches · ${data.backfill_count} Backfill Calls`;
+        summary.dataset.status = status;
+        const missing = Array.isArray(data.missing_scenarios) ? data.missing_scenarios : [];
+        missingList.replaceChildren();
+        missingDetails.hidden = missing.length === 0;
+        missingSummary.textContent = `Missing coverage (${missing.length})`;
+        missing.forEach((scenarioId) => {
+          const item = document.createElement("li");
+          item.textContent = scenarioId;
+          missingList.append(item);
+        });
         resultsBody.replaceChildren();
         detail.hidden = true;
         if (!state.testCases.length) {
-          resultsBody.innerHTML = '<tr><td class="empty" colspan="6">No test cases were returned.</td></tr>';
+          resultsBody.innerHTML = '<tr><td class="empty" colspan="7">No test cases were returned.</td></tr>';
         } else {
           state.testCases.forEach((testCase, index) => {
             const row = document.createElement("tr");
@@ -909,7 +941,8 @@
               <td><span class="badge badge-${escapeHtml(testCase.category)}">${escapeHtml(testCase.category)}</span></td>
               <td class="priority-${escapeHtml(testCase.priority)}">${escapeHtml(testCase.priority)}</td>
               <td>${escapeHtml(testCase.technique)}</td>
-              <td class="id">${escapeHtml(testCase.requirement_ref)}</td>`;
+              <td class="id">${escapeHtml(testCase.requirement_ref)}</td>
+              <td class="id">${escapeHtml(testCase.scenario_ref)}</td>`;
             row.addEventListener("click", () => selectRow(index));
             row.addEventListener("keydown", (event) => {
               if (event.key === "Enter" || event.key === " ") {
@@ -972,7 +1005,7 @@
             response = await fetch("/api/generate/text", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ text: textInput.value, provider: serverProvider, model: serverModel, language: "manual", output_language: outputLanguage })
+              body: JSON.stringify({ text: textInput.value, provider: serverProvider, model: serverModel, language: "manual", output_language: outputLanguage, profile: profileSelect.value })
             });
           } else {
             if (!fileInput.files[0]) throw new Error("Choose a requirement file first.");
@@ -982,6 +1015,7 @@
             form.append("model", serverModel);
             form.append("language", "manual");
             form.append("output_language", outputLanguage);
+            form.append("profile", profileSelect.value);
             response = await fetch("/api/generate/file", { method: "POST", body: form });
           }
           if (!response.ok) throw new Error(await readError(response));

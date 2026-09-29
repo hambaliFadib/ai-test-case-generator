@@ -5,6 +5,7 @@ import json
 import re
 from typing import Any
 
+from models.coverage_model import ScenarioIntent
 from models.test_case_model import TestCase
 
 
@@ -47,6 +48,63 @@ def parse_response(raw_response: str) -> list[TestCase]:
             item["generated_at"] = datetime.now(timezone.utc).isoformat()
         _validate_item(item, index, required_fields, original_fields)
         cases.append(TestCase(**{field: item[field] for field in TestCase.required_fields()}))
+    return cases
+
+
+def parse_batch_response(
+    raw_response: str,
+    expected_scenarios: list[ScenarioIntent],
+) -> list[TestCase]:
+    """Strictly parse one Phase 3 batch without requiring full batch coverage."""
+
+    if not isinstance(raw_response, str) or not raw_response.strip():
+        raise ParseError(f"Could not parse empty batch response. Raw response: {raw_response!r}")
+    expected_by_id = {scenario.id: scenario for scenario in expected_scenarios}
+    if len(expected_by_id) != len(expected_scenarios):
+        raise ValidationError("expected scenarios contain duplicate scenario_ref values")
+
+    cleaned = _strip_markdown_fence(raw_response)
+    try:
+        decoded: Any = json.loads(cleaned)
+    except json.JSONDecodeError as exc:
+        raise ParseError(f"Could not parse batch JSON response: {exc}") from exc
+    if not isinstance(decoded, list):
+        raise ValidationError("expected a JSON array of batch test case objects")
+
+    cases: list[TestCase] = []
+    seen_scenarios: set[str] = set()
+    required_fields = set(TestCase.phase3_required_fields())
+    for index, item in enumerate(decoded):
+        original_fields = set(item.keys()) if isinstance(item, dict) else None
+        _validate_item(item, index, required_fields, original_fields)
+        scenario_ref = item["scenario_ref"]
+        requirement_ref = item["requirement_ref"]
+        if not isinstance(scenario_ref, str) or not scenario_ref.strip():
+            raise ValidationError("scenario_ref must be a non-empty string", index)
+        expected = expected_by_id.get(scenario_ref)
+        if expected is None:
+            raise ValidationError(f"unknown or unplanned scenario_ref '{scenario_ref}'", index)
+        if requirement_ref != expected.requirement_ref:
+            raise ValidationError(
+                f"scenario_ref '{scenario_ref}' belongs to requirement '{expected.requirement_ref}', not '{requirement_ref}'",
+                index,
+            )
+        if scenario_ref in seen_scenarios:
+            raise ValidationError(f"duplicate scenario_ref '{scenario_ref}'", index)
+        if requirement_ref == "REQ-UNTRACED":
+            raise ValidationError("REQ-UNTRACED is invalid for Phase 3 batch generation", index)
+        seen_scenarios.add(scenario_ref)
+
+        materialized = dict(item)
+        materialized["id"] = f"TC-00000000-{index + 1:04d}"
+        cases.append(
+            TestCase(
+                **{
+                    field: materialized[field]
+                    for field in TestCase.phase3_required_fields()
+                }
+            )
+        )
     return cases
 
 

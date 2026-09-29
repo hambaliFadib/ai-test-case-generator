@@ -1,6 +1,6 @@
 # AI Test Case Generator
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Python: 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/) [![Version: 1.2.3](https://img.shields.io/badge/Version-1.2.3-blue.svg)](CHANGELOG.md) [![Contributions: By Approval Only](https://img.shields.io/badge/Contributions-By%20Approval%20Only-orange.svg)](CONTRIBUTING.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Python: 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/) [![Version: 1.3.0](https://img.shields.io/badge/Version-1.3.0-blue.svg)](CHANGELOG.md) [![Contributions: By Approval Only](https://img.shields.io/badge/Contributions-By%20Approval%20Only-orange.svg)](CONTRIBUTING.md)
 
 ---
 
@@ -20,10 +20,13 @@
 - Web UI: clean interface with a dark/light mode toggle
 - CLI: full command-line support
 - Test design techniques: EP, BVA, Negative, Edge, Security
-- Requirement traceability: each test case is linked to a `REQ-` ID
+- Structured requirement IDs and scenario-level traceability (`requirement_ref` + `scenario_ref`)
+- Coverage profiles: `minimal`, `balanced`, `comprehensive`, and `security`
+- Deterministic scenario planning with bounded prompt batches
+- Coverage auditing and targeted backfill with `complete`, `partial`, or `failed` outcomes
 - Deterministic validation (Python contract checks, not LLM trust)
 - Deduplication before export
-- CSV output with the exact 11-column schema
+- Legacy 11-column CSV remains available; v1.3 production export uses a traceable 12-column schema
 - Configuration via `.env` (no UI configuration panel)
 
 ---
@@ -41,7 +44,7 @@ INPUT LAYER -> ANALYSIS LAYER -> GENERATION LAYER
 - **Validation layer** — `validator.py` applies deterministic contract checks and `deduplicator.py` removes duplicate titles.
 - **Output layer** — `csv_exporter.py` writes validated cases using the schema in `models/csv_schema.py`.
 
-**Web UI layer (v1.2+)**
+**Web UI layer (v1.3.0)**
 
 ```text
 WEB UI -> same generation pipeline as the CLI
@@ -49,7 +52,7 @@ FastAPI backend (port 8001) + single-page HTML frontend
 ```
 
 - FastAPI backend (`web/app.py`, `web/router.py`) serving a single-page HTML/CSS/JS frontend (`web/static/index.html`).
-- Shares the same generation pipeline as the CLI — one code path, two entrypoints.
+- Shares the same `generate_test_suite()` pipeline as the CLI — one engine, two entrypoints.
 - Configuration via `.env` only: there is no configuration panel in the UI.
 
 ---
@@ -140,6 +143,14 @@ python main.py --input requirements.md `
                --output output/test.csv
 ```
 
+Choose a deterministic coverage profile (defaults to `balanced`):
+
+```powershell
+python main.py --input requirements.md --profile comprehensive --output output/test.csv
+```
+
+The CLI exits with `0` for complete coverage, `2` for usable partial coverage, and `1` for failed generation. Its summary includes planned scenarios, generated cases, coverage percentage, initial batches, backfill calls, and missing scenario IDs (with `--verbose`).
+
 Set a language target (optional; defaults to `manual`):
 
 ```powershell
@@ -152,7 +163,7 @@ If `--output` is omitted, the CSV is written to `output/test_cases_<timestamp>.c
 
 ---
 
-## Usage — Web UI (v1.2+)
+## Usage — Web UI (v1.3.0)
 
 Start the web server:
 
@@ -169,14 +180,20 @@ http://localhost:8001
 Features:
 
 - Paste text or upload a file (`.docx`, `.pdf`, `.md`)
-- Generate test cases with one click
+- Generate test cases with one click and choose a coverage profile
 - Preview results in the browser with category badges
 - Expand rows to see full steps and expected result
 - Download CSV directly from the browser
 - Dark/light mode toggle (preference saved in `localStorage`)
-- Configuration via `.env` only — provider, model, and language are never shown in the UI
+- Coverage status, planned/generated counts, percentage, backfill calls, and missing scenario IDs are shown in the results
 
-Note: the Web UI and the CLI share the same generation pipeline. The Web UI always sends `language: "manual"`.
+Note: the Web UI and the CLI share the same `generate_test_suite()` pipeline. The Web UI always sends `language: "manual"`.
+
+## Coverage and traceability
+
+The analyzer preserves explicit requirement IDs and their full document blocks. The deterministic planner turns each testable requirement into source-backed scenario intents, groups them into bounded batches, and audits every parsed response by `scenario_ref`. Missing scenarios are sent through targeted backfill calls within a bounded retry budget. A result is `complete` only when every planned scenario is covered; valid but incomplete output is `partial`, and an unusable result is `failed`.
+
+The Web API returns the status, requirement counts, planned and generated scenario counts, coverage percentage, initial batch count, backfill call count, missing IDs, and traceable test cases. The production CLI and Web export use the v1.3 traceable CSV schema below.
 
 ---
 
@@ -193,13 +210,14 @@ Note: the Web UI and the CLI share the same generation pipeline. The Web UI alwa
 | `expected_result` | Expected outcome |
 | `technique` | `EP` / `BVA` / `negative` / `exploratory` / `security` |
 | `requirement_ref` | Source requirement ID |
+| `scenario_ref` | Deterministic planned scenario ID |
 | `language_target` | `python` / `javascript` / `typescript` / `java` / `manual` (the Web UI always writes `manual`) |
 | `generated_at` | ISO 8601 UTC timestamp |
 
 Columns are written in this exact order:
 
 ```text
-id,title,category,priority,preconditions,steps,expected_result,technique,requirement_ref,language_target,generated_at
+id,title,category,priority,preconditions,steps,expected_result,technique,requirement_ref,scenario_ref,language_target,generated_at
 ```
 
 ---
@@ -240,7 +258,7 @@ OCR runs bilingually: English + Bahasa Indonesia (`eng+ind`).
 - [x] v1.0.0 — Core CLI tool
 - [x] v1.1.0 — Scanned PDF OCR support
 - [x] v1.2.0 — Web UI with dark/light mode
-- [ ] v1.3 — Export to Jira / TestRail
+- [x] v1.3.0 — Deterministic coverage planning, completeness audit, backfill, Web/CLI integration, and traceable export
 - [ ] v2.0 — Multi-requirement parallel generation
 - [ ] v2.1 — Existing test framework context injection
 - [ ] v2.2 — Language-aware generation (python -> pytest, js -> Jest, java -> JUnit)

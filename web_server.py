@@ -1,4 +1,4 @@
-"""Web server entrypoint for the v1.2 interface."""
+"""Web server entrypoint for the v1.3.0 interface."""
 
 import uvicorn
 

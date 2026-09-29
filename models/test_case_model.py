@@ -19,6 +19,7 @@ class TestCase:
     requirement_ref: str = "REQ-UNTRACED"
     language_target: str = "manual"
     generated_at: str = ""
+    scenario_ref: str = ""
 
     CATEGORIES: ClassVar[tuple[str, ...]] = (
         "positive",
@@ -60,3 +61,9 @@ class TestCase:
             "language_target",
             "generated_at",
         )
+
+    @classmethod
+    def phase3_required_fields(cls) -> tuple[str, ...]:
+        """Return the strict batch-generation contract fields."""
+
+        return (*cls.required_fields(), "scenario_ref")
