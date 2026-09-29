@@ -343,10 +343,14 @@
 
     /* ── Tabs ──────────────────────────────────────────────────────── */
     .tabs {
+      align-items: center;
       border-bottom: 1.5px solid var(--border);
       display: flex;
+      justify-content: space-between;
       margin-bottom: 20px;
     }
+
+    .tabs-list { align-self: stretch; display: flex; }
 
     .tab {
       background: none;
@@ -366,6 +370,65 @@
       border-bottom-color: var(--accent);
       color: var(--accent);
       font-weight: 600;
+    }
+
+    /* ── Language selector ─────────────────────────────────────────── */
+    .lang-selector {
+      align-items: center;
+      background: var(--surface-raised);
+      border: 1.5px solid var(--border);
+      border-radius: 999px;
+      cursor: pointer;
+      display: flex;
+      flex: none;
+      gap: 6px;
+      padding: 6px 12px 6px 10px;
+      transition: border-color .15s ease;
+    }
+
+    .lang-selector:focus-within {
+      border-color: var(--border-focus);
+      box-shadow: var(--shadow-focus);
+    }
+
+    .lang-icon { font-size: .875rem; line-height: 1; }
+
+    .lang-selector select {
+      -webkit-appearance: none;
+      appearance: none;
+      background-color: transparent;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2357534E' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-position: right 0 center;
+      background-repeat: no-repeat;
+      background-size: 12px;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: .8125rem;
+      font-weight: 500;
+      outline: none;
+      padding: 0 16px 0 0;
+      width: auto;
+    }
+
+    .lang-selector select:focus { box-shadow: none; }
+
+    @media (prefers-color-scheme: dark) {
+      .lang-selector select {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A1A1AA' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        /* text-secondary on the lighter raised surface measures 4.07:1; use primary for AA (10:1) */
+        color: var(--text-primary);
+      }
+    }
+
+    [data-theme="light"] .lang-selector select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2357534E' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      color: var(--text-secondary);
+    }
+
+    [data-theme="dark"] .lang-selector select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A1A1AA' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      color: var(--text-primary);
     }
 
     .panel[hidden] { display: none; }
@@ -629,6 +692,12 @@
       .primary, .secondary { width: 100%; }
     }
 
+    @media (max-width: 560px) {
+      .tabs { border-bottom: 0; flex-wrap: wrap; row-gap: 12px; }
+      .tabs-list { border-bottom: 1.5px solid var(--border); }
+      .lang-selector { margin-left: auto; }
+    }
+
     @media (max-width: 520px) {
       .version { display: none; }
     }
@@ -666,9 +735,18 @@
       <section class="card" aria-labelledby="input-title">
         <p class="card-label">Input</p>
         <h2 id="input-title">Bring your requirement</h2>
-        <div class="tabs" role="tablist" aria-label="Requirement input mode">
-          <button class="tab" id="text-tab" type="button" role="tab" aria-selected="true" aria-controls="text-panel">Paste Text</button>
-          <button class="tab" id="file-tab" type="button" role="tab" aria-selected="false" aria-controls="file-panel">Upload File</button>
+        <div class="tabs">
+          <div class="tabs-list" role="tablist" aria-label="Requirement input mode">
+            <button class="tab" id="text-tab" type="button" role="tab" aria-selected="true" aria-controls="text-panel">Paste Text</button>
+            <button class="tab" id="file-tab" type="button" role="tab" aria-selected="false" aria-controls="file-panel">Upload File</button>
+          </div>
+          <div class="lang-selector">
+            <span class="lang-icon" aria-hidden="true">🌐</span>
+            <select id="outputLanguage" aria-label="Output language for test cases">
+              <option value="en" selected>English</option>
+              <option value="id">Bahasa Indonesia</option>
+            </select>
+          </div>
         </div>
         <div class="panel" id="text-panel" role="tabpanel" aria-labelledby="text-tab">
           <div class="field">
@@ -751,6 +829,7 @@
       const summary = $("#summary");
       const generateButton = $("#generate-button");
       const downloadButton = $("#download-button");
+      const outputLanguageSelect = $("#outputLanguage");
 
       function systemTheme() {
         return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
@@ -887,12 +966,13 @@
         generateButton.innerHTML = '<span class="spinner" aria-hidden="true"></span>Generating…';
         try {
           let response;
+          const outputLanguage = outputLanguageSelect.value;
           if (state.mode === "text") {
             if (!textInput.value.trim()) throw new Error("Enter requirement text first.");
             response = await fetch("/api/generate/text", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ text: textInput.value, provider: serverProvider, model: serverModel, language: "manual" })
+              body: JSON.stringify({ text: textInput.value, provider: serverProvider, model: serverModel, language: "manual", output_language: outputLanguage })
             });
           } else {
             if (!fileInput.files[0]) throw new Error("Choose a requirement file first.");
@@ -901,6 +981,7 @@
             form.append("provider", serverProvider);
             form.append("model", serverModel);
             form.append("language", "manual");
+            form.append("output_language", outputLanguage);
             response = await fetch("/api/generate/file", { method: "POST", body: form });
           }
           if (!response.ok) throw new Error(await readError(response));

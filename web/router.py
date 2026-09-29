@@ -34,6 +34,7 @@ class TextGenerationRequest(BaseModel):
     provider: str | None = None
     model: str | None = None
     language: str = "manual"
+    output_language: str = "en"
 
 
 class ExportRequest(BaseModel):
@@ -71,7 +72,13 @@ def generate_text(request: TextGenerationRequest) -> dict[str, Any] | JSONRespon
 
     try:
         parsed_input = resolve_input(inline_text=request.text)
-        return _generate(parsed_input, request.provider, request.model, request.language)
+        return _generate(
+            parsed_input,
+            request.provider,
+            request.model,
+            request.language,
+            request.output_language,
+        )
     except Exception as exc:
         return _error_response("Generation failed", exc)
 
@@ -82,6 +89,7 @@ async def generate_file(
     provider: str | None = Form(default=None),
     model: str | None = Form(default=None),
     language: str = Form(default="manual"),
+    output_language: str = Form(default="en"),
 ) -> dict[str, Any] | JSONResponse:
     """Generate test cases from a temporary uploaded DOCX, PDF, or Markdown file."""
 
@@ -102,7 +110,7 @@ async def generate_file(
             input_path = Path(temp_dir) / f"input{suffix}"
             input_path.write_bytes(content)
             parsed_input = resolve_input(input_path=input_path)
-            return _generate(parsed_input, provider, model, language)
+            return _generate(parsed_input, provider, model, language, output_language)
     except Exception as exc:
         return _error_response("Generation failed", exc)
     finally:
@@ -134,12 +142,15 @@ def _generate(
     provider: str | None,
     model: str | None,
     language: str,
+    output_language: str = "en",
 ) -> dict[str, Any]:
     """Run the shared requirement-to-test-case generation pipeline."""
 
+    if output_language not in ("en", "id"):
+        output_language = "en"  # safe fallback for unsupported output languages
     requirements = analyze_requirements(parsed_input)
     settings = load_settings(provider_override=provider, model_override=model)
-    prompt = build_prompt(requirements, language_target=language)
+    prompt = build_prompt(requirements, language_target=language, output_language=output_language)
     raw_response = create_adapter(settings).generate(prompt)
     generated_cases = parse_response(raw_response)
     validate_test_cases(generated_cases)

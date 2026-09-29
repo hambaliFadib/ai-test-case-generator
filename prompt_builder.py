@@ -6,7 +6,11 @@ from models.requirement_model import Requirement
 from models.test_case_model import TestCase
 
 
-def build_prompt(requirements: list[Requirement], language_target: str = "manual") -> str:
+def build_prompt(
+    requirements: list[Requirement],
+    language_target: str = "manual",
+    output_language: str = "en",
+) -> str:
     """Build a provider-neutral prompt that requests only contract-compliant JSON."""
 
     if not requirements:
@@ -14,6 +18,26 @@ def build_prompt(requirements: list[Requirement], language_target: str = "manual
     if language_target not in TestCase.LANGUAGES:
         supported = ", ".join(TestCase.LANGUAGES)
         raise ValueError(f"Unsupported language target '{language_target}'. Choose: {supported}.")
+
+    if output_language == "id":
+        language_instruction = """LANGUAGE INSTRUCTION:
+Write the following fields in Bahasa Indonesia:
+- title
+- steps (each step)
+- expected_result
+- preconditions (if any)
+
+Keep these fields in English regardless:
+- id (format: TC-YYYYMMDD-XXXX)
+- category (positive/negative/boundary/edge/security)
+- priority (high/medium/low)
+- technique (EP/BVA/negative/exploratory/security)
+- requirement_ref (REQ-XXX)
+- language_target (manual)
+- generated_at (ISO timestamp)"""
+    else:
+        language_instruction = """LANGUAGE INSTRUCTION:
+Write all fields in English."""
 
     requirement_payload = [
         {
@@ -54,6 +78,8 @@ Use the source requirement ID in requirement_ref, or REQ-UNTRACED only when no t
 Use IDs in the format TC-YYYYMMDD-0001 and make every ID unique.
 preconditions and steps must be JSON arrays of strings; steps must contain at least one item.
 expected_result must be a non-empty string. generated_at must be an ISO 8601 timestamp.
+
+{language_instruction}
 
 Requirements:
 {json.dumps(requirement_payload, ensure_ascii=False, indent=2)}
