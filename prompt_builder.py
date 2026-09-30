@@ -92,8 +92,10 @@ def build_batch_prompt(
     scenarios: list[ScenarioIntent],
     language_target: str = "manual",
     output_language: str = "en",
+    *,
+    for_sizing: bool = False,
 ) -> str:
-    """Build a bounded prompt for exactly the supplied scenario intents."""
+    """Build a bounded provider prompt or a full-context sizing equivalent."""
 
     if not requirements:
         raise ValueError("At least one requirement is required to build a batch prompt.")
@@ -123,19 +125,29 @@ def build_batch_prompt(
         for requirement in requirements
         if requirement.id in {scenario.requirement_ref for scenario in scenarios}
     ]
-    requirement_payload = [
-        {
-            "id": requirement.id,
-            "title": requirement.title,
-            "statement": requirement.statement,
-            "details": requirement.details,
-            "acceptance_criteria": requirement.acceptance_criteria,
-            "constraints": requirement.constraints,
-            "source_section": requirement.source_section,
-            "numeric_limits": requirement.numeric_limits,
-        }
-        for requirement in selected_requirements
-    ]
+    if for_sizing:
+        requirement_payload = [
+            {
+                "id": requirement.id,
+                "title": requirement.title,
+                "statement": requirement.statement,
+                "details": requirement.details,
+                "acceptance_criteria": requirement.acceptance_criteria,
+                "constraints": requirement.constraints,
+                "source_section": requirement.source_section,
+                "numeric_limits": requirement.numeric_limits,
+            }
+            for requirement in selected_requirements
+        ]
+        requirements_heading = "Requirements for this batch (full context for deterministic sizing only):"
+    else:
+        requirement_payload = [
+            {
+                "id": requirement.id,
+            }
+            for requirement in selected_requirements
+        ]
+        requirements_heading = "Requirements for this batch (labels only; do not use these labels to add behavior):"
     scenario_payload = [
         {
             "scenario_ref": scenario.id,
@@ -154,18 +166,51 @@ def build_batch_prompt(
     )
     return f"""You are an expert QA engineer generating traceable test-case content.
 
+Return ONLY a JSON array.
+No Markdown fences.
+No preamble.
+No commentary.
+
 Generate exactly one test case for each supplied scenario.
 Do not add scenarios.
 Do not omit scenarios.
-Use the exact requirement_ref and scenario_ref supplied for each test case.
-Every object must contain all existing test-case fields plus scenario_ref.
-The supplied scenario_ref is required and must be copied exactly; do not invent or omit it.
-The supplied id is not the final application ID and may be replaced after coverage is finalized.
+Return exactly one object per supplied scenario when possible.
+Each object must contain exactly:
+- scenario_ref
+- title
+- preconditions
+- steps
+- expected_result
+
+The concrete JSON shape is:
+[
+  {{
+    "scenario_ref": "SCENARIO-EXAMPLE-S01",
+    "title": "Verify valid Period Field selection",
+    "preconditions": [
+      "The data-entry form is open."
+    ],
+    "steps": [
+      "Select a valid Period Field."
+    ],
+    "expected_result": "The selected Period Field is accepted."
+  }}
+]
+
+- scenario_ref must be copied exactly from the supplied scenario plan.
+- preconditions must be an array of strings.
+- steps must be a non-empty array of non-empty strings.
+- expected_result must be a non-empty string.
+- Do not include id, category, priority, technique, requirement_ref, language_target, or generated_at.
 Use only supplied requirement facts and scenario intents.
 Do not invent unsupported business rules, error wording, permissions, status transitions, formulas, or dependencies.
+If a scenario intent is visibility, presence, or availability-only, keep the generated steps and expected_result observational. Do not add clickable, functional, usable, input, navigation, persistence, submit/save, or downstream-outcome claims unless that behavior is explicit in the scenario intent.
+Treat the supplied scenario intent as the complete semantic boundary for steps and expected_result: operationalize its stated behavior, but do not add state changes, side effects, navigation outcomes, dialog behavior, persistence behavior, or other postconditions that the intent does not state. Keep generation constraints such as "not exhaustive" or "not the only value" out of observable expected_result text. If the intent supplies a sample literal, preserve that literal in expected_result.
+The requirement details are context only and must not expand the scenario intent. For example, for "Verify that Cancel keeps the user on the form.", the expected_result may state only that the user remains on the form; do not add dialog closes, discarded changes, navigation, persistence, or any other side effect. For a scenario containing the sample literal "Server Error", preserve "Server Error" in expected_result but do not state that it is non-exhaustive or not the only value.
+Do not mention dialog, modal, popup, or confirmation-window behavior in steps or expected_result unless one of those words is explicitly present in the scenario intent. Words such as "Yes", "confirms", "Are you sure", or "unsaved" do not authorize a dialog assumption.
 {language_instruction}
 
-Requirements for this batch:
+{requirements_heading}
 {json.dumps(requirement_payload, ensure_ascii=False, indent=2)}
 
 Planned scenarios for this batch:

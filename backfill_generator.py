@@ -41,7 +41,7 @@ def plan_backfill_batches(
         if len(candidate_ids) > MAX_REQUIREMENTS_PER_BATCH:
             return False
         selected = [requirements_by_id[requirement_id] for requirement_id in candidate_ids]
-        return len(build_batch_prompt(selected, candidate_scenarios)) <= MAX_PROMPT_CHARS
+        return len(build_batch_prompt(selected, candidate_scenarios, for_sizing=True)) <= MAX_PROMPT_CHARS
 
     def flush() -> None:
         nonlocal current_scenarios, current_requirement_ids

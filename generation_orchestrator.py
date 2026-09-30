@@ -21,7 +21,7 @@ from models.requirement_model import Requirement
 from models.test_case_model import TestCase
 from prompt_builder import build_batch_prompt
 from requirement_analyzer import analyze_requirements
-from response_parser import parse_batch_response
+from response_parser import parse_batch_response_result
 from validator import (
     TestCaseValidationError,
     validate_batch_traceability,
@@ -225,9 +225,14 @@ def _generate_batch(
             raise ValueError(
                 f"provider result was truncated (finish_reason={result.finish_reason})"
             )
-        cases = parse_batch_response(result.text, scenarios)
-        validate_batch_traceability(cases, scenarios)
-        return cases
+        parsed = parse_batch_response_result(
+            result.text,
+            scenarios,
+            language_target=language_target,
+        )
+        diagnostics.extend(f"batch item rejected: {error}" for error in parsed.item_errors)
+        validate_batch_traceability(parsed.test_cases, scenarios)
+        return parsed.test_cases
     except Exception as exc:
         diagnostics.append(f"batch generation failed: {exc}")
         return []

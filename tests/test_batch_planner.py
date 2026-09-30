@@ -65,7 +65,7 @@ def test_prompt_character_limit_causes_deterministic_split() -> None:
     assert len(batches) == 2
     for batch in batches:
         selected = [item for item in requirements if item.id in batch.requirement_ids]
-        assert len(build_batch_prompt(selected, batch.scenarios)) <= MAX_PROMPT_CHARS
+        assert len(build_batch_prompt(selected, batch.scenarios, for_sizing=True)) <= MAX_PROMPT_CHARS
 
 
 def test_scenarios_stay_together_when_the_requirement_fits() -> None:

@@ -9,6 +9,7 @@ from models.coverage_model import (
     SCENARIO_CATEGORIES,
     SCENARIO_TECHNIQUES,
     CoveragePlan,
+    EvidenceAtom,
     RequirementCoveragePlan,
     ScenarioIntent,
 )
@@ -89,20 +90,48 @@ def plan_coverage(
         raise ValueError(f"Unsupported coverage profile '{profile}'. Choose: {supported}.")
 
     plans: list[RequirementCoveragePlan] = []
+    evidence_atoms: list[EvidenceAtom] = []
     for requirement in requirements:
-        scenarios = _scenarios_for_requirement(requirement, profile)
+        requirement_atoms = extract_evidence_atoms(requirement)
+        evidence_atoms.extend(requirement_atoms)
+        scenarios = _scenarios_for_requirement(requirement, profile, requirement_atoms)
         plans.append(
             RequirementCoveragePlan(
                 requirement_ref=requirement.id,
                 scenarios=scenarios,
             )
         )
-    return CoveragePlan(requirements=plans)
+    plan = CoveragePlan(requirements=plans, evidence_atoms=evidence_atoms)
+    # Keep the planning gate local and deterministic.  A silently dropped atom
+    # is a planner defect, not something to defer to batching or the provider.
+    from coverage_auditor import audit_evidence_coverage
+
+    evidence_audit = audit_evidence_coverage(plan)
+    gate_failures: list[str] = []
+    if evidence_audit.uncovered_evidence_atom_ids:
+        gate_failures.append(
+            "uncovered evidence atoms: "
+            + ", ".join(evidence_audit.uncovered_evidence_atom_ids)
+        )
+    if evidence_audit.incompatible_mapping_ids:
+        gate_failures.append(
+            "incompatible evidence mappings: "
+            + ", ".join(evidence_audit.incompatible_mapping_ids)
+        )
+    if evidence_audit.guardrail_leak_scenario_ids:
+        gate_failures.append(
+            "guardrail-leak scenarios: "
+            + ", ".join(evidence_audit.guardrail_leak_scenario_ids)
+        )
+    if gate_failures:
+        raise ValueError("Deterministic semantic gate failed: " + "; ".join(gate_failures))
+    return plan
 
 
 def _scenarios_for_requirement(
     requirement: Requirement,
     profile: str,
+    evidence_atoms: list[EvidenceAtom],
 ) -> list[ScenarioIntent]:
     if requirement.status != "TESTABLE":
         return []
@@ -112,7 +141,7 @@ def _scenarios_for_requirement(
     atomic_behaviors = _extract_atomic_behaviors(requirement)
     atomic_candidates = _atomic_candidates(atomic_behaviors)
     has_confirmation_children = any(
-        item.kind == "confirmation" for item in atomic_behaviors
+        item.kind in {"confirmation", "confirmation_behavior"} for item in atomic_behaviors
     )
     candidates: list[tuple[str, str, str, str]] = []
 
@@ -187,7 +216,7 @@ def _scenarios_for_requirement(
             ]
         )
 
-    if _SUCCESS.search(text) and _FAILURE.search(text):
+    if _SUCCESS.search(requirement.statement) and _FAILURE.search(requirement.statement):
         candidates.extend(
             [
                 (
@@ -240,7 +269,7 @@ def _scenarios_for_requirement(
         or limit is not None
         or _SEARCH.search(text)
         or _CONFIRMATION.search(text)
-        or (_SUCCESS.search(text) and _FAILURE.search(text))
+        or (_SUCCESS.search(requirement.statement) and _FAILURE.search(requirement.statement))
         or _STATE.search(text)
         or atomic_behaviors
     ):
@@ -252,6 +281,26 @@ def _scenarios_for_requirement(
                 f"Verify the explicitly described {subject} is visible and available.",
                 "medium",
             )
+        ]
+
+    should_render_evidence = any(
+        atom.kind in {"explicit_behavior", "presence", "mandatory", "boundary", "file_boundary"}
+        for atom in evidence_atoms
+    ) or (
+        sum(len(atom.text) for atom in evidence_atoms) <= 2_000
+        and any(
+            atom.kind in {"observed_value", "sample_value", "option", "state"}
+            for atom in evidence_atoms
+        )
+    )
+    if evidence_atoms and should_render_evidence and any(
+        "application provides the behavior described" in intent
+        for _, _, intent, _ in candidates
+    ):
+        candidates = [
+            candidate
+            for candidate in candidates
+            if "application provides the behavior described" not in candidate[2]
         ]
 
     if profile == "comprehensive":
@@ -272,7 +321,310 @@ def _scenarios_for_requirement(
             )
         )
 
-    return _materialize_scenarios(requirement.id, candidates)
+    candidates = _ensure_evidence_candidates(
+        requirement,
+        candidates,
+        evidence_atoms,
+        subject,
+    )
+    return _materialize_scenarios(requirement.id, candidates, evidence_atoms, subject)
+
+
+def extract_evidence_atoms(requirement: Requirement) -> list[EvidenceAtom]:
+    """Extract explicit, requirement-local testable evidence in source order."""
+
+    if requirement.status != "TESTABLE":
+        return []
+    atoms: list[EvidenceAtom] = []
+    seen: set[tuple[str, str]] = set()
+    mode = _context_mode(requirement.statement)
+    sources = (
+        ("statement", [requirement.statement]),
+        ("acceptance", requirement.acceptance_criteria),
+        ("details", requirement.details),
+        ("constraints", requirement.constraints),
+    )
+
+    for source_name, values in sources:
+        for raw_value in values:
+            value = _clean_atomic_text(raw_value)
+            if not value or not value.strip("- "):
+                continue
+            positive_values, guardrail_values = _split_guardrail_clauses(value)
+            for guardrail in guardrail_values:
+                key = ("guardrail", _normalize_evidence(guardrail))
+                if key not in seen:
+                    seen.add(key)
+                    atoms.append(
+                        EvidenceAtom(
+                            id=f"{requirement.id}-E{len(atoms) + 1:02d}",
+                            requirement_ref=requirement.id,
+                            kind="guardrail",
+                            text=guardrail,
+                        )
+                    )
+            if _is_atomic_parent(value):
+                mode = _context_mode(value) or mode
+                continue
+
+            for positive_value in positive_values:
+                if not positive_value:
+                    continue
+                sample_values = _sample_values(positive_value)
+                inline_items = _inline_evidence_items(positive_value)
+                values_to_classify = sample_values or inline_items or [positive_value]
+                for evidence_value in values_to_classify:
+                    if sample_values:
+                        evidence_mode = "sample"
+                    else:
+                        evidence_mode = mode
+                    if inline_items and re.search(
+                        r"\b(?:status|state|states)\b", positive_value, re.IGNORECASE
+                    ):
+                        evidence_mode = "state"
+                    elif inline_items:
+                        evidence_mode = "option"
+                    kind = _classify_evidence(evidence_value, evidence_mode, source_name)
+                    if kind is None:
+                        continue
+                    key = (kind, _normalize_evidence(evidence_value))
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    atoms.append(
+                        EvidenceAtom(
+                            id=f"{requirement.id}-E{len(atoms) + 1:02d}",
+                            requirement_ref=requirement.id,
+                            kind=kind,
+                            text=evidence_value,
+                        )
+                    )
+
+    # A title-only ``Mandatory.`` statement is a real constraint on the
+    # requirement even though the field name lives in the title.
+    if (
+        requirement.status == "TESTABLE"
+        and _is_mandatory(requirement.statement)
+        and not any(atom.kind == "mandatory" for atom in atoms)
+    ):
+        atoms.append(
+            EvidenceAtom(
+                id=f"{requirement.id}-E{len(atoms) + 1:02d}",
+                requirement_ref=requirement.id,
+                kind="mandatory",
+                text=f"{_subject(requirement)} is mandatory",
+            )
+        )
+
+    return atoms
+
+
+def _classify_evidence(value: str, mode: str | None, source_name: str) -> str | None:
+    """Classify one source line without promoting guardrails to behavior."""
+
+    lowered = value.lower()
+    if _is_guardrail_text(value):
+        return "guardrail"
+    if _NEGATED_MANDATORY.search(value):
+        return None
+    if _is_explicit_mandatory(value):
+        return "mandatory"
+    if _MAXIMUM.search(value) or _MINIMUM.search(value) or _LIMIT_AFTER_VALUE.search(value):
+        return "boundary"
+    if "only pdf" in lowered or "pdf only" in lowered:
+        return "file_boundary"
+    if _is_sample_text(value):
+        return "sample_value"
+    if "opens a modal" in lowered or _is_confirmation_behavior(value) or _is_functional_evidence(value):
+        return "explicit_behavior"
+    if mode == "state":
+        return "state"
+    if mode == "sample":
+        return "sample_value"
+    if mode == "option":
+        return "option"
+    if _is_presence_control(value) or _is_action_label(value):
+        return "presence"
+    if mode in {"action", "control", "tab"}:
+        return "presence"
+    # A non-heading, non-guardrail list item is still explicit evidence.  It
+    # is intentionally represented as static data rather than as behavior.
+    return "observed_value"
+
+
+def _inline_evidence_items(value: str) -> list[str]:
+    """Split explicit inline value lists while retaining source order."""
+
+    match = re.search(
+        r"\b(?:states?|status(?:es)?|options?|values?)\s+include\s+(.+)$",
+        value,
+        re.IGNORECASE,
+    )
+    if not match:
+        return []
+    listed = match.group(1).strip().rstrip(".")
+    listed = re.sub(r",?\s+and\s+", ", ", listed, flags=re.IGNORECASE)
+    return [item.strip(" `") for item in listed.split(",") if item.strip(" `")]
+
+
+def _is_explicit_mandatory(value: str) -> bool:
+    return bool(
+        re.search(
+            r"\b(?:mandatory|required|must be provided|cannot be empty|not be empty)\b",
+            value,
+            re.IGNORECASE,
+        )
+    ) and not _NEGATED_MANDATORY.search(value)
+
+
+def _normalize_evidence(value: str) -> str:
+    normalized = re.sub(r"[^\w]+", " ", value.lower(), flags=re.UNICODE)
+    return re.sub(r"\s+", " ", normalized).strip()
+
+
+def _ensure_evidence_candidates(
+    requirement: Requirement,
+    candidates: list[tuple[str, str, str, str]],
+    evidence_atoms: list[EvidenceAtom],
+    subject: str,
+) -> list[tuple[str, str, str, str]]:
+    """Add the smallest source-backed candidates for atoms not yet represented."""
+
+    unmatched = [
+        atom
+        for atom in evidence_atoms
+        if not any(_atom_matches_candidate(atom, intent, subject) for _, _, intent, _ in candidates)
+    ]
+    sample_atoms = [atom for atom in unmatched if atom.kind == "sample_value"]
+    for atom in sample_atoms:
+        candidates.append(
+            (
+                "positive",
+                "EP",
+                f"Verify the sample value '{atom.text}' is shown as a non-exhaustive example for {subject}.",
+                "medium",
+            )
+        )
+    unmatched = [atom for atom in unmatched if atom not in sample_atoms]
+    if not unmatched:
+        return candidates
+
+    static_atoms = [
+        atom
+        for atom in unmatched
+        if atom.kind in {"observed_value", "option", "state", "presence"}
+    ]
+    if static_atoms:
+        labels = "; ".join(atom.text for atom in static_atoms)
+        candidates.append(
+            (
+                "positive",
+                "EP",
+                f"Verify the explicitly listed items for {subject}: {labels}.",
+                "medium",
+            )
+        )
+        unmatched = [atom for atom in unmatched if atom not in static_atoms]
+
+    for atom in unmatched:
+        if atom.kind == "guardrail":
+            continue
+        if atom.kind == "mandatory":
+            candidates.append(
+                (
+                    "positive",
+                    "EP",
+                    f"Verify {subject} accepts a valid populated value for the explicit mandatory rule.",
+                    "high",
+                )
+            )
+            continue
+        if atom.kind == "boundary":
+            candidates.append(
+                (
+                    "boundary",
+                    "BVA",
+                    f"Verify the explicit boundary rule for {subject}: {atom.text}.",
+                    "high",
+                )
+            )
+            continue
+        if atom.kind == "file_boundary":
+            candidates.append(
+                (
+                    "positive",
+                    "EP",
+                    f"Verify the explicitly required file rule for {subject}: {atom.text}.",
+                    "high",
+                )
+            )
+            continue
+        candidates.append(
+            (
+                "positive",
+                "EP",
+                f"Verify that {atom.text.rstrip('.').strip()}.",
+                "medium",
+            )
+        )
+    return candidates
+
+
+def _atom_matches_candidate(atom: EvidenceAtom, intent: str, subject: str) -> bool:
+    if atom.kind == "guardrail":
+        return False
+    intent_normalized = intent.lower()
+    atom_text = atom.text.rstrip(".").strip()
+    atom_normalized = atom_text.lower()
+    if (
+        subject
+        and "application provides the behavior described" in intent_normalized
+        and re.search(rf"(?<!\w){re.escape(subject.lower().strip())}(?!\w)", intent_normalized)
+    ):
+        return True
+    if atom_normalized and re.search(
+        rf"(?<!\w){re.escape(atom_normalized)}(?!\w)", intent_normalized
+    ):
+        return True
+    if atom.kind == "mandatory":
+        if subject:
+            subject_normalized = subject.lower().strip()
+            if subject_normalized and re.search(
+                rf"(?<!\w){re.escape(subject_normalized)}(?!\w)", intent_normalized
+            ):
+                return True
+        field = re.sub(
+            r"\b(?:is|are|not|do not|don't|mandatory|required|must be provided)\b",
+            " ",
+            atom_normalized,
+        )
+        field = re.sub(r"\s+", " ", field).strip(" .`*:-")
+        return bool(field and re.search(rf"(?<!\w){re.escape(field)}(?!\w)", intent_normalized))
+    if atom.kind in {"explicit_behavior", "presence"}:
+        core = _evidence_core_phrase(atom.text)
+        if core and re.search(rf"(?<!\w){re.escape(core)}(?!\w)", intent_normalized):
+            return True
+        if subject:
+            subject_normalized = subject.lower().strip()
+            if subject_normalized and re.search(
+                rf"(?<!\w){re.escape(subject_normalized)}(?!\w)", intent_normalized
+            ):
+                return True
+    if atom.kind == "boundary":
+        number = re.search(r"\d+(?:\.\d+)?", atom.text)
+        return bool(number and number.group(0) in intent_normalized)
+    return False
+
+
+def _evidence_core_phrase(value: str) -> str:
+    core = value.lower().strip().rstrip(".")
+    core = re.sub(r"^(?:the|a|an)\s+", "", core)
+    core = re.split(
+        r"\s+(?:is|are|was|were|displays?|shows?|provides?|contains?|includes?|filters?|opens?|allows?|is available|are available|follows?)\b",
+        core,
+        maxsplit=1,
+    )[0]
+    return re.sub(r"\s+", " ", core).strip(" `:-")
 
 
 def _extract_atomic_behaviors(requirement: Requirement) -> list[_AtomicBehavior]:
@@ -295,31 +647,30 @@ def _extract_atomic_behaviors(requirement: Requirement) -> list[_AtomicBehavior]
             if _is_atomic_parent(value):
                 mode = _context_mode(value) or mode
                 continue
-            if _is_atomic_guardrail(value):
-                continue
-
-            kind = _classify_atomic_behavior(value, mode, source_name)
-            if kind is None:
-                continue
-            key = _normalize_behavior(value, kind)
-            if key in seen:
-                continue
-            seen.add(key)
-            behaviors.append(
-                _AtomicBehavior(
-                    label=_atomic_label(value, kind),
-                    source_text=value,
-                    kind=kind,
+            positive_values, _ = _split_guardrail_clauses(value)
+            for positive_value in positive_values:
+                kind = _classify_atomic_behavior(positive_value, mode, source_name)
+                if kind is None:
+                    continue
+                key = _normalize_behavior(positive_value, kind)
+                if key in seen:
+                    continue
+                seen.add(key)
+                behaviors.append(
+                    _AtomicBehavior(
+                        label=_atomic_label(positive_value, kind),
+                        source_text=positive_value,
+                        kind=kind,
+                    )
                 )
-            )
 
     # A standalone statement may itself name an explicit functional behavior
     # or file-type rule. Generic display/action sentences remain on the
     # existing planner path so they do not become redundant atomic scenarios.
     value = _clean_atomic_text(requirement.statement)
-    if value and not _is_atomic_parent(value) and not _is_atomic_guardrail(value):
+    if value and not _is_atomic_parent(value) and not _is_guardrail_text(value):
         kind = _classify_atomic_behavior(value, _context_mode(value), "statement")
-        if kind in {"behavior", "file_type"}:
+        if kind in {"behavior", "confirmation_behavior", "file_type"}:
             key = _normalize_behavior(value, kind)
             if key not in seen:
                 seen.add(key)
@@ -360,24 +711,23 @@ def _atomic_candidates(
                 ]
             )
         elif behavior.kind == "confirmation":
-            if label.lower().startswith("cancel"):
-                candidates.append(
-                    (
-                        "edge",
-                        "exploratory",
-                        "Verify the Cancel path follows the explicitly described behavior.",
-                        "medium",
-                    )
+            candidates.append(
+                (
+                    "positive",
+                    "EP",
+                    f"Verify the explicitly described {label} is visible and available.",
+                    "medium",
                 )
-            else:
-                candidates.append(
-                    (
-                        "positive",
-                        "EP",
-                        "Verify the Confirm path follows the explicitly described behavior.",
-                        "high",
-                    )
+            )
+        elif behavior.kind == "confirmation_behavior":
+            candidates.append(
+                (
+                    "positive",
+                    "EP",
+                    _functional_intent(behavior.source_text),
+                    "high",
                 )
+            )
         elif behavior.kind in {"action", "control", "tab"}:
             suffix = "is available for navigation" if behavior.kind == "tab" else "is visible and available"
             candidates.append(
@@ -411,8 +761,85 @@ def _clean_atomic_text(value: str) -> str:
     return re.sub(r"\s+", " ", cleaned).strip()
 
 
+def _is_guardrail_text(value: str) -> bool:
+    lowered = value.lower().strip().rstrip(".")
+    return lowered.startswith(
+        (
+            "do not ",
+            "don't ",
+            "must not ",
+            "the generator ",
+            "if implementation ",
+            "the exact eligibility ",
+            "treat this as ",
+            "treat these as ",
+        )
+    ) or bool(
+        re.search(
+            r"\b(?:not\s+(?:fully|completely|sufficiently)\s+defined|"
+            r"not\s+available\s+in\s+(?:the\s+)?supplied\s+evidence|"
+            r"not\s+sufficiently\s+supported|must\s+not\s+be\s+invented|"
+            r"do\s+not\s+infer)\b",
+            lowered,
+        )
+    )
+
+
+def _split_guardrail_clauses(value: str) -> tuple[list[str], list[str]]:
+    """Split a supported positive clause from a trailing guardrail clause."""
+
+    parts = re.split(
+        r"\s+(?:,\s*)?but\s+|\s*;\s*",
+        value,
+        maxsplit=1,
+        flags=re.IGNORECASE,
+    )
+    if len(parts) == 2 and _is_guardrail_text(parts[1]):
+        return [parts[0].strip(" ,")], [parts[1].strip()]
+    if _is_guardrail_text(value):
+        return [], [value]
+    return [value], []
+
+
+def _is_sample_text(value: str) -> bool:
+    return bool(re.search(r"\b(?:sample|example)\b", value, re.IGNORECASE))
+
+
+def _sample_values(value: str) -> list[str]:
+    if not _is_sample_text(value):
+        return []
+    match = re.search(r"\bsample\s+(.+?)\s+message\b", value, re.IGNORECASE)
+    if match:
+        return [match.group(1).strip(" `:;,.\")")]
+    match = re.search(r"\bsample\s+value\s*(?:is|:)?\s*(.+)$", value, re.IGNORECASE)
+    if match:
+        return [match.group(1).strip(" `:;,.\")")]
+    match = re.search(r"\bexample\s*(?:is|:)?\s*(.+)$", value, re.IGNORECASE)
+    if match:
+        return [match.group(1).strip(" `:;,.\")")]
+    return [value]
+
+
+def _is_confirmation_behavior(value: str) -> bool:
+    return bool(
+        re.search(
+            r"\b(?:cancel|yes|confirm|ok)\b.*\b(?:keeps?|confirms?|leaves?|discard(?:s|ing)?|stays?)\b",
+            value,
+            re.IGNORECASE,
+        )
+    )
+
+
 def _context_mode(value: str) -> str | None:
     lowered = value.lower()
+    if "sample value" in lowered or "example" in lowered:
+        return "sample"
+    if "option" in lowered or "values include" in lowered:
+        return "option"
+    if "information may include" in lowered or "fields include" in lowered:
+        return "static"
+    if "confirmation" in lowered or "are you sure" in lowered:
+        return "confirmation"
     if re.search(r"\btabs?\b", lowered):
         return "tab"
     if _STATE.search(value):
@@ -426,7 +853,9 @@ def _context_mode(value: str) -> str | None:
 
 def _is_atomic_parent(value: str) -> bool:
     normalized = value.strip().rstrip(".").lower()
-    return value.rstrip().endswith(":") or normalized in {
+    return value.rstrip().endswith(":") or bool(
+        re.search(r"\bprovides?\s+.+\bactions?\b$", normalized)
+    ) or bool(_SUCCESS.search(value) and _FAILURE.search(value)) or normalized in {
         "expected",
         "expected behavior",
         "expected result",
@@ -434,18 +863,7 @@ def _is_atomic_parent(value: str) -> bool:
 
 
 def _is_atomic_guardrail(value: str) -> bool:
-    lowered = value.lower().strip()
-    return lowered.startswith(
-        (
-            "do not ",
-            "don't ",
-            "the generator ",
-            "if implementation ",
-            "the exact eligibility ",
-            "treat this as ",
-            "information that ",
-        )
-    ) or "not defined" in lowered
+    return _is_guardrail_text(value)
 
 
 def _classify_atomic_behavior(
@@ -454,10 +872,22 @@ def _classify_atomic_behavior(
     source_name: str,
 ) -> str | None:
     lowered = value.lower()
+    if _is_guardrail_text(value):
+        return None
     if _MAXIMUM.search(value) or _MINIMUM.search(value) or _LIMIT_AFTER_VALUE.search(value):
         return "limit"
     if "only pdf" in lowered or "pdf only" in lowered:
         return "file_type"
+    if _is_confirmation_behavior(value):
+        return "confirmation_behavior"
+    if _is_functional_evidence(value):
+        return "behavior"
+    if (
+        ("done" in lowered and ("close" in lowered or "continue" in lowered))
+        or ("try again" in lowered and "retry" in lowered)
+        or "opens a modal" in lowered
+    ):
+        return "behavior"
     if (
         lowered in {"cancel", "yes", "confirm", "ok"}
         or "cancel keeps" in lowered
@@ -466,8 +896,6 @@ def _classify_atomic_behavior(
         return "confirmation"
     if _is_presence_control(value):
         return "control"
-    if _is_functional_evidence(value):
-        return "behavior"
     if mode == "state":
         return "state"
     if mode == "tab":
@@ -496,7 +924,7 @@ def _is_action_label(value: str) -> bool:
 def _looks_like_behavior(value: str) -> bool:
     return bool(
         re.search(
-            r"\b(?:user can|users can|system |page |displayed |the user|accepts|rejects|follows|select|apply|provides)\b",
+            r"\b(?:user can|users can|system |page |display(?:s|ed)? |the user|accepts|rejects|follows|select|apply|provides)\b",
             value,
             re.IGNORECASE,
         )
@@ -506,7 +934,7 @@ def _looks_like_behavior(value: str) -> bool:
 def _is_functional_evidence(value: str) -> bool:
     return bool(
         re.search(
-            r"(?:\buser(?:s)?\s+can\b|\bis\s+used\s+to\b|\bcontrols?\b|\bfilters?\s+(?:displayed|rows|results?)\b|\bdisplayed\s+(?:rows?|results?)\b.{0,50}\bfollow(?:s)?\b|\bresult\s+follows?\b|\breturns?\s+(?:the\s+)?(?:displayed\s+)?results?\b|\bapplies?\s+(?:the\s+)?(?:selected\s+|applied\s+)?criterion\b|\bmust\s+be\s+accessible\b|\bis\s+accessible\b|\bno\s+matching\b|\bno\s+results?\b|\bempty\s+(?:result|state)\b)",
+            r"(?:\buser(?:s)?\s+can\b|\bis\s+used\s+to\b|\bcontrols?\s+\w|\bfilters?\s+(?:displayed|rows|results?)\b|\bdisplayed\s+(?:rows?|results?)\b.{0,50}\bfollow(?:s)?\b|\bresult\s+follows?\b|\breturns?\s+(?:the\s+)?(?:displayed\s+)?results?\b|\bapplies?\s+(?:the\s+)?(?:selected\s+|applied\s+)?criterion\b|\bmust\s+be\s+accessible\b|\bis\s+accessible\b|\bno\s+matching\b|\bno\s+results?\b|\bempty\s+(?:result|state)\b|\bclear\s+data\b.{0,80}\b(?:entered|selected|values?)\b|\bclears?\s+(?:entered|selected|values?)\b)",
             value,
             re.IGNORECASE,
         )
@@ -546,29 +974,23 @@ def _functional_intent(source_text: str) -> str:
     lowered = source_text.lower()
     if "advanced search" in lowered and "accessible" in lowered:
         return "Verify Advanced Search is accessible from the list/result page."
-    return f"Verify that {source_text}."
+    if "displayed rows" in lowered and "follow" in lowered:
+        return "Verify that displayed rows are expected to follow the applied search result."
+    if "done" in lowered and ("close" in lowered or "continue" in lowered):
+        return "Verify Done allows the user to close or continue from the success result."
+    if "try again" in lowered and "retry" in lowered:
+        return "Verify Try Again is available to retry the operation."
+    return f"Verify that {source_text.rstrip('.').strip()}."
 
 
 def _atomic_label(value: str, kind: str) -> str:
     label = value.strip().rstrip(".:*").strip()
-    if kind == "search" and "search content" in label.lower():
-        return "Search Content"
-    if kind == "confirmation":
-        lowered = label.lower()
-        if lowered.startswith("cancel"):
-            return "Cancel"
-        return "Confirm"
     return label
 
 
 def _normalize_behavior(value: str, kind: str) -> str:
     lowered = re.sub(r"[^a-z0-9 ]+", " ", value.lower())
     normalized = re.sub(r"\s+", " ", lowered).strip()
-    if kind == "confirmation":
-        if normalized.startswith("cancel"):
-            return "confirmation cancel"
-        if normalized.startswith("yes") or normalized in {"confirm", "ok"}:
-            return "confirmation confirm"
     return f"{kind}:{normalized}"
 
 
@@ -592,7 +1014,10 @@ def _is_mandatory(text: str) -> bool:
     for line in text.splitlines() or [text]:
         if _NEGATED_MANDATORY.search(line):
             continue
-        if _MANDATORY.search(line):
+        # A trailing asterisk on a control listed inside another requirement
+        # is presence evidence, not a mandatory rule for the whole block.  The
+        # explicit wording belongs to the field's own requirement block.
+        if _is_explicit_mandatory(line):
             return True
     return False
 
@@ -665,18 +1090,12 @@ def _has_confirm_and_cancel(text: str) -> bool:
 
 
 def _explicit_states(requirement: Requirement) -> list[str]:
-    text = _requirement_text(requirement)
     states: list[str] = []
-    if not _STATE.search(text):
-        return states
-    for match in re.finditer(
-        r"(?:Approved|Rejected|Draft|In Progress|Completed|Canceled|Terminate|Awaiting Approval|Success|Failed|Running|Schedule)",
-        text,
-        re.IGNORECASE,
-    ):
-        state = match.group(0)
-        if state.lower() not in {item.lower() for item in states}:
-            states.append(state)
+    for atom in extract_evidence_atoms(requirement):
+        if atom.kind == "state":
+            value = atom.text
+            if value.lower() not in {item.lower() for item in states}:
+                states.append(value)
     return states
 
 
@@ -700,6 +1119,8 @@ def _add_comprehensive_source_backed_case(
 def _materialize_scenarios(
     requirement_id: str,
     candidates: list[tuple[str, str, str, str]],
+    evidence_atoms: list[EvidenceAtom],
+    subject: str,
 ) -> list[ScenarioIntent]:
     scenarios: list[ScenarioIntent] = []
     seen: set[tuple[str, str, str]] = set()
@@ -721,6 +1142,14 @@ def _materialize_scenarios(
                 technique=technique,
                 intent=intent,
                 priority=priority,
+                evidence_refs=tuple(
+                    atom.id
+                    for atom in evidence_atoms
+                    if _atom_matches_candidate(atom, intent, subject)
+                ),
+                constraint_refs=tuple(
+                    atom.id for atom in evidence_atoms if atom.kind == "guardrail"
+                ),
             )
         )
     return scenarios

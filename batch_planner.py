@@ -127,4 +127,4 @@ def _fits(
     if len(scenarios) > MAX_SCENARIOS_PER_BATCH:
         return False
     selected = [requirements_by_id[requirement_id] for requirement_id in requirement_ids]
-    return len(build_batch_prompt(selected, scenarios)) <= MAX_PROMPT_CHARS
+    return len(build_batch_prompt(selected, scenarios, for_sizing=True)) <= MAX_PROMPT_CHARS

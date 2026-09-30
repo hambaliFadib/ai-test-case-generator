@@ -13,7 +13,12 @@ from models.input_model import ParsedInput
 from models.llm_result import LLMResult
 from models.test_case_model import TestCase
 from llm_adapter import AnthropicAdapter, LLMAdapter, OpenAIAdapter
-from response_parser import ValidationError, parse_batch_response, parse_response
+from response_parser import (
+    ValidationError,
+    parse_batch_response,
+    parse_batch_response_result,
+    parse_response,
+)
 from validator import TestCaseValidationError, validate_batch_traceability, validate_traceability
 
 
@@ -44,11 +49,36 @@ def valid_item(item_scenario: ScenarioIntent, *, requirement_ref: str | None = N
     }
 
 
+def minimal_item(item_scenario: ScenarioIntent, **overrides: object) -> dict[str, object]:
+    item: dict[str, object] = {
+        "scenario_ref": item_scenario.id,
+        "title": f"Case for {item_scenario.id}",
+        "preconditions": [],
+        "steps": ["Perform the source-backed action."],
+        "expected_result": "The source-backed behavior is satisfied.",
+    }
+    item.update(overrides)
+    return item
+
+
 def response_for(scenarios: list[ScenarioIntent], omit: set[str] | None = None) -> str:
     omitted = omit or set()
     return json.dumps(
         [valid_item(item) for item in scenarios if item.id not in omitted]
     )
+
+
+def minimal_response_for(
+    scenarios: list[ScenarioIntent],
+    invalid_scenario_id: str | None = None,
+) -> str:
+    payload = []
+    for item_scenario in scenarios:
+        item = minimal_item(item_scenario)
+        if item_scenario.id == invalid_scenario_id:
+            del item["expected_result"]
+        payload.append(item)
+    return json.dumps(payload)
 
 
 class FakeAdapter:
@@ -65,7 +95,8 @@ class FakeAdapter:
 
 
 def prompt_scenario_refs(prompt: str) -> list[str]:
-    return re.findall(r'"scenario_ref":\s*"([^"]+)"', prompt)
+    planned = prompt.split("Planned scenarios for this batch:", 1)[-1]
+    return re.findall(r'"scenario_ref":\s*"([^"]+)"', planned)
 
 
 def parsed_input(requirement_count: int) -> ParsedInput:
@@ -146,9 +177,23 @@ def test_strict_batch_parser_requires_and_validates_scenario_refs() -> None:
     with pytest.raises(ValidationError, match="unknown or unplanned"):
         parse_batch_response(json.dumps([unknown]), expected)
 
-    mismatch = valid_item(expected[0], requirement_ref="REQ-002")
-    with pytest.raises(ValidationError, match="belongs to requirement"):
-        parse_batch_response(json.dumps([mismatch]), expected)
+    provider_metadata = valid_item(expected[0], requirement_ref="REQ-002")
+    provider_metadata.update(
+        {
+            "category": "security",
+            "priority": "high",
+            "technique": "security",
+            "language_target": "python",
+            "id": "provider-id",
+            "generated_at": "provider-time",
+        }
+    )
+    materialized = parse_batch_response(json.dumps([provider_metadata]), expected)
+    assert materialized[0].requirement_ref == "REQ-001"
+    assert materialized[0].category == "positive"
+    assert materialized[0].priority == "medium"
+    assert materialized[0].technique == "EP"
+    assert materialized[0].language_target == "manual"
 
     duplicate = [valid_item(expected[0]), valid_item(expected[0])]
     with pytest.raises(ValidationError, match="duplicate scenario_ref"):
@@ -161,6 +206,232 @@ def test_strict_parser_ignores_llm_ids_until_final_assignment() -> None:
 
     assert cases[0].scenario_ref == "REQ-001-S01"
     assert cases[0].id == "TC-00000000-0001"
+
+
+def test_minimal_provider_failure_shape_is_materialized_with_application_metadata() -> None:
+    expected = [scenario("REQ-MINIMAL-001")]
+    cases = parse_batch_response(
+        json.dumps([minimal_item(expected[0])]),
+        expected,
+        language_target="python",
+    )
+
+    assert cases[0].requirement_ref == "REQ-MINIMAL-001"
+    assert cases[0].scenario_ref == "REQ-MINIMAL-001-S01"
+    assert cases[0].category == "positive"
+    assert cases[0].technique == "EP"
+    assert cases[0].priority == "medium"
+    assert cases[0].language_target == "python"
+    assert cases[0].id == "TC-00000000-0001"
+    assert cases[0].generated_at
+
+
+def test_batch_item_content_errors_are_salvaged_without_dropping_siblings() -> None:
+    expected = [scenario("REQ-001", index) for index in range(1, 6)]
+    payload = [minimal_item(item) for item in expected]
+    payload[3].pop("expected_result")
+
+    from response_parser import parse_batch_response_result
+
+    parsed = parse_batch_response_result(json.dumps(payload), expected)
+
+    assert [case.scenario_ref for case in parsed.test_cases] == [
+        "REQ-001-S01", "REQ-001-S02", "REQ-001-S03", "REQ-001-S05"
+    ]
+    assert parsed.invalid_scenario_ids == ["REQ-001-S04"]
+    assert len(parsed.item_errors) == 1
+    assert "expected_result" in parsed.item_errors[0]
+
+
+def test_empty_steps_are_item_local_but_unknown_refs_are_batch_fatal() -> None:
+    expected = [scenario("REQ-001", 1), scenario("REQ-001", 2)]
+    payload = [minimal_item(expected[0], steps=[]), minimal_item(expected[1])]
+
+    from response_parser import parse_batch_response_result
+
+    parsed = parse_batch_response_result(json.dumps(payload), expected)
+    assert [case.scenario_ref for case in parsed.test_cases] == ["REQ-001-S02"]
+
+    unknown = minimal_item(expected[1], scenario_ref="REQ-999-S01")
+    with pytest.raises(ValidationError, match="unknown or unplanned"):
+        parse_batch_response_result(json.dumps([unknown]), expected)
+
+
+def test_provider_boundary_rejects_dialog_side_effect_not_in_cancel_intent() -> None:
+    expected = [
+        ScenarioIntent(
+            id="REQ-CANCEL-001-S01",
+            requirement_ref="REQ-CANCEL-001",
+            category="positive",
+            technique="EP",
+            intent="Verify that Cancel keeps the user on the form.",
+        )
+    ]
+    response = json.dumps(
+        [
+            minimal_item(
+                expected[0],
+                steps=["Click Cancel."],
+                expected_result=(
+                    "The user remains on the form, and the confirmation dialog closes."
+                ),
+            )
+        ]
+    )
+
+    parsed = parse_batch_response_result(response, expected)
+
+    assert parsed.test_cases == []
+    assert parsed.invalid_scenario_ids == ["REQ-CANCEL-001-S01"]
+    assert "unsupported" in parsed.item_errors[0].lower()
+
+
+def test_provider_boundary_rejects_unstated_unchanged_state_on_cancel() -> None:
+    expected = [
+        ScenarioIntent(
+            id="REQ-CANCEL-001-S01",
+            requirement_ref="REQ-CANCEL-001",
+            category="positive",
+            technique="EP",
+            intent="Verify that Cancel keeps the user on the form.",
+        )
+    ]
+    response = json.dumps(
+        [
+            minimal_item(
+                expected[0],
+                steps=["Click Cancel."],
+                expected_result="The user remains on the form without any changes.",
+            )
+        ]
+    )
+
+    parsed = parse_batch_response_result(response, expected)
+
+    assert parsed.test_cases == []
+    assert parsed.invalid_scenario_ids == ["REQ-CANCEL-001-S01"]
+    assert "unsupported state-change" in parsed.item_errors[0]
+
+
+def test_provider_boundary_keeps_sample_literal_and_hides_non_exhaustive_constraint() -> None:
+    expected = [
+        ScenarioIntent(
+            id="REQ-SAMPLE-001-S01",
+            requirement_ref="REQ-SAMPLE-001",
+            category="positive",
+            technique="EP",
+            intent=(
+                "Verify the sample value 'Server Error' is shown as a "
+                "non-exhaustive example for Result Details."
+            ),
+        )
+    ]
+    response = json.dumps(
+        [
+            minimal_item(
+                expected[0],
+                steps=["Observe the Result Details rows."],
+                expected_result=(
+                    "A row shows 'Server Error' as an example message, "
+                    "indicating it is non-exhaustive."
+                ),
+            )
+        ]
+    )
+
+    parsed = parse_batch_response_result(response, expected)
+
+    assert parsed.test_cases == []
+    assert parsed.invalid_scenario_ids == ["REQ-SAMPLE-001-S01"]
+    assert "generation-constraint" in parsed.item_errors[0]
+
+
+def test_provider_boundary_requires_sample_literal_in_observable_expected_result() -> None:
+    expected = [
+        ScenarioIntent(
+            id="REQ-SAMPLE-001-S01",
+            requirement_ref="REQ-SAMPLE-001",
+            category="positive",
+            technique="EP",
+            intent="Verify the sample value 'Server Error' is shown for Result Details.",
+        )
+    ]
+    response = json.dumps(
+        [
+            minimal_item(
+                expected[0],
+                steps=["Observe the Result Details rows."],
+                expected_result="A failure message is shown in the Result Details.",
+            )
+        ]
+    )
+
+    parsed = parse_batch_response_result(response, expected)
+
+    assert parsed.test_cases == []
+    assert parsed.invalid_scenario_ids == ["REQ-SAMPLE-001-S01"]
+    assert "sample literal" in parsed.item_errors[0]
+
+
+def test_provider_boundary_accepts_only_the_cancel_intent_outcome() -> None:
+    expected = [
+        ScenarioIntent(
+            id="REQ-CANCEL-001-S01",
+            requirement_ref="REQ-CANCEL-001",
+            category="positive",
+            technique="EP",
+            intent="Verify that Cancel keeps the user on the form.",
+        )
+    ]
+    response = json.dumps(
+        [
+            minimal_item(
+                expected[0],
+                steps=["Click Cancel."],
+                expected_result="The user remains on the form.",
+            )
+        ]
+    )
+
+    parsed = parse_batch_response_result(response, expected)
+
+    assert [case.expected_result for case in parsed.test_cases] == [
+        "The user remains on the form."
+    ]
+
+
+def test_provider_boundary_allows_prevented_save_as_mandatory_empty_operationalization() -> None:
+    expected = [
+        ScenarioIntent(
+            id="REQ-EMPTY-001-S02",
+            requirement_ref="REQ-EMPTY-001",
+            category="negative",
+            technique="negative",
+                intent="Verify Period Field is rejected or prevented when it is left empty.",
+        )
+    ]
+    response = json.dumps(
+        [
+            minimal_item(
+                expected[0],
+                steps=["Leave Period Field empty and attempt to save."],
+                expected_result="Saving is prevented while Period Field is empty.",
+            )
+        ]
+    )
+
+    parsed = parse_batch_response_result(response, expected)
+
+    assert [case.expected_result for case in parsed.test_cases] == [
+        "Saving is prevented while Period Field is empty."
+    ]
+
+
+def test_prompt_contract_excludes_application_owned_fields() -> None:
+    expected = [scenario("REQ-001")]
+    minimal = parse_batch_response(json.dumps([minimal_item(expected[0])]), expected)
+    assert minimal[0].generated_at
+    assert minimal[0].id.startswith("TC-")
 
 
 def test_traceability_validator_rejects_untraced_and_duplicates() -> None:
@@ -306,6 +577,33 @@ def test_orchestrator_backfills_only_missing_scenarios_and_stops_when_complete()
     assert len(adapter.prompts) == 3
     assert all(ref in adapter.prompts[2] for ref in ("REQ-009-S01", "REQ-010-S01"))
     assert all(ref not in adapter.prompts[2] for ref in ("REQ-001-S01", "REQ-008-S01"))
+
+
+def test_orchestrator_salvages_invalid_item_and_backfills_only_that_scenario() -> None:
+    invalid_id = "REQ-005-S01"
+
+    def responder(prompt: str, call_number: int) -> LLMResult:
+        refs = prompt_scenario_refs(prompt)
+        scenarios = [
+            scenario(ref.rsplit("-S", 1)[0], int(ref.rsplit("-S", 1)[1]))
+            for ref in refs
+        ]
+        if call_number == 1:
+            return LLMResult(minimal_response_for(scenarios, invalid_id), "fake")
+        assert [item.id for item in scenarios] == [invalid_id]
+        return LLMResult(minimal_response_for(scenarios), "fake")
+
+    adapter = FakeAdapter(responder)
+    result = generate_test_suite(parsed_input(5), None, adapter=adapter)
+
+    assert result.status == "complete"
+    assert result.initial_generated_count == 4
+    assert result.initial_missing_scenarios == [invalid_id]
+    assert result.backfill_count == 1
+    assert [case.scenario_ref for case in result.test_cases] == [
+        f"REQ-{index:03d}-S01" for index in range(1, 6)
+    ]
+    assert invalid_id in " ".join(result.diagnostics)
 
 
 def test_orchestrator_persistent_missing_is_partial_and_backfill_is_bounded() -> None:

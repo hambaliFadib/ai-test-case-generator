@@ -1,6 +1,7 @@
 """Defensive parsing and contract validation of LLM JSON responses."""
 
 from datetime import datetime, timezone
+from dataclasses import dataclass
 import json
 import re
 from typing import Any
@@ -22,6 +23,24 @@ class ValidationError(ValueError):
         self.item_index = item_index
         prefix = f"Item {item_index}: " if item_index is not None else "Response: "
         super().__init__(prefix + reason)
+
+
+LLM_BATCH_CONTENT_FIELDS: tuple[str, ...] = (
+    "scenario_ref",
+    "title",
+    "preconditions",
+    "steps",
+    "expected_result",
+)
+
+
+@dataclass(frozen=True)
+class BatchParseResult:
+    """Parsed valid batch items plus item-local content diagnostics."""
+
+    test_cases: list[TestCase]
+    item_errors: list[str]
+    invalid_scenario_ids: list[str]
 
 
 def parse_response(raw_response: str) -> list[TestCase]:
@@ -54,8 +73,23 @@ def parse_response(raw_response: str) -> list[TestCase]:
 def parse_batch_response(
     raw_response: str,
     expected_scenarios: list[ScenarioIntent],
+    language_target: str = "manual",
 ) -> list[TestCase]:
-    """Strictly parse one Phase 3 batch without requiring full batch coverage."""
+    """Parse one batch while preserving the legacy list return type."""
+
+    return parse_batch_response_result(
+        raw_response,
+        expected_scenarios,
+        language_target=language_target,
+    ).test_cases
+
+
+def parse_batch_response_result(
+    raw_response: str,
+    expected_scenarios: list[ScenarioIntent],
+    language_target: str = "manual",
+) -> BatchParseResult:
+    """Parse minimal provider content with strict batch traceability."""
 
     if not isinstance(raw_response, str) or not raw_response.strip():
         raise ParseError(f"Could not parse empty batch response. Raw response: {raw_response!r}")
@@ -71,41 +105,198 @@ def parse_batch_response(
     if not isinstance(decoded, list):
         raise ValidationError("expected a JSON array of batch test case objects")
 
-    cases: list[TestCase] = []
+    # Traceability is batch-fatal. Validate every join key before salvaging
+    # item-local natural-language defects so no valid sibling is merged from a
+    # response that crosses batch boundaries or duplicates a scenario.
     seen_scenarios: set[str] = set()
-    required_fields = set(TestCase.phase3_required_fields())
+    normalized_items: list[tuple[int, dict[str, Any], ScenarioIntent]] = []
     for index, item in enumerate(decoded):
-        original_fields = set(item.keys()) if isinstance(item, dict) else None
-        _validate_item(item, index, required_fields, original_fields)
+        if not isinstance(item, dict):
+            raise ValidationError("expected an object", index)
+        if "scenario_ref" not in item:
+            raise ValidationError("missing required field(s): scenario_ref", index)
         scenario_ref = item["scenario_ref"]
-        requirement_ref = item["requirement_ref"]
         if not isinstance(scenario_ref, str) or not scenario_ref.strip():
             raise ValidationError("scenario_ref must be a non-empty string", index)
         expected = expected_by_id.get(scenario_ref)
         if expected is None:
             raise ValidationError(f"unknown or unplanned scenario_ref '{scenario_ref}'", index)
-        if requirement_ref != expected.requirement_ref:
-            raise ValidationError(
-                f"scenario_ref '{scenario_ref}' belongs to requirement '{expected.requirement_ref}', not '{requirement_ref}'",
-                index,
-            )
         if scenario_ref in seen_scenarios:
             raise ValidationError(f"duplicate scenario_ref '{scenario_ref}'", index)
-        if requirement_ref == "REQ-UNTRACED":
-            raise ValidationError("REQ-UNTRACED is invalid for Phase 3 batch generation", index)
         seen_scenarios.add(scenario_ref)
+        normalized_items.append((index, item, expected))
 
-        materialized = dict(item)
-        materialized["id"] = f"TC-00000000-{index + 1:04d}"
+    cases: list[TestCase] = []
+    item_errors: list[str] = []
+    invalid_scenario_ids: list[str] = []
+    generated_at = datetime.now(timezone.utc).isoformat()
+    for index, item, expected in normalized_items:
+        error = _validate_batch_content(item, index, expected)
+        if error is not None:
+            item_errors.append(f"{expected.id}: {error}")
+            invalid_scenario_ids.append(expected.id)
+            continue
         cases.append(
             TestCase(
-                **{
-                    field: materialized[field]
-                    for field in TestCase.phase3_required_fields()
-                }
+                id=f"TC-00000000-{index + 1:04d}",
+                title=item["title"],
+                category=expected.category,
+                priority=expected.priority,
+                preconditions=item["preconditions"],
+                steps=item["steps"],
+                expected_result=item["expected_result"],
+                technique=expected.technique,
+                requirement_ref=expected.requirement_ref,
+                language_target=language_target,
+                generated_at=generated_at,
+                scenario_ref=expected.id,
             )
         )
-    return cases
+    return BatchParseResult(cases, item_errors, invalid_scenario_ids)
+
+
+def _validate_batch_content(
+    item: dict[str, Any],
+    index: int,
+    expected: ScenarioIntent,
+) -> str | None:
+    """Return an item-local content error without weakening traceability."""
+
+    missing = [field for field in LLM_BATCH_CONTENT_FIELDS if field not in item]
+    if missing:
+        return f"item {index}: missing required field(s): {', '.join(missing)}"
+    if not isinstance(item["title"], str) or not item["title"].strip():
+        return f"item {index}: title must be a non-empty string"
+    if not isinstance(item["preconditions"], list) or not all(
+        isinstance(value, str) for value in item["preconditions"]
+    ):
+        return f"item {index}: preconditions must be a list of strings"
+    if not isinstance(item["steps"], list) or not item["steps"] or not all(
+        isinstance(value, str) and value.strip() for value in item["steps"]
+    ):
+        return f"item {index}: steps must be a non-empty list of non-empty strings"
+    if not isinstance(item["expected_result"], str) or not item["expected_result"].strip():
+        return f"item {index}: expected_result must be a non-empty string"
+    return _validate_provider_boundary(item, index, expected)
+
+
+_PROVIDER_CLAIM_FAMILIES: tuple[tuple[str, re.Pattern[str], re.Pattern[str]], ...] = (
+    (
+        "dialog behavior",
+        re.compile(r"\b(?:dialog|modal|popup|confirmation window)\b", re.IGNORECASE),
+        re.compile(r"\b(?:dialog|modal|popup|confirmation window)\b", re.IGNORECASE),
+    ),
+    (
+        "navigation outcome",
+        re.compile(
+            r"\b(?:navigat\w*|redirect\w*|go(?:es|ing)?\s+back|return\w*\s+to|"
+            r"leav\w*\s+(?:the\s+)?(?:page|screen|form|view|list|detail|user)|"
+            r"remain\w*\s+on|stay\w*\s+on)\b",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\b(?:navigat\w*|redirect\w*|go(?:es|ing)?\s+back|return\w*\s+to|"
+            r"leav\w*|remain\w*\s+on|stay\w*\s+on|keep\w*)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "state-change",
+        re.compile(
+            r"\b(?:clear\w*|discard\w*|reset\w*|revert\w*|delete\w*|remove\w*|"
+            r"blank\w*|empt\w*|unchanged|(?:no|without)\s+(?:any\s+)?"
+            r"(?:change\w*|data|value\w*|field\w*))\b",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\b(?:clear\w*|discard\w*|reset\w*|revert\w*|delete\w*|remove\w*|"
+            r"blank\w*|empt\w*|unchanged|(?:no|without)\s+(?:any\s+)?"
+            r"(?:change\w*|data|value\w*|field\w*))\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "persistence",
+        re.compile(
+            r"\b(?:save\w*|persist\w*|store\w*|database|backend)\b",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\b(?:save\w*|persist\w*|store\w*|database|backend)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "submission outcome",
+        re.compile(r"\bsubmit\w*\b", re.IGNORECASE),
+        re.compile(
+            r"\b(?:submit\w*|prevent\w*|reject\w*|mandatory|empt\w*|invalid\w*)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "external side effect",
+        re.compile(
+            r"\b(?:toast|notification|email|audit log|api request|backend request|"
+            r"status\s+(?:change\w*|update\w*)|record\s+update\w*)\b",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\b(?:toast|notification|email|audit log|api request|backend request|"
+            r"status\s+(?:change\w*|update\w*)|record\s+update\w*)\b",
+            re.IGNORECASE,
+        ),
+    ),
+)
+_SAMPLE_VALUE_PATTERN = re.compile(r"\bsample value\s+['\"]([^'\"]+)['\"]", re.IGNORECASE)
+_GENERATION_CONSTRAINT_PATTERN = re.compile(
+    r"\b(?:non[- ]exhaustive|not exhaustive|not the only|only possible|only failure|only value)\b",
+    re.IGNORECASE,
+)
+_PREVENTED_PERSISTENCE_PATTERN = re.compile(
+    r"(?:\b(?:cannot|can't|not allowed to|not|never|prevent\w*|block\w*|"
+    r"disable\w*|reject\w*|fail\w*)\b.{0,80}\b(?:save\w*|persist\w*|"
+    r"store\w*|database|backend)\b|\b(?:save\w*|persist\w*|store\w*|"
+    r"database|backend)\b.{0,80}\b(?:cannot|can't|not allowed|not|never|"
+    r"prevent\w*|block\w*|disable\w*|reject\w*|fail\w*)\b)",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def _validate_provider_boundary(
+    item: dict[str, Any],
+    index: int,
+    expected: ScenarioIntent,
+) -> str | None:
+    """Keep provider-authored content inside the supplied scenario intent."""
+
+    operational_text = " ".join([*item["steps"], item["expected_result"]])
+    for family, generated_pattern, intent_pattern in _PROVIDER_CLAIM_FAMILIES:
+        if generated_pattern.search(operational_text) and not intent_pattern.search(expected.intent):
+            if (
+                family == "persistence"
+                and re.search(r"\b(?:prevent\w*|reject\w*|empt\w*|mandatory|invalid\w*)\b", expected.intent, re.IGNORECASE)
+                and _PREVENTED_PERSISTENCE_PATTERN.search(operational_text)
+            ):
+                continue
+            return (
+                f"item {index}: unsupported {family} claim in steps/expected_result; "
+                "the scenario intent does not state that outcome"
+            )
+
+    if _GENERATION_CONSTRAINT_PATTERN.search(operational_text):
+        return (
+            f"item {index}: generation-constraint wording must not become an observable "
+            "steps/expected_result assertion"
+        )
+
+    sample_match = _SAMPLE_VALUE_PATTERN.search(expected.intent)
+    if sample_match and sample_match.group(1).casefold() not in item["expected_result"].casefold():
+        return (
+            f"item {index}: expected_result must retain the supplied sample literal "
+            f"'{sample_match.group(1)}'"
+        )
+    return None
 
 
 def _strip_markdown_fence(raw_response: str) -> str:

@@ -23,6 +23,16 @@ SCENARIO_TECHNIQUES: tuple[str, ...] = (
 
 
 @dataclass(frozen=True)
+class EvidenceAtom:
+    """One explicit, testable fact extracted from a requirement block."""
+
+    id: str
+    requirement_ref: str
+    kind: str
+    text: str
+
+
+@dataclass(frozen=True)
 class ScenarioIntent:
     """One deterministic, source-backed scenario expected to become one case."""
 
@@ -32,6 +42,8 @@ class ScenarioIntent:
     technique: str
     intent: str
     priority: str = "medium"
+    evidence_refs: tuple[str, ...] = ()
+    constraint_refs: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -47,6 +59,7 @@ class CoveragePlan:
     """The ordered coverage plan for all analyzed requirements."""
 
     requirements: list[RequirementCoveragePlan] = field(default_factory=list)
+    evidence_atoms: list[EvidenceAtom] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and uses [Semantic Versioning](https://semver.org/).
 
+## [1.3.1] - 2026-09-30
+
+### Fixed
+
+- Hardened the provider response contract so generated steps and expected results stay within the supplied scenario intent.
+- Added item-level response salvage while preserving batch traceability and bounded backfill.
+- Closed source-evidence coverage gaps with deterministic requirement-local mapping.
+- Added typed semantic compatibility auditing for evidence and scenario intents.
+- Prevented guardrails and unsupported behavior from becoming executable expectations.
+- Preserved literal UI labels and explicit sample values in generated observable results.
+- Tightened presence-only generation so it remains observational.
+
+### Changed
+
+- Coverage completeness now validates planned scenario coverage and deterministic source-evidence mapping.
+- Planner and auditor semantics are stricter while retaining the traceable CSV and public integration contract.
+
 ## [1.3.0] - 2026-09-29
 
 ### Added

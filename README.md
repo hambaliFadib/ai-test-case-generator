@@ -1,6 +1,6 @@
 # AI Test Case Generator
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Python: 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/) [![Version: 1.3.0](https://img.shields.io/badge/Version-1.3.0-blue.svg)](CHANGELOG.md) [![Contributions: By Approval Only](https://img.shields.io/badge/Contributions-By%20Approval%20Only-orange.svg)](CONTRIBUTING.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Python: 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/) [![Version: 1.3.1](https://img.shields.io/badge/Version-1.3.1-blue.svg)](CHANGELOG.md) [![Contributions: By Approval Only](https://img.shields.io/badge/Contributions-By%20Approval%20Only-orange.svg)](CONTRIBUTING.md)
 
 ---
 
@@ -44,7 +44,7 @@ INPUT LAYER -> ANALYSIS LAYER -> GENERATION LAYER
 - **Validation layer** — `validator.py` applies deterministic contract checks and `deduplicator.py` removes duplicate titles.
 - **Output layer** — `csv_exporter.py` writes validated cases using the schema in `models/csv_schema.py`.
 
-**Web UI layer (v1.3.0)**
+**Web UI layer (v1.3.1)**
 
 ```text
 WEB UI -> same generation pipeline as the CLI
@@ -163,7 +163,7 @@ If `--output` is omitted, the CSV is written to `output/test_cases_<timestamp>.c
 
 ---
 
-## Usage — Web UI (v1.3.0)
+## Usage — Web UI (v1.3.1)
 
 Start the web server:
 
@@ -191,7 +191,9 @@ Note: the Web UI and the CLI share the same `generate_test_suite()` pipeline. Th
 
 ## Coverage and traceability
 
-The analyzer preserves explicit requirement IDs and their full document blocks. The deterministic planner turns each testable requirement into source-backed scenario intents, groups them into bounded batches, and audits every parsed response by `scenario_ref`. Missing scenarios are sent through targeted backfill calls within a bounded retry budget. A result is `complete` only when every planned scenario is covered; valid but incomplete output is `partial`, and an unusable result is `failed`.
+The analyzer preserves explicit requirement IDs and their full document blocks. The deterministic planner extracts source evidence atoms, maps them within their requirement, and turns each testable requirement into source-backed scenario intents. Typed semantic compatibility auditing rejects mappings that would turn presence evidence into behavior or promote guardrails into executable expectations. Each scenario retains evidence and constraint references for scenario-level traceability.
+
+Provider generation receives a minimal contract containing planned scenario intents and trace identifiers. Application-owned metadata is injected after parsing, and item-level response salvage/backfill remains bounded. Provider-authored `steps` and `expected_result` may operationalize the supplied scenario intent, but cannot introduce unsupported state changes, side effects, navigation outcomes, dialog behavior, persistence behavior, or other postconditions. Missing scenarios are sent through targeted backfill calls within a bounded retry budget. A result is `complete` only when every planned scenario is covered; valid but incomplete output is `partial`, and an unusable result is `failed`.
 
 The Web API returns the status, requirement counts, planned and generated scenario counts, coverage percentage, initial batch count, backfill call count, missing IDs, and traceable test cases. The production CLI and Web export use the v1.3 traceable CSV schema below.
 
@@ -259,6 +261,7 @@ OCR runs bilingually: English + Bahasa Indonesia (`eng+ind`).
 - [x] v1.1.0 — Scanned PDF OCR support
 - [x] v1.2.0 — Web UI with dark/light mode
 - [x] v1.3.0 — Deterministic coverage planning, completeness audit, backfill, Web/CLI integration, and traceable export
+- [x] v1.3.1 — Source-evidence-complete planning, typed semantic auditing, and bounded provider generation
 - [ ] v2.0 — Multi-requirement parallel generation
 - [ ] v2.1 — Existing test framework context injection
 - [ ] v2.2 — Language-aware generation (python -> pytest, js -> Jest, java -> JUnit)
