@@ -187,21 +187,11 @@ _HEDGE = re.compile(r"\batau\b|\band\s*/\s*or\b|\bdan\s*/\s*atau\b|\bor\b", re.I
 # ---------------------------------------------------------------------------
 # Scope-relative claim families (Rules A/B/C/I). A family claim in content is
 # allowed only when the scenario's authorized scope states the same family.
+# These families are sentence-insensitive by design: their shapes are
+# self-contained policy assertions.
 # ---------------------------------------------------------------------------
 
 CLAIM_FAMILIES: tuple[tuple[str, re.Pattern[str]], ...] = (
-    (
-        "password masking/visibility",
-        re.compile(
-            r"(?:password|kata\s+sandi|\bsandi\b|passcode).{0,60}"
-            r"(?:plain\s+text|plaintext|masked|masking|visible|not\s+shown|"
-            r"not\s+displayed|hidden|revealed|exposed|teks\s+biasa|terlihat|"
-            r"ditampilkan|disembunyikan|tersembunyi|terekspos)"
-            r"|(?:plain\s+text|plaintext|teks\s+biasa|masked|disembunyikan|"
-            r"tersembunyi).{0,60}(?:password|kata\s+sandi|\bsandi\b|passcode)",
-            re.IGNORECASE | re.DOTALL,
-        ),
-    ),
     (
         "session expiry/timeout",
         re.compile(
@@ -249,6 +239,77 @@ CLAIM_FAMILIES: tuple[tuple[str, re.Pattern[str]], ...] = (
 
 
 # ---------------------------------------------------------------------------
+# Field-local claim families (L3 hardening H1/H2). These constructs must be
+# self-contained within one field (title, precondition, step, or expected
+# result) so unrelated proximity across a Step/Expected boundary can never
+# fabricate a claim. Detection is semantic: narrow masking constructs and
+# policy-shaped numeric claims, never "any number near a keyword".
+# ---------------------------------------------------------------------------
+
+_PASSWORDISH = r"(?:password|passcode|kata\s+sandi|\bsandi\b)"
+
+_MASKING_CONSTRUCT = (
+    r"(?:(?:plain\s*text|plaintext|clear\s*text|teks\s+biasa)"
+    r"|(?:(?:is|are|was|were)?\s*not\s+(?:shown|displayed|visible|"
+    r"ditampilkan|terlihat))"
+    r"|mask(?:ed|ing)"
+    r"|(?:hidden|obscured|concealed|disembunyikan|tersembunyi|tertutupi)"
+    r"|(?:revealed|exposed|terekspos)"
+    r"|in\s+clear(?:\s+text)?|secara\s+terbuka)"
+)
+
+_MASKING_PATTERN = re.compile(
+    rf"{_PASSWORDISH}.{{0,40}}{_MASKING_CONSTRUCT}"
+    rf"|(?:{_MASKING_CONSTRUCT}).{{0,40}}{_PASSWORDISH}",
+    re.IGNORECASE | re.DOTALL,
+)
+
+_PASSWORD_POLICY_COUNT = (
+    r"\d+\s*(?:characters?|letters?|digits?|symbols?|karakter|huruf|angka|simbol)"
+)
+_PASSWORD_POLICY_CLASS = (
+    r"(?:uppercase|lowercase|capital\s+letter|special\s+character|alphanumeric|"
+    r"digit\w*|numerical|complex\w*|huruf\s+(?:besar|kecil)|karakter\s+khusus|angka)"
+)
+_PASSWORD_POLICY_MODAL = r"(?:must|shall|requir\w+|harus|wajib|diwajibkan)"
+
+_PASSWORD_POLICY_PATTERN = re.compile(
+    rf"{_PASSWORDISH}.{{0,50}}"
+    rf"(?:{_PASSWORD_POLICY_COUNT}|{_PASSWORD_POLICY_MODAL}.{{0,60}}{_PASSWORD_POLICY_CLASS})"
+    rf"|(?:{_PASSWORD_POLICY_COUNT}|{_PASSWORD_POLICY_CLASS}.{{0,60}}{_PASSWORD_POLICY_MODAL})"
+    rf".{{0,50}}{_PASSWORDISH}",
+    re.IGNORECASE | re.DOTALL,
+)
+
+_RETRY_POLICY_PATTERN = re.compile(
+    r"(?:retr\w+|tries|try\s+again|mencoba\s+lagi|mengulang\w*|percobaan\s+ulang)\b"
+    r".{0,30}(?:\d+\s*(?:times?|kali)|twice|thrice)"
+    r"|(?:\d+\s*(?:times?|kali)|twice|thrice)\b.{0,30}"
+    r"(?:retr\w+|attempt\w*|tries|try\s+again)",
+    re.IGNORECASE | re.DOTALL,
+)
+
+_TIMEOUT_POLICY_PATTERN = re.compile(
+    r"(?:time[\s-]?outs?|times?\s+out|timeout\w*|expir\w*|kadaluarsa|berakhir|"
+    r"hangus|idle[\s-]?timeout)"
+    r".{0,40}"
+    r"\d+\s*(?:s\b|sec(?:ond)?s?\b|minutes?|mins?|hours?|days?|menit|detik|jam|hari)"
+    r"|\d+\s*(?:s\b|sec(?:ond)?s?\b|minutes?|mins?|hours?|days?|menit|detik|jam|hari)"
+    r".{0,40}"
+    r"(?:time[\s-]?outs?|times?\s+out|timeout\w*|expir\w*|kadaluarsa|berakhir|"
+    r"hangus|idle[\s-]?timeout)",
+    re.IGNORECASE | re.DOTALL,
+)
+
+FIELD_LOCAL_FAMILIES: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("password masking/visibility", _MASKING_PATTERN),
+    ("password complexity/length", _PASSWORD_POLICY_PATTERN),
+    ("retry count policy", _RETRY_POLICY_PATTERN),
+    ("timeout/expiry policy", _TIMEOUT_POLICY_PATTERN),
+)
+
+
+# ---------------------------------------------------------------------------
 # Controlled entity vocabulary for cross-requirement leakage (Rule B).
 # A content claim about an entity absent from the scenario's authorized scope
 # is either leakage from another requirement or an invented product fact.
@@ -264,7 +325,10 @@ ENTITIES: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("role", re.compile(r"\broles?\b|\bperan\b", re.IGNORECASE)),
     ("permission", re.compile(r"\bpermissions?\b|hak\s+akses|\bizin\b", re.IGNORECASE)),
     ("dashboard", re.compile(r"\bdashboard\b", re.IGNORECASE)),
-    ("logout", re.compile(r"logout|log\s+out|keluar\s+dari", re.IGNORECASE)),
+    ("logout", re.compile(
+        r"logouts?|log[\s-]out|logged[\s-]out|logging[\s-]out|keluar\s+dari",
+        re.IGNORECASE,
+    )),
     ("encryption", re.compile(r"encrypt\w*|enkripsi|decrypt\w*|dekripsi", re.IGNORECASE)),
     ("rate limiting", re.compile(r"rate[\s-]limit\w*|brute\s+force", re.IGNORECASE)),
 )
@@ -417,6 +481,15 @@ def validate_content(
                 "authorized evidence does not state it"
             )
 
+    field_texts = (title, *preconditions, *steps, expected_result)
+    for field_text in field_texts:
+        for label, pattern in FIELD_LOCAL_FAMILIES:
+            if pattern.search(field_text) and not pattern.search(authority.support):
+                return (
+                    f"unsupported claim family '{label}' in content; the scenario's "
+                    "authorized evidence does not state it"
+                )
+
     for entity, pattern in ENTITIES:
         if pattern.search(content_all) and not pattern.search(authority.support):
             return (
@@ -437,7 +510,10 @@ def validate_content(
         return literal_error
 
     if authority.scenario.category == "security":
-        security_error = _check_security(content_all, authority)
+        # Rule J: the security predicate must be operationalized in steps
+        # and/or expected_result — a title alone never satisfies it.
+        operational = " ".join(steps) + " " + expected_result
+        security_error = _check_security(operational, authority)
         if security_error is not None:
             return security_error
 

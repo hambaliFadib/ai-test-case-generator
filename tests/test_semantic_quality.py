@@ -683,3 +683,375 @@ def test_batch_prompt_declares_scenario_authority_and_evidence_boundary() -> Non
     # The scenario JSON stays last so prompt tools can split on the marker.
     assert "Planned scenarios for this batch:" in prompt
     assert prompt.strip().endswith("]")
+
+
+# ===========================================================================
+# Semantic Quality Hardening P1 — paired controls for H1 / H2 / M2 / M5.
+# Each test asserts the semantic decision (accept vs reject), not only an
+# error string.
+# ===========================================================================
+
+
+# --- H1: masking family is semantic and field-local -----------------------
+
+def test_h1_cross_field_password_and_visible_content_is_accepted() -> None:
+    scn = scenario(
+        "REQ-H1",
+        intent="Verify the Dashboard is displayed after successful login.",
+        refs=("REQ-H1-E01", "REQ-H1-E02"),
+    )
+    atoms = [
+        atom("REQ-H1", 1, "The password field is mandatory."),
+        atom("REQ-H1", 2, "Successful login displays Dashboard."),
+    ]
+    # Step mentions password, expected mentions visibility: proximity alone
+    # must never fabricate a masking claim.
+    assert check(
+        item(
+            steps=["Enter the password."],
+            expected_result="The Dashboard page is visible after login.",
+        ),
+        scn,
+        atoms,
+    ) is None
+
+    # A mask word in another field with no passwordish anchor is also fine.
+    assert check(
+        item(
+            steps=["Enter the password."],
+            expected_result="The row is masked in the table.",
+        ),
+        scn,
+        atoms,
+    ) is None
+
+
+def test_h1_unsupported_masking_claim_still_rejected() -> None:
+    scn = scenario(
+        "REQ-H1B",
+        intent="Verify the password field is mandatory.",
+        refs=("REQ-H1B-E01",),
+    )
+    atoms = [atom("REQ-H1B", 1, "The password field is mandatory.")]
+    error = check(
+        item(
+            steps=['Check the "Password" field.'],
+            expected_result="The password is not displayed as plain text.",
+        ),
+        scn,
+        atoms,
+    )
+    assert error is not None
+    assert "masking" in error
+
+
+def test_h1_evidence_backed_masking_is_accepted() -> None:
+    scn = scenario(
+        "REQ-H1C",
+        intent="Verify the password field masks the supplied value.",
+        refs=("REQ-H1C-E01",),
+    )
+    atoms = [atom("REQ-H1C", 1, "Password values are not displayed as plain text.")]
+    assert check(
+        item(
+            steps=['Check the "Password" field.'],
+            expected_result="The password is not displayed as plain text.",
+        ),
+        scn,
+        atoms,
+    ) is None
+    # ID wording is covered by the same construct.
+    assert check(
+        item(
+            steps=['Periksa field "Password".'],
+            expected_result="Kata sandi tidak ditampilkan sebagai teks biasa.",
+        ),
+        scn,
+        atoms,
+    ) is None
+
+
+# --- H2: numeric / policy product facts -----------------------------------
+
+def test_h2_password_complexity_controls() -> None:
+    unsupported_scope = scenario(
+        "REQ-H2A",
+        intent="Verify the password field is mandatory.",
+        refs=("REQ-H2A-E01",),
+    )
+    unsupported_atoms = [atom("REQ-H2A", 1, "The password is mandatory.")]
+    assert check(
+        item(
+            steps=['Enter the password in the "Password" field.'],
+            expected_result="The password must contain at least 8 characters.",
+        ),
+        unsupported_scope,
+        unsupported_atoms,
+    ) is not None
+    assert check(
+        item(
+            steps=['Enter the password in the "Password" field.'],
+            expected_result=(
+                "The system displays an error because the password requires "
+                "uppercase letters."
+            ),
+        ),
+        unsupported_scope,
+        unsupported_atoms,
+    ) is not None
+
+    # Benign: accepting special characters is not a complexity policy claim.
+    assert check(
+        item(
+            steps=['Enter the password in the "Password" field.'],
+            expected_result=(
+                "The system accepts the password with special characters "
+                "and shows the value."
+            ),
+        ),
+        unsupported_scope,
+        unsupported_atoms,
+    ) is None
+
+    # Evidence-backed length policy is authorized.
+    supported_scope = scenario(
+        "REQ-H2B",
+        intent="Verify the password length rule.",
+        refs=("REQ-H2B-E01",),
+    )
+    supported_atoms = [atom("REQ-H2B", 1, "The password must be at least 8 characters.")]
+    assert check(
+        item(
+            steps=['Enter the password in the "Password" field.'],
+            expected_result="The password must contain at least 8 characters.",
+        ),
+        supported_scope,
+        supported_atoms,
+    ) is None
+
+
+def test_h2_retry_count_controls() -> None:
+    unsupported_scope = scenario(
+        "REQ-H2C",
+        intent="Verify the request behavior.",
+        refs=("REQ-H2C-E01",),
+    )
+    unsupported_atoms = [atom("REQ-H2C", 1, "The API responds to valid requests.")]
+    assert check(
+        item(
+            steps=['Check the "API" response.'],
+            expected_result="The client retries 3 times before failing.",
+        ),
+        unsupported_scope,
+        unsupported_atoms,
+    ) is not None
+    assert check(
+        item(
+            steps=['Check the "API" response.'],
+            expected_result="The system displays an error and lets you retry twice.",
+        ),
+        unsupported_scope,
+        unsupported_atoms,
+    ) is not None
+
+    # Benign: retry as a UI control, no count policy.
+    assert check(
+        item(
+            steps=['Click the "Retry" button.'],
+            expected_result="The Retry button is displayed.",
+        ),
+        unsupported_scope,
+        unsupported_atoms,
+    ) is None
+
+    supported_scope = scenario(
+        "REQ-H2D",
+        intent="Verify the retry behavior.",
+        refs=("REQ-H2D-E01",),
+    )
+    supported_atoms = [atom("REQ-H2D", 1, "The client retries 3 times before failing.")]
+    assert check(
+        item(
+            steps=['Check the "API" response.'],
+            expected_result="The client retries 3 times before failing.",
+        ),
+        supported_scope,
+        supported_atoms,
+    ) is None
+
+
+def test_h2_timeout_expiry_unit_variants_controls() -> None:
+    unsupported_scope = scenario(
+        "REQ-H2E",
+        intent="Verify the request behavior.",
+        refs=("REQ-H2E-E01",),
+    )
+    unsupported_atoms = [atom("REQ-H2E", 1, "The API responds to valid requests.")]
+    # Compact unit forms that previously bypassed detection.
+    assert check(
+        item(
+            steps=['Check the "API" response.'],
+            expected_result=(
+                "The system displays an error after the request times out "
+                "after 30s."
+            ),
+        ),
+        unsupported_scope,
+        unsupported_atoms,
+    ) is not None
+    assert check(
+        item(
+            steps=['Check the "Session" state.'],
+            expected_result=(
+                "The system displays an error after 10 minutes when the "
+                "session expires."
+            ),
+        ),
+        unsupported_scope,
+        unsupported_atoms,
+    ) is not None
+
+    # Benign: plain quantities without timeout/expiry semantics.
+    assert check(
+        item(
+            steps=['Check the "Result" table.'],
+            expected_result="The table displays 25 rows.",
+        ),
+        unsupported_scope,
+        unsupported_atoms,
+    ) is None
+
+    supported_scope = scenario(
+        "REQ-H2F",
+        intent="Verify the session expiry.",
+        refs=("REQ-H2F-E01",),
+    )
+    supported_atoms = [atom("REQ-H2F", 1, "The session expires after 10 minutes.")]
+    assert check(
+        item(
+            steps=['Check the "Session" state.'],
+            expected_result=(
+                "The system displays an error after 10 minutes when the "
+                "session expires."
+            ),
+        ),
+        supported_scope,
+        supported_atoms,
+    ) is None
+
+
+# --- M2: entity tense / variant coverage ----------------------------------
+
+def test_m2_logout_variant_coverage() -> None:
+    # Unsupported inactivity auto-logout cannot hide behind past tense.
+    scope = scenario(
+        "REQ-M2A",
+        intent="Verify the session behavior.",
+        refs=("REQ-M2A-E01",),
+    )
+    atoms = [atom("REQ-M2A", 1, "The application manages sessions.")]
+    error = check(
+        item(
+            steps=['Check the "Session" state.'],
+            expected_result=(
+                "The system displays the login page after the user is "
+                "logged out automatically."
+            ),
+        ),
+        scope,
+        atoms,
+    )
+    assert error is not None
+    assert "logout" in error
+
+    # Supported logout evidence recognized in its own tense.
+    supported_scope = scenario(
+        "REQ-M2B",
+        intent="Verify the logout behavior.",
+        refs=("REQ-M2B-E01",),
+    )
+    supported_atoms = [atom("REQ-M2B", 1, "Users are logged out when the session ends.")]
+    assert check(
+        item(
+            steps=['Click the "Logout" button.'],
+            expected_result='The system displays the "Logged out" confirmation.',
+        ),
+        supported_scope,
+        supported_atoms,
+    ) is None
+
+    # Unrelated use of the word "log" is not an entity match.
+    assert check(
+        item(
+            steps=['Check the "Log" table.'],
+            expected_result="The log displays entries for the report.",
+        ),
+        scope,
+        atoms,
+    ) is None
+
+
+# --- M5: security predicate location --------------------------------------
+
+def test_m5_title_only_security_predicate_rejected() -> None:
+    scope = scenario(
+        "REQ-M5A",
+        intent="Verify credential masking at login.",
+        category="security",
+        technique="security",
+        refs=("REQ-M5A-E01",),
+    )
+    atoms = [atom("REQ-M5A", 1, "Password values are not displayed as plain text.")]
+    error = check(
+        item(
+            title="The password is masked as plain text at login",
+            steps=['Enter the password in the "Password" field.'],
+            expected_result="The password is accepted.",
+        ),
+        scope,
+        atoms,
+    )
+    assert error is not None
+    assert "hollow security" in error
+
+
+def test_m5_operational_security_predicate_accepted() -> None:
+    scope = scenario(
+        "REQ-M5B",
+        intent="Verify credential masking at login.",
+        category="security",
+        technique="security",
+        refs=("REQ-M5B-E01",),
+    )
+    atoms = [atom("REQ-M5B", 1, "Password values are not displayed as plain text.")]
+    # Generic title, predicate operationalized in steps/expected: valid.
+    assert check(
+        item(
+            title="Verify security for the field",
+            steps=['Check the "Password" field display.'],
+            expected_result="The password value is not displayed as plain text.",
+        ),
+        scope,
+        atoms,
+    ) is None
+
+
+def test_m5_foreign_security_predicate_rejected() -> None:
+    scope = scenario(
+        "REQ-M5C",
+        intent="Verify login for the Sign-in form.",
+        category="security",
+        technique="security",
+        refs=("REQ-M5C-E01",),
+    )
+    atoms = [atom("REQ-M5C", 1, "The login form validates credentials.")]
+    error = check(
+        item(
+            title="Security case",
+            steps=['Check the "Password" field.'],
+            expected_result="The password is not displayed as plain text.",
+        ),
+        scope,
+        atoms,
+    )
+    assert error is not None
