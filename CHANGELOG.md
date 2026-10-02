@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Canonical coverage profiles `minimal`, `comprehensive`, and `extra`, with a shared `resolve_profile()` used by the CLI, Web API, and planner; legacy aliases `balanced` and `security` resolve to `comprehensive` and the default is now `comprehensive`
+- Locked QA baseline evaluation with fixed, ordered, versioned rules: the authentication baseline (valid credentials, invalid username/password, both-invalid, empty fields, boundary, locked account, session, logout, MFA) plus authorization, CRUD, search, file-upload, API, error, state/session, confirmation, and navigation baselines
+- `UnresolvedBaselineItem` (UBI) records: applicable baseline dimensions that lack sufficient product evidence or explicit product policy are retained in `unresolved_baseline` on the plan, the generation result, and the serialized API response — never dropped, never turned into scenarios
+- Profile composition invariant `Minimal ⊆ Comprehensive ⊆ Extra` by `(category, technique, intent)`; security dimensions apply only in `comprehensive` and `extra`
+- Contract test suite covering baseline applicability and evidence gates, no-invention corpus scanning, alias/default equivalence, deterministic planning, UBI contract and serialization, and the intact semantic gate
+
+### Changed
+
+- CLI `--profile` and the Web API now accept the canonical profiles and legacy aliases; unknown profiles fail with a message listing `minimal, comprehensive, extra`
+- Serialized generation results expose the resolved canonical profile and the additive `unresolved_baseline` field; failed results carry an empty list
+- Baseline dimensions are QA policy only: lockout thresholds, session timeouts, status codes, MFA prompts, and other concrete product semantics are never invented without explicit source evidence or product policy
+
 ## [1.3.1] - 2026-09-30
 
 ### Fixed

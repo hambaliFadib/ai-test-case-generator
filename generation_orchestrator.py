@@ -20,6 +20,7 @@ from models.llm_result import LLMResult
 from models.requirement_model import Requirement
 from models.test_case_model import TestCase
 from prompt_builder import build_batch_prompt
+from profiles import DEFAULT_PROFILE, resolve_profile
 from requirement_analyzer import analyze_requirements
 from response_parser import parse_batch_response_result
 from validator import (
@@ -35,13 +36,17 @@ def generate_test_suite(
     settings: Settings | None,
     language_target: str = "manual",
     output_language: str = "en",
-    profile: str = "balanced",
+    profile: str = DEFAULT_PROFILE,
     adapter: Any | None = None,
 ) -> GenerationResult:
     """Generate, audit, backfill, and finalize one complete scenario suite."""
 
     diagnostics: list[str] = []
     llm_results: list[LLMResult] = []
+    try:
+        resolved_profile = resolve_profile(profile)
+    except Exception as exc:
+        return _failed_result([], 0, 0, 0, 0, 0, [f"profile resolution failed: {exc}"])
     try:
         requirements = analyze_requirements(parsed_input)
     except Exception as exc:
@@ -50,7 +55,7 @@ def generate_test_suite(
     testable_count = sum(requirement.status == "TESTABLE" for requirement in requirements)
     excluded_count = sum(requirement.status == "EXCLUDED" for requirement in requirements)
     try:
-        plan = plan_coverage(requirements, profile=profile)
+        plan = plan_coverage(requirements, profile=resolved_profile)
         scenario_count = _scenario_count(plan)
         if scenario_count == 0:
             return _failed_result(
@@ -193,6 +198,9 @@ def generate_test_suite(
         initial_missing_scenarios=initial_missing,
         diagnostics=diagnostics,
         llm_results=llm_results,
+        unresolved_baseline=(
+            [] if status == "failed" else list(plan.unresolved_baseline)
+        ),
     )
 
 

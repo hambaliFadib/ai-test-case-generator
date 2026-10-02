@@ -1,6 +1,13 @@
 .env
+.env.*
+!.env.example
 __pycache__/
 *.pyc
+.pytest_cache/
 output/
+/test_cases_*.csv
 sample_req.*
 REQUIREMENT_MONITORING_USAGE_CALCULATION_PRABILLING_RATING_FIGMA.md
+.playwright-cli/
+.qoder/
+semantic-smoke.md

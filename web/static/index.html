@@ -4,718 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Generate structured QA test cases from requirements using your preferred LLM.">
+  <link rel="icon" href="data:,">
   <title>AI Test Case Generator</title>
-  <style>
-    /* ── Design tokens ─────────────────────────────────────────────── */
-    :root {
-      color-scheme: light;
-      /* Backgrounds */
-      --bg: #F5F4F0;
-      --surface: #FFFFFF;
-      --surface-raised: #FAFAF8;
-      /* Borders */
-      --border: #E8E6E0;
-      --border-focus: #9BA8F8;
-      /* Text */
-      --text-primary: #1C1917;
-      --text-secondary: #57534E;
-      --text-muted: #A8A29E;
-      --text-placeholder: #C4BFB8;
-      /* Accent */
-      --accent: #5B63E8;
-      --accent-hover: #4951D4;
-      --accent-subtle: #EEF0FD;
-      --accent-text: #FFFFFF;
-      /* Category badges */
-      --positive: #DCFCE7;
-      --positive-text: #166534;
-      --negative: #FEE2E2;
-      --negative-text: #991B1B;
-      --boundary: #DBEAFE;
-      --boundary-text: #1E40AF;
-      --edge: #FEF9C3;
-      --edge-text: #854D0E;
-      --security: #F3E8FF;
-      --security-text: #6B21A8;
-      /* Priority text */
-      --priority-high: #DC2626;
-      --priority-medium: #B45309;
-      /* Error banner */
-      --error-bg: #FEF2F2;
-      --error-border: #FECACA;
-      --error-text: #991B1B;
-      /* Loading spinner */
-      --spinner-track: rgba(255, 255, 255, .45);
-      /* Shadows */
-      --shadow-sm: 0 1px 2px rgba(0, 0, 0, .04);
-      --shadow-md: 0 4px 12px rgba(0, 0, 0, .06);
-      --shadow-focus: 0 0 0 3px rgba(91, 99, 232, .18);
-    }
-
-    @media (prefers-color-scheme: dark) {
-      :root {
-        color-scheme: dark;
-        --bg: #18181B;
-        --surface: #27272A;
-        --surface-raised: #3F3F46;
-        --border: #3F3F46;
-        --border-focus: #818CF8;
-        --text-primary: #FAFAFA;
-        --text-secondary: #A1A1AA;
-        --text-muted: #71717A;
-        --text-placeholder: #52525B;
-        --accent: #818CF8;
-        /* lighter hover: keeps dark ink at 8.9:1 (#6366F1 would give 4.0:1) */
-        --accent-hover: #A5B4FC;
-        --accent-subtle: #1E1B4B;
-        --accent-text: #18181B; /* dark ink: 5.9:1 on #818CF8 (white would be 2.98:1) */
-        --positive: #14532D;
-        --positive-text: #86EFAC;
-        --negative: #7F1D1D;
-        --negative-text: #FCA5A5;
-        --boundary: #1E3A5F;
-        --boundary-text: #93C5FD;
-        --edge: #713F12;
-        --edge-text: #FDE68A;
-        --security: #3B0764;
-        --security-text: #D8B4FE;
-        --priority-high: #F87171;
-        --priority-medium: #FBBF24;
-        --error-bg: #450A0A;
-        --error-border: #7F1D1D;
-        --error-text: #FCA5A5;
-        --spinner-track: rgba(24, 24, 27, .35);
-        --shadow-sm: 0 1px 2px rgba(0, 0, 0, .3);
-        --shadow-md: 0 4px 12px rgba(0, 0, 0, .4);
-        --shadow-focus: 0 0 0 3px rgba(129, 140, 248, .25);
-      }
-    }
-
-    [data-theme="light"] {
-      color-scheme: light;
-      --bg: #F5F4F0;
-      --surface: #FFFFFF;
-      --surface-raised: #FAFAF8;
-      --border: #E8E6E0;
-      --border-focus: #9BA8F8;
-      --text-primary: #1C1917;
-      --text-secondary: #57534E;
-      --text-muted: #A8A29E;
-      --text-placeholder: #C4BFB8;
-      --accent: #5B63E8;
-      --accent-hover: #4951D4;
-      --accent-subtle: #EEF0FD;
-      --accent-text: #FFFFFF;
-      --positive: #DCFCE7;
-      --positive-text: #166534;
-      --negative: #FEE2E2;
-      --negative-text: #991B1B;
-      --boundary: #DBEAFE;
-      --boundary-text: #1E40AF;
-      --edge: #FEF9C3;
-      --edge-text: #854D0E;
-      --security: #F3E8FF;
-      --security-text: #6B21A8;
-      --priority-high: #DC2626;
-      --priority-medium: #B45309;
-      --error-bg: #FEF2F2;
-      --error-border: #FECACA;
-      --error-text: #991B1B;
-      --spinner-track: rgba(255, 255, 255, .45);
-      --shadow-sm: 0 1px 2px rgba(0, 0, 0, .04);
-      --shadow-md: 0 4px 12px rgba(0, 0, 0, .06);
-      --shadow-focus: 0 0 0 3px rgba(91, 99, 232, .18);
-    }
-
-    [data-theme="dark"] {
-      color-scheme: dark;
-      --bg: #18181B;
-      --surface: #27272A;
-      --surface-raised: #3F3F46;
-      --border: #3F3F46;
-      --border-focus: #818CF8;
-      --text-primary: #FAFAFA;
-      --text-secondary: #A1A1AA;
-      --text-muted: #71717A;
-      --text-placeholder: #52525B;
-      --accent: #818CF8;
-      /* lighter hover: keeps dark ink at 8.9:1 (#6366F1 would give 4.0:1) */
-      --accent-hover: #A5B4FC;
-      --accent-subtle: #1E1B4B;
-      --accent-text: #18181B; /* dark ink: 5.9:1 on #818CF8 (white would be 2.98:1) */
-      --positive: #14532D;
-      --positive-text: #86EFAC;
-      --negative: #7F1D1D;
-      --negative-text: #FCA5A5;
-      --boundary: #1E3A5F;
-      --boundary-text: #93C5FD;
-      --edge: #713F12;
-      --edge-text: #FDE68A;
-      --security: #3B0764;
-      --security-text: #D8B4FE;
-      --priority-high: #F87171;
-      --priority-medium: #FBBF24;
-      --error-bg: #450A0A;
-      --error-border: #7F1D1D;
-      --error-text: #FCA5A5;
-      --spinner-track: rgba(24, 24, 27, .35);
-      --shadow-sm: 0 1px 2px rgba(0, 0, 0, .3);
-      --shadow-md: 0 4px 12px rgba(0, 0, 0, .4);
-      --shadow-focus: 0 0 0 3px rgba(129, 140, 248, .25);
-    }
-
-    /* ── Base ──────────────────────────────────────────────────────── */
-    *,
-    *::before,
-    *::after { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      min-width: 320px;
-      background: var(--bg);
-      color: var(--text-primary);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-      font-size: 15px;
-      line-height: 1.6;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    h1, h2, h3, p { margin-top: 0; }
-    button, input, select, textarea { color: inherit; font: inherit; }
-    button { cursor: pointer; }
-    button:disabled { cursor: not-allowed; }
-
-    :where(a, button, input, select, textarea, [tabindex]):focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: 2px;
-    }
-
-    .container {
-      margin: 0 auto;
-      max-width: 780px;
-      padding-left: 24px;
-      padding-right: 24px;
-    }
-
-    /* ── Header ────────────────────────────────────────────────────── */
-    .topbar {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 18px 0;
-    }
-
-    .topbar-inner {
-      align-items: center;
-      display: flex;
-      gap: 16px;
-      justify-content: space-between;
-    }
-
-    .brand { align-items: center; display: flex; gap: 14px; min-width: 0; }
-    .brand-copy { min-width: 0; }
-
-    .brand-mark {
-      align-items: center;
-      background: var(--accent);
-      border-radius: 12px;
-      color: var(--accent-text);
-      display: inline-flex;
-      flex: none;
-      font-size: 15px;
-      font-weight: 700;
-      height: 40px;
-      justify-content: center;
-      letter-spacing: .01em;
-      width: 40px;
-    }
-
-    h1 {
-      font-size: 24px;
-      font-weight: 650;
-      letter-spacing: -.015em;
-      line-height: 1.35;
-      margin-bottom: 2px;
-    }
-
-    .brand-sub {
-      color: var(--text-secondary);
-      font-size: 15px;
-      line-height: 1.4;
-      margin-bottom: 0;
-    }
-
-    .header-actions { align-items: center; display: flex; flex: none; gap: 10px; }
-
-    .version {
-      background: var(--surface-raised);
-      border-radius: 999px;
-      color: var(--text-primary);
-      font-size: 12px;
-      font-weight: 600;
-      padding: 5px 10px;
-    }
-
-    .theme-toggle {
-      align-items: center;
-      background: var(--surface-raised);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      color: var(--text-primary);
-      display: inline-flex;
-      height: 36px;
-      justify-content: center;
-      padding: 0;
-      transition: background-color .15s ease, border-color .15s ease;
-      width: 36px;
-    }
-
-    .theme-toggle:hover { background: var(--accent-subtle); border-color: var(--border-focus); }
-    .theme-icon { font-size: 19px; line-height: 1; }
-
-    /* ── Page layout ───────────────────────────────────────────────── */
-    .page { padding-top: 32px; }
-    .stack { display: grid; gap: 20px; }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      box-shadow: var(--shadow-sm);
-      padding: 28px;
-    }
-
-    .card-label {
-      color: var(--accent);
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: .1em;
-      margin-bottom: 4px;
-      text-transform: uppercase;
-    }
-
-    h2 {
-      font-size: 19px;
-      font-weight: 600;
-      line-height: 1.35;
-      margin-bottom: 20px;
-    }
-
-    /* ── Configuration ─────────────────────────────────────────────── */
-    .config-grid {
-      display: grid;
-      gap: 16px;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .field { display: grid; gap: 8px; }
-
-    .field label {
-      color: var(--text-secondary);
-      font-size: 15px;
-      font-weight: 600;
-    }
-
-    input, select, textarea {
-      background: var(--bg);
-      border: 1.5px solid var(--border);
-      border-radius: 10px;
-      color: var(--text-primary);
-      font-size: 15px;
-      padding: 11px 14px;
-      transition: border-color .15s ease, box-shadow .15s ease;
-      width: 100%;
-    }
-
-    input::placeholder, textarea::placeholder { color: var(--text-placeholder); }
-
-    input:focus, select:focus, textarea:focus {
-      border-color: var(--border-focus);
-      box-shadow: var(--shadow-focus);
-      outline: none;
-    }
-
-    input:focus-visible, select:focus-visible, textarea:focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: 2px;
-    }
-
-    textarea { line-height: 1.6; min-height: 140px; resize: vertical; }
-
-    /* ── Tabs ──────────────────────────────────────────────────────── */
-    .tabs {
-      align-items: center;
-      border-bottom: 1.5px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 20px;
-    }
-
-    .tabs-list { align-self: stretch; display: flex; }
-
-    .tab {
-      background: none;
-      border: 0;
-      border-bottom: 2.5px solid transparent;
-      color: var(--text-secondary);
-      font-size: 15px;
-      font-weight: 500;
-      margin-bottom: -1.5px;
-      padding: 10px 16px;
-      transition: color .15s ease, border-color .15s ease;
-    }
-
-    .tab:first-child { padding-left: 0; }
-    .tab:hover { color: var(--text-primary); }
-    .tab[aria-selected="true"] {
-      border-bottom-color: var(--accent);
-      color: var(--accent);
-      font-weight: 600;
-    }
-
-    /* ── Language selector ─────────────────────────────────────────── */
-    .lang-selector {
-      align-items: center;
-      background: var(--surface-raised);
-      border: 1.5px solid var(--border);
-      border-radius: 999px;
-      cursor: pointer;
-      display: flex;
-      flex: none;
-      gap: 6px;
-      padding: 6px 12px 6px 10px;
-      transition: border-color .15s ease;
-    }
-
-    .lang-selector:focus-within {
-      border-color: var(--border-focus);
-      box-shadow: var(--shadow-focus);
-    }
-
-    .lang-icon { font-size: .875rem; line-height: 1; }
-
-    .lang-selector select {
-      -webkit-appearance: none;
-      appearance: none;
-      background-color: transparent;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2357534E' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-      background-position: right 0 center;
-      background-repeat: no-repeat;
-      background-size: 12px;
-      border: none;
-      color: var(--text-secondary);
-      cursor: pointer;
-      font-size: .8125rem;
-      font-weight: 500;
-      outline: none;
-      padding: 0 16px 0 0;
-      width: auto;
-    }
-
-    .lang-selector select:focus { box-shadow: none; }
-
-    @media (prefers-color-scheme: dark) {
-      .lang-selector select {
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A1A1AA' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-        /* text-secondary on the lighter raised surface measures 4.07:1; use primary for AA (10:1) */
-        color: var(--text-primary);
-      }
-    }
-
-    [data-theme="light"] .lang-selector select {
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2357534E' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-      color: var(--text-secondary);
-    }
-
-    [data-theme="dark"] .lang-selector select {
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A1A1AA' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-      color: var(--text-primary);
-    }
-
-    .panel[hidden] { display: none; }
-
-    /* ── File upload ───────────────────────────────────────────────── */
-    .dropzone {
-      align-items: center;
-      background: var(--bg);
-      border: 2px dashed var(--border);
-      border-radius: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      justify-content: center;
-      min-height: 200px;
-      padding: 40px 24px;
-      text-align: center;
-      transition: background-color .15s ease, border-color .15s ease;
-    }
-
-    .dropzone.is-over { background: var(--accent-subtle); border-color: var(--accent); }
-    .drop-icon { color: var(--text-muted); height: 32px; margin-bottom: 6px; width: 32px; }
-    .dropzone strong { color: var(--text-secondary); font-size: 15px; font-weight: 600; }
-    .drop-hint { color: var(--text-secondary); font-size: 12px; margin-bottom: 0; }
-    .dropzone input { display: none; }
-
-    .file-button {
-      background: var(--surface);
-      border: 1.5px solid var(--border);
-      border-radius: 10px;
-      color: var(--text-primary);
-      font-size: 15px;
-      font-weight: 600;
-      margin-top: 10px;
-      padding: 10px 20px;
-      transition: background-color .15s ease, border-color .15s ease;
-    }
-
-    .file-button:hover { background: var(--accent-subtle); border-color: var(--border-focus); }
-
-    .file-name {
-      color: var(--text-primary);
-      font-size: 15px;
-      font-weight: 600;
-      margin: 10px 0 0;
-      min-height: 1.4em;
-    }
-
-    /* ── Actions ───────────────────────────────────────────────────── */
-    .actions {
-      align-items: center;
-      display: flex;
-      gap: 16px;
-      justify-content: space-between;
-      margin-top: 24px;
-    }
-
-    .hint { color: var(--text-secondary); font-size: 15px; }
-
-    .primary {
-      background: var(--accent);
-      border: 0;
-      border-radius: 10px;
-      color: var(--accent-text);
-      flex: none;
-      font-size: 15px;
-      font-weight: 600;
-      padding: 13px 32px;
-      transition: background-color .15s ease, transform .1s ease;
-    }
-
-    .primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
-    .primary:active { transform: translateY(0); }
-    .primary:disabled { opacity: .7; transform: none; }
-
-    .secondary {
-      background: transparent;
-      border: 1.5px solid var(--accent);
-      border-radius: 10px;
-      color: var(--accent);
-      flex: none;
-      font-size: 15px;
-      font-weight: 600;
-      padding: 11px 28px;
-      transition: background-color .15s ease, border-color .15s ease, color .15s ease;
-    }
-
-    .secondary:hover {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: var(--accent-text);
-    }
-
-    .secondary:disabled { opacity: .6; }
-
-    /* ── Loading spinner ───────────────────────────────────────────── */
-    .spinner {
-      animation: spin .8s linear infinite;
-      border: 2px solid var(--spinner-track);
-      border-left-color: currentColor;
-      border-radius: 50%;
-      display: inline-block;
-      height: 16px;
-      margin-right: 8px;
-      vertical-align: -3px;
-      width: 16px;
-    }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ── Messages ──────────────────────────────────────────────────── */
-    .message {
-      border-radius: 10px;
-      font-size: 15px;
-      margin: 16px 0 0;
-      padding: 14px 16px;
-    }
-
-    .message[hidden] { display: none; }
-
-    .message.error {
-      background: var(--error-bg);
-      border: 1px solid var(--error-border);
-      color: var(--error-text);
-    }
-
-    /* ── Results ───────────────────────────────────────────────────── */
-    .results[hidden] { display: none; }
-
-    .summary { color: var(--text-secondary); font-size: 15px; margin-bottom: 16px; }
-    .summary strong { color: var(--accent); font-weight: 600; }
-    .summary[data-status="partial"] strong { color: var(--priority-medium); }
-    .summary[data-status="failed"] strong { color: var(--priority-high); }
-
-    .table-wrap { overflow-x: auto; }
-
-    table { border-collapse: collapse; min-width: 620px; width: 100%; }
-
-    caption {
-      caption-side: bottom;
-      color: var(--text-secondary);
-      font-size: 12px;
-      padding-top: 12px;
-      text-align: left;
-    }
-
-    th {
-      background: var(--bg);
-      border-bottom: 1.5px solid var(--border);
-      color: var(--text-secondary);
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: .05em;
-      padding: 10px 14px;
-      text-align: left;
-      text-transform: uppercase;
-      vertical-align: bottom;
-    }
-
-    td {
-      border-bottom: 1px solid var(--border);
-      color: var(--text-secondary);
-      font-size: 15px;
-      padding: 14px;
-      text-align: left;
-      vertical-align: top;
-    }
-
-    tbody tr { cursor: pointer; transition: background-color .1s ease; }
-    tbody tr:hover { background: var(--accent-subtle); }
-    tbody tr[aria-selected="true"] { background: var(--accent-subtle); }
-    tbody tr:last-child td { border-bottom: 0; }
-    tbody tr:has(.empty) { cursor: default; }
-    tbody tr:has(.empty):hover { background: transparent; }
-
-    .id {
-      color: var(--text-primary);
-      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-      font-size: 12px;
-      white-space: nowrap;
-    }
-
-    .title-cell { color: var(--text-primary); font-weight: 600; max-width: 260px; }
-
-    .priority-high { color: var(--priority-high); font-weight: 600; }
-    .priority-medium { color: var(--priority-medium); font-weight: 500; }
-    .priority-low { color: var(--text-secondary); }
-
-    .badge {
-      border-radius: 999px;
-      display: inline-block;
-      font-size: 12px;
-      font-weight: 600;
-      padding: 3px 10px;
-      text-transform: capitalize;
-    }
-
-    .badge-positive { background: var(--positive); color: var(--positive-text); }
-    .badge-negative { background: var(--negative); color: var(--negative-text); }
-    .badge-boundary { background: var(--boundary); color: var(--boundary-text); }
-    .badge-edge { background: var(--edge); color: var(--edge-text); }
-    .badge-security { background: var(--security); color: var(--security-text); }
-
-    .empty { color: var(--text-secondary); padding: 24px; text-align: center; }
-
-    .detail {
-      background: var(--bg);
-      border-radius: 12px;
-      margin-top: 16px;
-      padding: 20px 24px;
-    }
-
-    .detail[hidden] { display: none; }
-
-    .detail h3 {
-      font-size: 19px;
-      font-weight: 600;
-      line-height: 1.35;
-      margin-bottom: 12px;
-    }
-
-    .detail-grid {
-      display: grid;
-      gap: 20px;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .detail-label {
-      color: var(--text-secondary);
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: .05em;
-      text-transform: uppercase;
-    }
-
-    .detail ul {
-      color: var(--text-secondary);
-      font-size: 15px;
-      margin: 8px 0 0;
-      padding-left: 20px;
-    }
-
-    .detail p {
-      color: var(--text-secondary);
-      font-size: 15px;
-      margin: 8px 0 0;
-      white-space: pre-wrap;
-    }
-
-    /* ── Footer ────────────────────────────────────────────────────── */
-    .footer-note {
-      color: var(--text-secondary);
-      font-size: 15px;
-      margin-bottom: 0;
-      padding: 24px 0 48px;
-      text-align: center;
-    }
-
-    /* ── Responsive ────────────────────────────────────────────────── */
-    @media (max-width: 720px) {
-      .config-grid, .detail-grid { grid-template-columns: 1fr; }
-      .actions { align-items: stretch; flex-direction: column; gap: 14px; }
-      .primary, .secondary { width: 100%; }
-    }
-
-    @media (max-width: 560px) {
-      .tabs { border-bottom: 0; flex-wrap: wrap; row-gap: 12px; }
-      .tabs-list { border-bottom: 1.5px solid var(--border); }
-      .lang-selector { margin-left: auto; }
-    }
-
-    @media (max-width: 520px) {
-      .version { display: none; }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .primary, .secondary, .file-button, .tab, .theme-toggle, .dropzone, tbody tr {
-        transition-duration: .01ms !important;
-      }
-      .primary:hover { transform: none; }
-      .spinner { animation-duration: 2.5s; }
-    }
-  </style>
+  <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
   <header class="topbar">
-    <div class="container topbar-inner">
+    <div class="topbar-inner">
       <div class="brand">
         <span class="brand-mark" aria-hidden="true">AI</span>
         <div class="brand-copy">
@@ -724,350 +19,281 @@
         </div>
       </div>
       <div class="header-actions">
-        <span class="version">v1.3.0</span>
-        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark mode" title="Switch to dark mode" aria-pressed="false">
-          <span class="theme-icon" id="theme-icon" aria-hidden="true">☀️</span>
+        <span class="version" id="version-badge">v1.3.1</span>
+        <button class="icon-button" id="theme-toggle" type="button" aria-label="Switch to dark mode" title="Switch to dark mode" aria-pressed="false">
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4m11.4-11.4 1.4-1.4"/>
+          </svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+          </svg>
         </button>
       </div>
     </div>
   </header>
 
-  <main class="container page">
-    <div class="stack">
-      <section class="card" aria-labelledby="input-title">
-        <p class="card-label">Input</p>
-        <h2 id="input-title">Bring your requirement</h2>
-        <div class="tabs">
-          <div class="tabs-list" role="tablist" aria-label="Requirement input mode">
+  <main class="shell">
+    <!-- Compose (full) -->
+    <section class="panel" id="compose" aria-labelledby="compose-title">
+      <div class="panel-head">
+        <h2 id="compose-title">Compose</h2>
+        <p class="panel-hint">Requirement input and generation settings</p>
+      </div>
+
+      <div class="compose-grid">
+        <!-- Input source -->
+        <div class="field" aria-labelledby="input-source-label">
+          <span class="field-label" id="input-source-label">Requirement input</span>
+          <div class="tabs" role="tablist" aria-label="Requirement input mode">
             <button class="tab" id="text-tab" type="button" role="tab" aria-selected="true" aria-controls="text-panel">Paste Text</button>
             <button class="tab" id="file-tab" type="button" role="tab" aria-selected="false" aria-controls="file-panel">Upload File</button>
           </div>
-          <div class="lang-selector">
-            <span class="lang-icon" aria-hidden="true">🌐</span>
-            <select id="outputLanguage" aria-label="Output language for test cases">
+          <div id="text-panel" role="tabpanel" aria-labelledby="text-tab">
+            <div class="field">
+              <label for="requirement-text">Requirement text</label>
+              <textarea class="textarea" id="requirement-text" placeholder="As a user, I want to log in with valid credentials so that I can access my account."></textarea>
+            </div>
+          </div>
+          <div id="file-panel" role="tabpanel" aria-labelledby="file-tab" hidden>
+            <div class="dropzone" id="dropzone" role="group" aria-label="Requirement file drop area">
+              <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 15V3"/>
+                <path d="m7 8 5-5 5 5"/>
+                <path d="M3 15v3a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3v-3"/>
+              </svg>
+              <strong>Drop your file here or browse</strong>
+              <p class="drop-hint">.md · .docx · .pdf</p>
+              <button class="btn btn-secondary" id="file-button" type="button">Choose file</button>
+              <input class="visually-hidden-input" id="file-input" type="file" accept=".docx,.pdf,.md" aria-label="Requirement file">
+              <p class="file-name" id="file-name" aria-live="polite"></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Generation settings -->
+        <div class="settings-grid" aria-labelledby="settings-label">
+          <span class="field-label" id="settings-label">Generation settings</span>
+
+          <div class="field">
+            <label for="profile">Coverage profile</label>
+            <select class="select" id="profile">
+              <option value="minimal">Minimal</option>
+              <option value="comprehensive" selected>Comprehensive</option>
+              <option value="extra">Extra</option>
+            </select>
+            <p class="field-help" id="profile-help">Deeper scenario coverage including edge and negative cases.</p>
+          </div>
+
+          <div class="field">
+            <label for="outputLanguage">Output language</label>
+            <select class="select" id="outputLanguage">
               <option value="en" selected>English</option>
               <option value="id">Bahasa Indonesia</option>
             </select>
           </div>
-          <div class="lang-selector">
-            <label for="profile">Coverage</label>
-            <select id="profile" aria-label="Coverage profile">
-              <option value="balanced" selected>Balanced</option>
-              <option value="minimal">Minimal</option>
-              <option value="comprehensive">Comprehensive</option>
-              <option value="security">Security</option>
-            </select>
-          </div>
-        </div>
-        <div class="panel" id="text-panel" role="tabpanel" aria-labelledby="text-tab">
-          <div class="field">
-            <label for="requirement-text">Requirement text</label>
-            <textarea id="requirement-text" placeholder="As a user, I want to log in with valid credentials so that I can access my account."></textarea>
-          </div>
-        </div>
-        <div class="panel" id="file-panel" role="tabpanel" aria-labelledby="file-tab" hidden>
-          <div class="dropzone" id="dropzone" role="group" aria-label="Requirement file drop area">
-            <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M12 15V3"/>
-              <path d="m7 8 5-5 5 5"/>
-              <path d="M3 15v3a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3v-3"/>
-            </svg>
-            <strong>Drop your file here or browse</strong>
-            <p class="drop-hint">.md · .docx · .pdf</p>
-            <button class="file-button" id="file-button" type="button" aria-label="Choose file">Choose file</button>
-            <input id="file-input" type="file" accept=".docx,.pdf,.md" aria-label="Requirement file">
-            <p class="file-name" id="file-name" aria-live="polite"></p>
-          </div>
-        </div>
-        <div class="actions">
-          <!-- Empty spacer keeps the primary action right-aligned; .actions uses justify-content: space-between. -->
-          <span class="hint" aria-hidden="true"></span>
-          <button class="primary" id="generate-button" type="button" aria-label="Generate test cases">Generate Test Cases</button>
-        </div>
-        <div class="message error" id="error-message" role="alert" hidden></div>
-      </section>
 
-      <section class="card results" id="results" aria-labelledby="results-title" hidden>
-        <p class="card-label">Results</p>
-        <h2 id="results-title">Generated coverage</h2>
-        <p class="summary" id="summary" aria-live="polite"></p>
-        <details class="coverage-details" id="missing-details" hidden>
-          <summary id="missing-summary">Missing coverage</summary>
-          <ul id="missing-list"></ul>
-        </details>
-        <div class="table-wrap">
-          <table>
-            <caption>Select a row to view full steps and expected result.</caption>
-            <thead>
-              <tr>
-                <th scope="col">ID</th>
-                <th scope="col">Title</th>
-                <th scope="col">Category</th>
-                <th scope="col">Priority</th>
-                <th scope="col">Technique</th>
-                <th scope="col">Requirement</th>
-                <th scope="col">Scenario</th>
-              </tr>
-            </thead>
-            <tbody id="results-body"></tbody>
-          </table>
+          <div class="runtime-box" aria-labelledby="runtime-label">
+            <span class="detail-label" id="runtime-label">Runtime context (read-only)</span>
+            <span class="runtime-value"><span id="runtime-provider">openai</span> · <span id="runtime-model">mimo-v2.5</span></span>
+          </div>
+
+          <div class="generating" id="generating-block" hidden>
+            <span class="spinner" aria-hidden="true"></span>
+            <span class="generating-label">Generating test cases…</span>
+            <span class="generating-meta tnum" id="generating-timer">0:00 elapsed</span>
+            <p class="generating-hint">Generation can take a minute or two depending on requirement size.</p>
+          </div>
+
+          <button class="btn btn-primary btn-block" id="generate-button" type="button">Generate Test Cases</button>
+
+          <div class="message error" id="compose-error" role="alert" hidden></div>
         </div>
-        <div class="detail" id="detail" aria-live="polite" hidden></div>
-        <div class="actions">
-          <span class="hint">CSV includes requirement and scenario traceability.</span>
-          <button class="secondary" id="download-button" type="button" aria-label="Download CSV">Download CSV</button>
+      </div>
+    </section>
+
+    <!-- Compose summary (post-run) -->
+    <div class="compose-summary" id="compose-summary" hidden>
+      <div class="summary-facts">
+        <div class="fact">
+          <span class="detail-label">Input</span>
+          <span class="fact-value" id="summary-source">—</span>
         </div>
-      </section>
+        <div class="fact">
+          <span class="detail-label">Coverage</span>
+          <span class="fact-value" id="summary-profile">—</span>
+        </div>
+        <div class="fact">
+          <span class="detail-label">Language</span>
+          <span class="fact-value" id="summary-language">—</span>
+        </div>
+      </div>
+      <button class="btn btn-secondary" id="edit-input-button" type="button">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 20h9"/>
+          <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+        </svg>
+        Edit Input
+      </button>
     </div>
+
+    <!-- Workbench -->
+    <section class="stack" id="workbench" aria-labelledby="workbench-title" hidden>
+      <h2 class="visually-hidden" id="workbench-title">Generation results workbench</h2>
+
+      <!-- Status / metrics -->
+      <div class="panel">
+        <div class="status-row">
+          <span class="chip" id="status-chip"><span>—</span></span>
+          <span class="shown-count" id="shown-count" aria-live="polite">Showing 0 of 0 cases</span>
+        </div>
+        <div class="metrics" id="metrics"></div>
+        <div class="coverage-block">
+          <div class="coverage-head">
+            <span class="detail-label">Planned coverage</span>
+            <span class="coverage-pct tnum" id="coverage-pct">0.00%</span>
+          </div>
+          <div class="coverage-bar" aria-hidden="true">
+            <div class="coverage-fill" id="coverage-fill" data-level="none" style="--pct:0"></div>
+          </div>
+          <p class="secondary-metrics" id="secondary-metrics"></p>
+        </div>
+
+        <details class="evidence" id="evidence-details">
+          <summary>Evidence &amp; diagnostics</summary>
+          <div class="evidence-grid">
+            <div class="evidence-col">
+              <span class="detail-label">Missing scenarios</span>
+              <div id="evidence-missing"></div>
+            </div>
+            <div class="evidence-col">
+              <span class="detail-label">Unexpected scenarios</span>
+              <div id="evidence-unexpected"></div>
+            </div>
+            <div class="evidence-col">
+              <span class="detail-label">Duplicate scenarios</span>
+              <div id="evidence-duplicates"></div>
+            </div>
+            <div class="evidence-col">
+              <span class="detail-label">Excluded requirements</span>
+              <p class="empty-note tnum" id="evidence-excluded">0</p>
+            </div>
+          </div>
+          <details class="evidence-col" id="diagnostics-details" style="margin-top:12px;">
+            <summary style="color:var(--text-secondary);font-size:12px;font-weight:650;min-height:28px;display:flex;align-items:center;">Diagnostics</summary>
+            <pre id="diagnostics-body"></pre>
+          </details>
+        </details>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="panel">
+        <div class="toolbar">
+          <div class="field search-field">
+            <label for="filter-search">Search</label>
+            <input class="input" id="filter-search" type="search" placeholder="ID, title, requirement, scenario, technique" autocomplete="off">
+          </div>
+          <div class="field filter-field">
+            <label for="filter-category">Category</label>
+            <select class="select" id="filter-category"><option value="">All categories</option></select>
+          </div>
+          <div class="field filter-field">
+            <label for="filter-priority">Priority</label>
+            <select class="select" id="filter-priority"><option value="">All priorities</option></select>
+          </div>
+          <div class="field filter-field">
+            <label for="filter-technique">Technique</label>
+            <select class="select" id="filter-technique"><option value="">All techniques</option></select>
+          </div>
+          <div class="toolbar-end">
+            <div class="message success" id="csv-message" hidden></div>
+            <button class="btn btn-secondary" id="download-button" type="button">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 3v12"/>
+                <path d="m7 10 5 5 5-5"/>
+                <path d="M5 21h14"/>
+              </svg>
+              Download CSV
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table + inspector -->
+      <div class="workbench-grid">
+        <div class="table-panel">
+          <div class="table-wrap">
+            <table>
+              <caption class="visually-hidden">Generated test cases. Use arrow keys to move between rows and Enter to inspect a case.</caption>
+              <thead>
+                <tr>
+                  <th scope="col" aria-sort="none">
+                    <button class="th-sort" type="button" data-sort="id">ID
+                      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 2v8M3 7l3 3 3-3"/></svg>
+                    </button>
+                  </th>
+                  <th scope="col" aria-sort="none">
+                    <button class="th-sort" type="button" data-sort="title">Title
+                      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 2v8M3 7l3 3 3-3"/></svg>
+                    </button>
+                  </th>
+                  <th scope="col" aria-sort="none">
+                    <button class="th-sort" type="button" data-sort="category">Category
+                      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 2v8M3 7l3 3 3-3"/></svg>
+                    </button>
+                  </th>
+                  <th scope="col" aria-sort="none">
+                    <button class="th-sort" type="button" data-sort="priority">Priority
+                      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 2v8M3 7l3 3 3-3"/></svg>
+                    </button>
+                  </th>
+                  <th scope="col" aria-sort="none">
+                    <button class="th-sort" type="button" data-sort="technique">Technique
+                      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 2v8M3 7l3 3 3-3"/></svg>
+                    </button>
+                  </th>
+                  <th scope="col" aria-sort="none">
+                    <button class="th-sort" type="button" data-sort="trace">Trace
+                      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 2v8M3 7l3 3 3-3"/></svg>
+                    </button>
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="results-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <aside class="inspector" id="inspector" aria-labelledby="inspector-title">
+          <div class="inspector-head">
+            <h3 id="inspector-title">Test case</h3>
+            <button class="icon-button inspector-close" id="inspector-close" type="button" aria-label="Close inspector">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            </button>
+          </div>
+          <div class="inspector-body" id="inspector-body"></div>
+        </aside>
+        <button class="inspector-scrim" id="inspector-scrim" type="button" aria-label="Close inspector" tabindex="-1"></button>
+      </div>
+    </section>
   </main>
 
-  <p class="footer-note container">AI-assisted generation. Always review test coverage before execution.</p>
+  <p class="footer-note">AI-assisted generation. Always review test coverage before execution.</p>
 
+  <script src="/js/app.js"></script>
   <script>
+    // Profile contextual help (kept adjacent to the control it describes).
     (() => {
-      "use strict";
-
-      const state = { mode: "text", testCases: [], selectedIndex: -1 };
-      const $ = (selector) => document.querySelector(selector);
-      const themePreferenceKey = "theme-preference";
-      const themeToggle = $("#theme-toggle");
-      const themeIcon = $("#theme-icon");
-      let serverProvider = "openai"; // fallback until /api/config answers
-      let serverModel = "mimo-v2.5"; // fallback until /api/config answers
-      const textInput = $("#requirement-text");
-      const fileInput = $("#file-input");
-      const fileName = $("#file-name");
-      const dropzone = $("#dropzone");
-      const errorMessage = $("#error-message");
-      const results = $("#results");
-      const resultsBody = $("#results-body");
-      const detail = $("#detail");
-      const summary = $("#summary");
-      const generateButton = $("#generate-button");
-      const downloadButton = $("#download-button");
-      const outputLanguageSelect = $("#outputLanguage");
-      const profileSelect = $("#profile");
-      const missingDetails = $("#missing-details");
-      const missingSummary = $("#missing-summary");
-      const missingList = $("#missing-list");
-
-      function systemTheme() {
-        return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-      }
-
-      function applyTheme(theme, persist = false) {
-        const nextTheme = theme === "dark" ? "light" : "dark";
-        document.documentElement.dataset.theme = theme;
-        themeIcon.textContent = theme === "dark" ? "🌙" : "☀️";
-        themeToggle.title = `Switch to ${nextTheme} mode`;
-        themeToggle.setAttribute("aria-label", `Switch to ${nextTheme} mode`);
-        themeToggle.setAttribute("aria-pressed", String(theme === "dark"));
-        if (persist) localStorage.setItem(themePreferenceKey, theme);
-      }
-
-      const savedTheme = localStorage.getItem(themePreferenceKey);
-      applyTheme(savedTheme === "dark" || savedTheme === "light" ? savedTheme : systemTheme());
-      themeToggle.addEventListener("click", () => {
-        applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark", true);
+      const help = {
+        minimal: "Fewer scenarios focused on core happy-path coverage.",
+        comprehensive: "Deeper scenario coverage including edge and negative cases.",
+        extra: "Adds exploratory combination coverage beyond Comprehensive.",
+      };
+      const profile = document.getElementById("profile");
+      const helpEl = document.getElementById("profile-help");
+      profile.addEventListener("change", () => {
+        helpEl.textContent = help[profile.value] || help.comprehensive;
       });
-
-      function escapeHtml(value) {
-        return String(value ?? "").replace(/[&<>"']/g, (character) => ({
-          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
-        }[character]));
-      }
-
-      function showError(message) {
-        errorMessage.textContent = message;
-        errorMessage.hidden = !message;
-      }
-
-      function setMode(mode) {
-        state.mode = mode;
-        const textMode = mode === "text";
-        $("#text-tab").setAttribute("aria-selected", String(textMode));
-        $("#file-tab").setAttribute("aria-selected", String(!textMode));
-        $("#text-panel").hidden = !textMode;
-        $("#file-panel").hidden = textMode;
-      }
-
-      function setFile(file) {
-        if (!file) return;
-        const allowed = [".docx", ".pdf", ".md"];
-        const suffix = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
-        if (!allowed.includes(suffix)) {
-          showError("Choose a .docx, .pdf, or .md file.");
-          fileInput.value = "";
-          fileName.textContent = "";
-          return;
-        }
-        fileInput.files = (() => {
-          const transfer = new DataTransfer();
-          transfer.items.add(file);
-          return transfer.files;
-        })();
-        fileName.textContent = file.name;
-        showError("");
-      }
-
-      function renderResults(data) {
-        state.testCases = Array.isArray(data.test_cases) ? data.test_cases : [];
-        state.selectedIndex = -1;
-        const status = String(data.status || "failed").toLowerCase();
-        const statusLabel = status === "complete" ? "Generation complete" : status === "partial" ? "Partial coverage" : "Generation failed";
-        summary.innerHTML = `<strong>${escapeHtml(statusLabel)}</strong> · ${data.requirement_count} Requirements · ${data.testable_requirement_count} Testable · ${data.scenario_count} Planned Scenarios · ${data.generated_count} Test Cases · ${Number(data.coverage_percentage || 0).toFixed(2)}% Coverage · ${data.batch_count} Initial Batches · ${data.backfill_count} Backfill Calls`;
-        summary.dataset.status = status;
-        const missing = Array.isArray(data.missing_scenarios) ? data.missing_scenarios : [];
-        missingList.replaceChildren();
-        missingDetails.hidden = missing.length === 0;
-        missingSummary.textContent = `Missing coverage (${missing.length})`;
-        missing.forEach((scenarioId) => {
-          const item = document.createElement("li");
-          item.textContent = scenarioId;
-          missingList.append(item);
-        });
-        resultsBody.replaceChildren();
-        detail.hidden = true;
-        if (!state.testCases.length) {
-          resultsBody.innerHTML = '<tr><td class="empty" colspan="7">No test cases were returned.</td></tr>';
-        } else {
-          state.testCases.forEach((testCase, index) => {
-            const row = document.createElement("tr");
-            row.tabIndex = 0;
-            row.setAttribute("aria-selected", "false");
-            row.innerHTML = `
-              <td class="id">${escapeHtml(testCase.id)}</td>
-              <td class="title-cell">${escapeHtml(testCase.title)}</td>
-              <td><span class="badge badge-${escapeHtml(testCase.category)}">${escapeHtml(testCase.category)}</span></td>
-              <td class="priority-${escapeHtml(testCase.priority)}">${escapeHtml(testCase.priority)}</td>
-              <td>${escapeHtml(testCase.technique)}</td>
-              <td class="id">${escapeHtml(testCase.requirement_ref)}</td>
-              <td class="id">${escapeHtml(testCase.scenario_ref)}</td>`;
-            row.addEventListener("click", () => selectRow(index));
-            row.addEventListener("keydown", (event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                selectRow(index);
-              }
-            });
-            resultsBody.append(row);
-          });
-        }
-        results.hidden = false;
-        results.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-
-      function selectRow(index) {
-        state.selectedIndex = index;
-        [...resultsBody.querySelectorAll("tr")].forEach((row, rowIndex) => {
-          row.setAttribute("aria-selected", String(rowIndex === index));
-        });
-        const testCase = state.testCases[index];
-        if (!testCase) return;
-        const steps = (testCase.steps || []).map((step) => `<li>${escapeHtml(step)}</li>`).join("");
-        detail.innerHTML = `
-          <h3>${escapeHtml(testCase.title)}</h3>
-          <div class="detail-grid">
-            <div><div class="detail-label">Steps</div><ul>${steps}</ul></div>
-            <div><div class="detail-label">Expected result</div><p>${escapeHtml(testCase.expected_result)}</p></div>
-          </div>`;
-        detail.hidden = false;
-      }
-
-      async function readError(response) {
-        try {
-          const body = await response.json();
-          return body.detail || body.error || `Request failed (${response.status})`;
-        } catch (_) {
-          return `Request failed (${response.status})`;
-        }
-      }
-
-      function loadConfig() {
-        fetch("/api/config")
-          .then((response) => response.json())
-          .then((config) => {
-            serverProvider = config.provider || serverProvider;
-            serverModel = config.model || serverModel;
-          })
-          .catch(() => {}); // silent fallback: keep the defaults above
-      }
-
-      async function generate() {
-        showError("");
-        generateButton.disabled = true;
-        generateButton.innerHTML = '<span class="spinner" aria-hidden="true"></span>Generating…';
-        try {
-          let response;
-          const outputLanguage = outputLanguageSelect.value;
-          if (state.mode === "text") {
-            if (!textInput.value.trim()) throw new Error("Enter requirement text first.");
-            response = await fetch("/api/generate/text", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ text: textInput.value, provider: serverProvider, model: serverModel, language: "manual", output_language: outputLanguage, profile: profileSelect.value })
-            });
-          } else {
-            if (!fileInput.files[0]) throw new Error("Choose a requirement file first.");
-            const form = new FormData();
-            form.append("file", fileInput.files[0]);
-            form.append("provider", serverProvider);
-            form.append("model", serverModel);
-            form.append("language", "manual");
-            form.append("output_language", outputLanguage);
-            form.append("profile", profileSelect.value);
-            response = await fetch("/api/generate/file", { method: "POST", body: form });
-          }
-          if (!response.ok) throw new Error(await readError(response));
-          renderResults(await response.json());
-        } catch (error) {
-          showError(error.message || "Generation failed.");
-        } finally {
-          generateButton.disabled = false;
-          generateButton.textContent = "Generate Test Cases";
-        }
-      }
-
-      async function downloadCsv() {
-        if (!state.testCases.length) return;
-        downloadButton.disabled = true;
-        try {
-          const response = await fetch("/api/export/csv", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ test_cases: state.testCases, filename: "test_cases" })
-          });
-          if (!response.ok) throw new Error(await readError(response));
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement("a");
-          link.href = url;
-          link.download = `test_cases_${new Date().toISOString().slice(0, 10).replaceAll("-", "")}.csv`;
-          link.click();
-          URL.revokeObjectURL(url);
-        } catch (error) {
-          showError(`CSV download failed: ${error.message}`);
-        } finally {
-          downloadButton.disabled = false;
-        }
-      }
-
-      $("#text-tab").addEventListener("click", () => setMode("text"));
-      $("#file-tab").addEventListener("click", () => setMode("file"));
-      $("#file-button").addEventListener("click", () => fileInput.click());
-      fileInput.addEventListener("change", () => setFile(fileInput.files[0]));
-      ["dragenter", "dragover"].forEach((eventName) => dropzone.addEventListener(eventName, (event) => {
-        event.preventDefault();
-        dropzone.classList.add("is-over");
-      }));
-      ["dragleave", "drop"].forEach((eventName) => dropzone.addEventListener(eventName, (event) => {
-        event.preventDefault();
-        dropzone.classList.remove("is-over");
-      }));
-      dropzone.addEventListener("drop", (event) => setFile(event.dataTransfer.files[0]));
-      generateButton.addEventListener("click", generate);
-      downloadButton.addEventListener("click", downloadCsv);
-      loadConfig();
     })();
   </script>
 </body>

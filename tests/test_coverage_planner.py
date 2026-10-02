@@ -102,7 +102,10 @@ def test_maximum_255_gets_bva_values() -> None:
 
 
 def test_upload_maximum_10mb_gets_bva_values() -> None:
-    plan = plan_coverage([requirement("MU-020", "Max 10MB.", title="Upload")])
+    plan = plan_coverage(
+        [requirement("MU-020", "Max 10MB.", title="Upload")],
+        profile="minimal",
+    )
 
     intents = [scenario.intent for scenario in plan.requirements[0].scenarios]
     assert len(intents) == 3
@@ -113,7 +116,8 @@ def test_upload_maximum_10mb_gets_bva_values() -> None:
 
 def test_functional_search_plans_only_explicit_behavior_without_invented_semantics() -> None:
     plan = plan_coverage(
-        [requirement("MU-003", "Search Content filters displayed rows.", title="Search")]
+        [requirement("MU-003", "Search Content filters displayed rows.", title="Search")],
+        profile="minimal",
     )
 
     intents = " ".join(scenario.intent for scenario in plan.requirements[0].scenarios).lower()
@@ -213,8 +217,8 @@ def test_planner_is_deterministic_and_preserves_requirement_ids() -> None:
         requirement("RATE-006", "Search Content filters displayed rows.", title="Search"),
     ]
 
-    first = plan_coverage(requirements)
-    second = plan_coverage(requirements)
+    first = plan_coverage(requirements, profile="minimal")
+    second = plan_coverage(requirements, profile="minimal")
 
     assert first == second
     assert [scenario.id for item in first.requirements for scenario in item.scenarios] == [
@@ -343,7 +347,8 @@ def test_atomic_behavior_repeated_across_fields_is_deduplicated() -> None:
                 details=["Search Content"],
                 acceptance_criteria=["Search Content filters displayed rows."],
             )
-        ]
+        ],
+        profile="minimal",
     )
 
     scenarios = plan.requirements[0].scenarios
@@ -360,7 +365,8 @@ def test_atomic_similar_controls_remain_distinct() -> None:
                 "The page provides:",
                 details=["Search Content", "Advanced Search"],
             )
-        ]
+        ],
+        profile="minimal",
     )
 
     intents = " ".join(scenario.intent for scenario in plan.requirements[0].scenarios)
@@ -385,7 +391,8 @@ def test_atomic_planning_is_deterministic() -> None:
 
 def test_search_control_presence_does_not_infer_search_results() -> None:
     plan = plan_coverage(
-        [requirement("ATOMIC-SEARCH-PRESENCE", "The page provides:", details=["Search Content"])]
+        [requirement("ATOMIC-SEARCH-PRESENCE", "The page provides:", details=["Search Content"])],
+        profile="minimal",
     )
 
     scenarios = plan.requirements[0].scenarios
@@ -418,7 +425,8 @@ def test_functional_search_uses_only_explicit_search_facts() -> None:
 
 def test_billing_period_control_presence_stays_presence_only() -> None:
     plan = plan_coverage(
-        [requirement("ATOMIC-BILLING-PRESENCE", "The page provides:", details=["Billing Period filter"])]
+        [requirement("ATOMIC-BILLING-PRESENCE", "The page provides:", details=["Billing Period filter"])],
+        profile="minimal",
     )
 
     scenarios = plan.requirements[0].scenarios
@@ -443,7 +451,8 @@ def test_billing_period_functional_acceptance_is_not_duplicated() -> None:
                     "the displayed result follows the applied criterion",
                 ],
             )
-        ]
+        ],
+        profile="minimal",
     )
 
     scenarios = plan.requirements[0].scenarios
@@ -483,7 +492,8 @@ def test_column_settings_presence_and_functional_behavior_are_distinct() -> None
 
 def test_explicit_no_result_evidence_can_create_negative_coverage() -> None:
     plan = plan_coverage(
-        [requirement("ATOMIC-EMPTY-RESULT", "Search displays an empty result state when no matching rows exist.")]
+        [requirement("ATOMIC-EMPTY-RESULT", "Search displays an empty result state when no matching rows exist.")],
+        profile="minimal",
     )
 
     scenarios = plan.requirements[0].scenarios

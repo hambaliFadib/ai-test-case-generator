@@ -1,0 +1,4241 @@
+{
+  "status": "partial",
+  "profile": "balanced",
+  "requirement_count": 20,
+  "testable_requirement_count": 18,
+  "excluded_requirement_count": 2,
+  "scenario_count": 205,
+  "generated_count": 200,
+  "coverage_percentage": 97.07317073170731,
+  "batch_count": 4,
+  "backfill_count": 1,
+  "missing_scenarios": [
+    "SCN-020-S10",
+    "SCN-001-S11",
+    "SCN-002-S11",
+    "SCN-003-S11",
+    "SCN-004-S11",
+    "SCN-005-S11"
+  ],
+  "test_cases": [
+    {
+      "id": "TC-20261001-0001",
+      "title": "Verify requirement scenario 001 behavior for coverage review",
+      "category": "positive",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 1",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 1 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-001",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-001-S01"
+    },
+    {
+      "id": "TC-20261001-0002",
+      "title": "Verify requirement scenario 002 behavior for coverage review",
+      "category": "negative",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 2",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 2 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-002",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-002-S01"
+    },
+    {
+      "id": "TC-20261001-0003",
+      "title": "Verify requirement scenario 003 behavior for coverage review",
+      "category": "boundary",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 3",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 3 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-003",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-003-S01"
+    },
+    {
+      "id": "TC-20261001-0004",
+      "title": "Verify requirement scenario 004 behavior for coverage review",
+      "category": "edge",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 4",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 4 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-004",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-004-S01"
+    },
+    {
+      "id": "TC-20261001-0005",
+      "title": "Verify requirement scenario 005 behavior for coverage review",
+      "category": "security",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 5",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 5 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-005",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-005-S01"
+    },
+    {
+      "id": "TC-20261001-0006",
+      "title": "Verify requirement scenario 006 behavior for coverage review",
+      "category": "positive",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 6",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 6 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-006",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-006-S01"
+    },
+    {
+      "id": "TC-20261001-0007",
+      "title": "Verify requirement scenario 007 behavior for coverage review",
+      "category": "negative",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 7",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 7 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-007",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-007-S01"
+    },
+    {
+      "id": "TC-20261001-0008",
+      "title": "Verify requirement scenario 008 behavior for coverage review",
+      "category": "boundary",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 8",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 8 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-008",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-008-S01"
+    },
+    {
+      "id": "TC-20261001-0009",
+      "title": "Verify requirement scenario 009 behavior for coverage review",
+      "category": "edge",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 9",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 9 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-009",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-009-S01"
+    },
+    {
+      "id": "TC-20261001-0010",
+      "title": "Verify requirement scenario 010 behavior for coverage review",
+      "category": "security",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 10",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 10 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-010",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-010-S01"
+    },
+    {
+      "id": "TC-20261001-0011",
+      "title": "Verify requirement scenario 011 behavior for coverage review",
+      "category": "positive",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 11",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 11 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-011",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-011-S01"
+    },
+    {
+      "id": "TC-20261001-0012",
+      "title": "Verify requirement scenario 012 behavior for coverage review",
+      "category": "negative",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 12",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 12 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-012",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-012-S01"
+    },
+    {
+      "id": "TC-20261001-0013",
+      "title": "Verify requirement scenario 013 behavior for coverage review",
+      "category": "boundary",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 13",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 13 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-013",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-013-S01"
+    },
+    {
+      "id": "TC-20261001-0014",
+      "title": "Verify requirement scenario 014 behavior for coverage review",
+      "category": "edge",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 14",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 14 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-014",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-014-S01"
+    },
+    {
+      "id": "TC-20261001-0015",
+      "title": "Verify requirement scenario 015 behavior for coverage review",
+      "category": "security",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 15",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 15 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-015",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-015-S01"
+    },
+    {
+      "id": "TC-20261001-0016",
+      "title": "Verify requirement scenario 016 behavior for coverage review",
+      "category": "positive",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 16",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 16 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-016",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-016-S01"
+    },
+    {
+      "id": "TC-20261001-0017",
+      "title": "Verify requirement scenario 017 behavior for coverage review",
+      "category": "negative",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 17",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 17 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-017",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-017-S01"
+    },
+    {
+      "id": "TC-20261001-0018",
+      "title": "Verify requirement scenario 018 behavior for coverage review",
+      "category": "boundary",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 18",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 18 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-018",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-018-S01"
+    },
+    {
+      "id": "TC-20261001-0019",
+      "title": "Verify requirement scenario 019 behavior for coverage review",
+      "category": "edge",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 19",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 19 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-019",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-019-S01"
+    },
+    {
+      "id": "TC-20261001-0020",
+      "title": "Verify requirement scenario 020 behavior for coverage review",
+      "category": "security",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 20",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 20 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-020",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-020-S01"
+    },
+    {
+      "id": "TC-20261001-0021",
+      "title": "Verify requirement scenario 021 behavior for coverage review",
+      "category": "positive",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 21",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 21 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-001",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-001-S02"
+    },
+    {
+      "id": "TC-20261001-0022",
+      "title": "Verify requirement scenario 022 behavior for coverage review",
+      "category": "negative",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 22",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 22 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-002",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-002-S02"
+    },
+    {
+      "id": "TC-20261001-0023",
+      "title": "Verify requirement scenario 023 behavior for coverage review",
+      "category": "boundary",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 23",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 23 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-003",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-003-S02"
+    },
+    {
+      "id": "TC-20261001-0024",
+      "title": "Verify requirement scenario 024 behavior for coverage review",
+      "category": "edge",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 24",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 24 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-004",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-004-S02"
+    },
+    {
+      "id": "TC-20261001-0025",
+      "title": "Verify requirement scenario 025 behavior for coverage review",
+      "category": "security",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 25",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 25 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-005",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-005-S02"
+    },
+    {
+      "id": "TC-20261001-0026",
+      "title": "Verify requirement scenario 026 behavior for coverage review",
+      "category": "positive",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 26",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 26 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-006",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-006-S02"
+    },
+    {
+      "id": "TC-20261001-0027",
+      "title": "Verify requirement scenario 027 behavior for coverage review",
+      "category": "negative",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 27",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 27 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-007",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-007-S02"
+    },
+    {
+      "id": "TC-20261001-0028",
+      "title": "Verify requirement scenario 028 behavior for coverage review",
+      "category": "boundary",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 28",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 28 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-008",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-008-S02"
+    },
+    {
+      "id": "TC-20261001-0029",
+      "title": "Verify requirement scenario 029 behavior for coverage review",
+      "category": "edge",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 29",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 29 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-009",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-009-S02"
+    },
+    {
+      "id": "TC-20261001-0030",
+      "title": "Verify requirement scenario 030 behavior for coverage review",
+      "category": "security",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 30",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 30 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-010",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-010-S02"
+    },
+    {
+      "id": "TC-20261001-0031",
+      "title": "Verify requirement scenario 031 behavior for coverage review",
+      "category": "positive",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 31",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 31 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-011",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-011-S02"
+    },
+    {
+      "id": "TC-20261001-0032",
+      "title": "Verify requirement scenario 032 behavior for coverage review",
+      "category": "negative",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 32",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 32 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-012",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-012-S02"
+    },
+    {
+      "id": "TC-20261001-0033",
+      "title": "Verify requirement scenario 033 behavior for coverage review",
+      "category": "boundary",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 33",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 33 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-013",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-013-S02"
+    },
+    {
+      "id": "TC-20261001-0034",
+      "title": "Verify requirement scenario 034 behavior for coverage review",
+      "category": "edge",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 34",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 34 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-014",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-014-S02"
+    },
+    {
+      "id": "TC-20261001-0035",
+      "title": "Verify requirement scenario 035 behavior for coverage review",
+      "category": "security",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 35",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 35 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-015",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-015-S02"
+    },
+    {
+      "id": "TC-20261001-0036",
+      "title": "Verify requirement scenario 036 behavior for coverage review",
+      "category": "positive",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 36",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 36 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-016",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-016-S02"
+    },
+    {
+      "id": "TC-20261001-0037",
+      "title": "Verify requirement scenario 037 behavior for coverage review",
+      "category": "negative",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 37",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 37 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-017",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-017-S02"
+    },
+    {
+      "id": "TC-20261001-0038",
+      "title": "Verify requirement scenario 038 behavior for coverage review",
+      "category": "boundary",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 38",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 38 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-018",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-018-S02"
+    },
+    {
+      "id": "TC-20261001-0039",
+      "title": "Verify requirement scenario 039 behavior for coverage review",
+      "category": "edge",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 39",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 39 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-019",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-019-S02"
+    },
+    {
+      "id": "TC-20261001-0040",
+      "title": "Verify requirement scenario 040 behavior for coverage review",
+      "category": "security",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 40",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 40 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-020",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-020-S02"
+    },
+    {
+      "id": "TC-20261001-0041",
+      "title": "Verify requirement scenario 041 behavior for coverage review",
+      "category": "positive",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 41",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 41 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-001",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-001-S03"
+    },
+    {
+      "id": "TC-20261001-0042",
+      "title": "Verify requirement scenario 042 behavior for coverage review",
+      "category": "negative",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 42",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 42 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-002",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-002-S03"
+    },
+    {
+      "id": "TC-20261001-0043",
+      "title": "Verify requirement scenario 043 behavior for coverage review",
+      "category": "boundary",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 43",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 43 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-003",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-003-S03"
+    },
+    {
+      "id": "TC-20261001-0044",
+      "title": "Verify requirement scenario 044 behavior for coverage review",
+      "category": "edge",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 44",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 44 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-004",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-004-S03"
+    },
+    {
+      "id": "TC-20261001-0045",
+      "title": "Verify requirement scenario 045 behavior for coverage review",
+      "category": "security",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 45",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 45 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-005",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-005-S03"
+    },
+    {
+      "id": "TC-20261001-0046",
+      "title": "Verify requirement scenario 046 behavior for coverage review",
+      "category": "positive",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 46",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 46 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-006",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-006-S03"
+    },
+    {
+      "id": "TC-20261001-0047",
+      "title": "Verify requirement scenario 047 behavior for coverage review",
+      "category": "negative",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 47",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 47 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-007",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-007-S03"
+    },
+    {
+      "id": "TC-20261001-0048",
+      "title": "Verify requirement scenario 048 behavior for coverage review",
+      "category": "boundary",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 48",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 48 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-008",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-008-S03"
+    },
+    {
+      "id": "TC-20261001-0049",
+      "title": "Verify requirement scenario 049 behavior for coverage review",
+      "category": "edge",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 49",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 49 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-009",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-009-S03"
+    },
+    {
+      "id": "TC-20261001-0050",
+      "title": "Verify requirement scenario 050 behavior for coverage review",
+      "category": "security",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 50",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 50 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-010",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-010-S03"
+    },
+    {
+      "id": "TC-20261001-0051",
+      "title": "Verify requirement scenario 051 behavior for coverage review",
+      "category": "positive",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 51",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 51 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-011",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-011-S03"
+    },
+    {
+      "id": "TC-20261001-0052",
+      "title": "Verify requirement scenario 052 behavior for coverage review",
+      "category": "negative",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 52",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 52 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-012",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-012-S03"
+    },
+    {
+      "id": "TC-20261001-0053",
+      "title": "Verify requirement scenario 053 behavior for coverage review",
+      "category": "boundary",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 53",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 53 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-013",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-013-S03"
+    },
+    {
+      "id": "TC-20261001-0054",
+      "title": "Verify requirement scenario 054 behavior for coverage review",
+      "category": "edge",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 54",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 54 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-014",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-014-S03"
+    },
+    {
+      "id": "TC-20261001-0055",
+      "title": "Verify requirement scenario 055 behavior for coverage review",
+      "category": "security",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 55",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 55 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-015",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-015-S03"
+    },
+    {
+      "id": "TC-20261001-0056",
+      "title": "Verify requirement scenario 056 behavior for coverage review",
+      "category": "positive",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 56",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 56 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-016",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-016-S03"
+    },
+    {
+      "id": "TC-20261001-0057",
+      "title": "Verify requirement scenario 057 behavior for coverage review",
+      "category": "negative",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 57",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 57 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-017",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-017-S03"
+    },
+    {
+      "id": "TC-20261001-0058",
+      "title": "Verify requirement scenario 058 behavior for coverage review",
+      "category": "boundary",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 58",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 58 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-018",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-018-S03"
+    },
+    {
+      "id": "TC-20261001-0059",
+      "title": "Verify requirement scenario 059 behavior for coverage review",
+      "category": "edge",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 59",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 59 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-019",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-019-S03"
+    },
+    {
+      "id": "TC-20261001-0060",
+      "title": "Verify requirement scenario 060 behavior for coverage review",
+      "category": "security",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 60",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 60 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-020",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-020-S03"
+    },
+    {
+      "id": "TC-20261001-0061",
+      "title": "Verify requirement scenario 061 behavior for coverage review",
+      "category": "positive",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 61",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 61 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-001",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-001-S04"
+    },
+    {
+      "id": "TC-20261001-0062",
+      "title": "Verify requirement scenario 062 behavior for coverage review",
+      "category": "negative",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 62",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 62 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-002",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-002-S04"
+    },
+    {
+      "id": "TC-20261001-0063",
+      "title": "Verify requirement scenario 063 behavior for coverage review",
+      "category": "boundary",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 63",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 63 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-003",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-003-S04"
+    },
+    {
+      "id": "TC-20261001-0064",
+      "title": "Verify requirement scenario 064 behavior for coverage review",
+      "category": "edge",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 64",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 64 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-004",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-004-S04"
+    },
+    {
+      "id": "TC-20261001-0065",
+      "title": "Verify requirement scenario 065 behavior for coverage review",
+      "category": "security",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 65",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 65 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-005",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-005-S04"
+    },
+    {
+      "id": "TC-20261001-0066",
+      "title": "Verify requirement scenario 066 behavior for coverage review",
+      "category": "positive",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 66",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 66 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-006",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-006-S04"
+    },
+    {
+      "id": "TC-20261001-0067",
+      "title": "Verify requirement scenario 067 behavior for coverage review",
+      "category": "negative",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 67",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 67 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-007",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-007-S04"
+    },
+    {
+      "id": "TC-20261001-0068",
+      "title": "Verify requirement scenario 068 behavior for coverage review",
+      "category": "boundary",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 68",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 68 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-008",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-008-S04"
+    },
+    {
+      "id": "TC-20261001-0069",
+      "title": "Verify requirement scenario 069 behavior for coverage review",
+      "category": "edge",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 69",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 69 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-009",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-009-S04"
+    },
+    {
+      "id": "TC-20261001-0070",
+      "title": "Verify requirement scenario 070 behavior for coverage review",
+      "category": "security",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 70",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 70 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-010",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-010-S04"
+    },
+    {
+      "id": "TC-20261001-0071",
+      "title": "Verify requirement scenario 071 behavior for coverage review",
+      "category": "positive",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 71",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 71 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-011",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-011-S04"
+    },
+    {
+      "id": "TC-20261001-0072",
+      "title": "Verify requirement scenario 072 behavior for coverage review",
+      "category": "negative",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 72",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 72 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-012",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-012-S04"
+    },
+    {
+      "id": "TC-20261001-0073",
+      "title": "Verify requirement scenario 073 behavior for coverage review",
+      "category": "boundary",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 73",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 73 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-013",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-013-S04"
+    },
+    {
+      "id": "TC-20261001-0074",
+      "title": "Verify requirement scenario 074 behavior for coverage review",
+      "category": "edge",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 74",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 74 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-014",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-014-S04"
+    },
+    {
+      "id": "TC-20261001-0075",
+      "title": "Verify requirement scenario 075 behavior for coverage review",
+      "category": "security",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 75",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 75 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-015",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-015-S04"
+    },
+    {
+      "id": "TC-20261001-0076",
+      "title": "Verify requirement scenario 076 behavior for coverage review",
+      "category": "positive",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 76",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 76 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-016",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-016-S04"
+    },
+    {
+      "id": "TC-20261001-0077",
+      "title": "Verify requirement scenario 077 behavior for coverage review",
+      "category": "negative",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 77",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 77 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-017",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-017-S04"
+    },
+    {
+      "id": "TC-20261001-0078",
+      "title": "Verify requirement scenario 078 behavior for coverage review",
+      "category": "boundary",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 78",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 78 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-018",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-018-S04"
+    },
+    {
+      "id": "TC-20261001-0079",
+      "title": "Verify requirement scenario 079 behavior for coverage review",
+      "category": "edge",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 79",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 79 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-019",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-019-S04"
+    },
+    {
+      "id": "TC-20261001-0080",
+      "title": "Verify requirement scenario 080 behavior for coverage review",
+      "category": "security",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 80",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 80 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-020",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-020-S04"
+    },
+    {
+      "id": "TC-20261001-0081",
+      "title": "Verify requirement scenario 081 behavior for coverage review",
+      "category": "positive",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 81",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 81 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-001",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-001-S05"
+    },
+    {
+      "id": "TC-20261001-0082",
+      "title": "Verify requirement scenario 082 behavior for coverage review",
+      "category": "negative",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 82",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 82 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-002",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-002-S05"
+    },
+    {
+      "id": "TC-20261001-0083",
+      "title": "Verify requirement scenario 083 behavior for coverage review",
+      "category": "boundary",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 83",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 83 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-003",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-003-S05"
+    },
+    {
+      "id": "TC-20261001-0084",
+      "title": "Verify requirement scenario 084 behavior for coverage review",
+      "category": "edge",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 84",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 84 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-004",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-004-S05"
+    },
+    {
+      "id": "TC-20261001-0085",
+      "title": "Verify requirement scenario 085 behavior for coverage review",
+      "category": "security",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 85",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 85 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-005",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-005-S05"
+    },
+    {
+      "id": "TC-20261001-0086",
+      "title": "Verify requirement scenario 086 behavior for coverage review",
+      "category": "positive",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 86",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 86 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-006",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-006-S05"
+    },
+    {
+      "id": "TC-20261001-0087",
+      "title": "Verify requirement scenario 087 behavior for coverage review",
+      "category": "negative",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 87",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 87 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-007",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-007-S05"
+    },
+    {
+      "id": "TC-20261001-0088",
+      "title": "Verify requirement scenario 088 behavior for coverage review",
+      "category": "boundary",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 88",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 88 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-008",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-008-S05"
+    },
+    {
+      "id": "TC-20261001-0089",
+      "title": "Verify requirement scenario 089 behavior for coverage review",
+      "category": "edge",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 89",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 89 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-009",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-009-S05"
+    },
+    {
+      "id": "TC-20261001-0090",
+      "title": "Verify requirement scenario 090 behavior for coverage review",
+      "category": "security",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 90",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 90 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-010",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-010-S05"
+    },
+    {
+      "id": "TC-20261001-0091",
+      "title": "Verify requirement scenario 091 behavior for coverage review",
+      "category": "positive",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 91",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 91 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-011",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-011-S05"
+    },
+    {
+      "id": "TC-20261001-0092",
+      "title": "Verify requirement scenario 092 behavior for coverage review",
+      "category": "negative",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 92",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 92 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-012",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-012-S05"
+    },
+    {
+      "id": "TC-20261001-0093",
+      "title": "Verify requirement scenario 093 behavior for coverage review",
+      "category": "boundary",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 93",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 93 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-013",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-013-S05"
+    },
+    {
+      "id": "TC-20261001-0094",
+      "title": "Verify requirement scenario 094 behavior for coverage review",
+      "category": "edge",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 94",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 94 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-014",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-014-S05"
+    },
+    {
+      "id": "TC-20261001-0095",
+      "title": "Verify requirement scenario 095 behavior for coverage review",
+      "category": "security",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 95",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 95 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-015",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-015-S05"
+    },
+    {
+      "id": "TC-20261001-0096",
+      "title": "Verify requirement scenario 096 behavior for coverage review",
+      "category": "positive",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 96",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 96 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-016",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-016-S05"
+    },
+    {
+      "id": "TC-20261001-0097",
+      "title": "Verify requirement scenario 097 behavior for coverage review",
+      "category": "negative",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 97",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 97 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-017",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-017-S05"
+    },
+    {
+      "id": "TC-20261001-0098",
+      "title": "Verify requirement scenario 098 behavior for coverage review",
+      "category": "boundary",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 98",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 98 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-018",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-018-S05"
+    },
+    {
+      "id": "TC-20261001-0099",
+      "title": "Verify requirement scenario 099 behavior for coverage review",
+      "category": "edge",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 99",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 99 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-019",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-019-S05"
+    },
+    {
+      "id": "TC-20261001-0100",
+      "title": "Verify requirement scenario 100 behavior for coverage review",
+      "category": "security",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 100",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 100 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-020",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-020-S05"
+    },
+    {
+      "id": "TC-20261001-0101",
+      "title": "Verify requirement scenario 101 behavior for coverage review",
+      "category": "positive",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 101",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 101 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-001",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-001-S06"
+    },
+    {
+      "id": "TC-20261001-0102",
+      "title": "Verify requirement scenario 102 behavior for coverage review",
+      "category": "negative",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 102",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 102 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-002",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-002-S06"
+    },
+    {
+      "id": "TC-20261001-0103",
+      "title": "Verify requirement scenario 103 behavior for coverage review",
+      "category": "boundary",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 103",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 103 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-003",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-003-S06"
+    },
+    {
+      "id": "TC-20261001-0104",
+      "title": "Verify requirement scenario 104 behavior for coverage review",
+      "category": "edge",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 104",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 104 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-004",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-004-S06"
+    },
+    {
+      "id": "TC-20261001-0105",
+      "title": "Verify requirement scenario 105 behavior for coverage review",
+      "category": "security",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 105",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 105 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-005",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-005-S06"
+    },
+    {
+      "id": "TC-20261001-0106",
+      "title": "Verify requirement scenario 106 behavior for coverage review",
+      "category": "positive",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 106",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 106 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-006",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-006-S06"
+    },
+    {
+      "id": "TC-20261001-0107",
+      "title": "Verify requirement scenario 107 behavior for coverage review",
+      "category": "negative",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 107",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 107 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-007",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-007-S06"
+    },
+    {
+      "id": "TC-20261001-0108",
+      "title": "Verify requirement scenario 108 behavior for coverage review",
+      "category": "boundary",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 108",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 108 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-008",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-008-S06"
+    },
+    {
+      "id": "TC-20261001-0109",
+      "title": "Verify requirement scenario 109 behavior for coverage review",
+      "category": "edge",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 109",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 109 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-009",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-009-S06"
+    },
+    {
+      "id": "TC-20261001-0110",
+      "title": "Verify requirement scenario 110 behavior for coverage review",
+      "category": "security",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 110",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 110 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-010",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-010-S06"
+    },
+    {
+      "id": "TC-20261001-0111",
+      "title": "Verify requirement scenario 111 behavior for coverage review",
+      "category": "positive",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 111",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 111 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-011",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-011-S06"
+    },
+    {
+      "id": "TC-20261001-0112",
+      "title": "Verify requirement scenario 112 behavior for coverage review",
+      "category": "negative",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 112",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 112 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-012",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-012-S06"
+    },
+    {
+      "id": "TC-20261001-0113",
+      "title": "Verify requirement scenario 113 behavior for coverage review",
+      "category": "boundary",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 113",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 113 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-013",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-013-S06"
+    },
+    {
+      "id": "TC-20261001-0114",
+      "title": "Verify requirement scenario 114 behavior for coverage review",
+      "category": "edge",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 114",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 114 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-014",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-014-S06"
+    },
+    {
+      "id": "TC-20261001-0115",
+      "title": "Verify requirement scenario 115 behavior for coverage review",
+      "category": "security",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 115",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 115 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-015",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-015-S06"
+    },
+    {
+      "id": "TC-20261001-0116",
+      "title": "Verify requirement scenario 116 behavior for coverage review",
+      "category": "positive",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 116",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 116 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-016",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-016-S06"
+    },
+    {
+      "id": "TC-20261001-0117",
+      "title": "Verify requirement scenario 117 behavior for coverage review",
+      "category": "negative",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 117",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 117 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-017",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-017-S06"
+    },
+    {
+      "id": "TC-20261001-0118",
+      "title": "Verify requirement scenario 118 behavior for coverage review",
+      "category": "boundary",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 118",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 118 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-018",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-018-S06"
+    },
+    {
+      "id": "TC-20261001-0119",
+      "title": "Verify requirement scenario 119 behavior for coverage review",
+      "category": "edge",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 119",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 119 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-019",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-019-S06"
+    },
+    {
+      "id": "TC-20261001-0120",
+      "title": "Verify requirement scenario 120 behavior for coverage review",
+      "category": "security",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 120",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 120 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-020",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-020-S06"
+    },
+    {
+      "id": "TC-20261001-0121",
+      "title": "Verify requirement scenario 121 behavior for coverage review",
+      "category": "positive",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 121",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 121 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-001",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-001-S07"
+    },
+    {
+      "id": "TC-20261001-0122",
+      "title": "Verify requirement scenario 122 behavior for coverage review",
+      "category": "negative",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 122",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 122 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-002",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-002-S07"
+    },
+    {
+      "id": "TC-20261001-0123",
+      "title": "Verify requirement scenario 123 behavior for coverage review",
+      "category": "boundary",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 123",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 123 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-003",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-003-S07"
+    },
+    {
+      "id": "TC-20261001-0124",
+      "title": "Verify requirement scenario 124 behavior for coverage review",
+      "category": "edge",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 124",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 124 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-004",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-004-S07"
+    },
+    {
+      "id": "TC-20261001-0125",
+      "title": "Verify requirement scenario 125 behavior for coverage review",
+      "category": "security",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 125",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 125 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-005",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-005-S07"
+    },
+    {
+      "id": "TC-20261001-0126",
+      "title": "Verify requirement scenario 126 behavior for coverage review",
+      "category": "positive",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 126",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 126 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-006",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-006-S07"
+    },
+    {
+      "id": "TC-20261001-0127",
+      "title": "Verify requirement scenario 127 behavior for coverage review",
+      "category": "negative",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 127",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 127 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-007",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-007-S07"
+    },
+    {
+      "id": "TC-20261001-0128",
+      "title": "Verify requirement scenario 128 behavior for coverage review",
+      "category": "boundary",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 128",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 128 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-008",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-008-S07"
+    },
+    {
+      "id": "TC-20261001-0129",
+      "title": "Verify requirement scenario 129 behavior for coverage review",
+      "category": "edge",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 129",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 129 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-009",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-009-S07"
+    },
+    {
+      "id": "TC-20261001-0130",
+      "title": "Verify requirement scenario 130 behavior for coverage review",
+      "category": "security",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 130",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 130 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-010",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-010-S07"
+    },
+    {
+      "id": "TC-20261001-0131",
+      "title": "Verify requirement scenario 131 behavior for coverage review",
+      "category": "positive",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 131",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 131 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-011",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-011-S07"
+    },
+    {
+      "id": "TC-20261001-0132",
+      "title": "Verify requirement scenario 132 behavior for coverage review",
+      "category": "negative",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 132",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 132 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-012",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-012-S07"
+    },
+    {
+      "id": "TC-20261001-0133",
+      "title": "Verify requirement scenario 133 behavior for coverage review",
+      "category": "boundary",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 133",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 133 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-013",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-013-S07"
+    },
+    {
+      "id": "TC-20261001-0134",
+      "title": "Verify requirement scenario 134 behavior for coverage review",
+      "category": "edge",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 134",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 134 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-014",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-014-S07"
+    },
+    {
+      "id": "TC-20261001-0135",
+      "title": "Verify requirement scenario 135 behavior for coverage review",
+      "category": "security",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 135",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 135 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-015",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-015-S07"
+    },
+    {
+      "id": "TC-20261001-0136",
+      "title": "Verify requirement scenario 136 behavior for coverage review",
+      "category": "positive",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 136",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 136 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-016",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-016-S07"
+    },
+    {
+      "id": "TC-20261001-0137",
+      "title": "Verify requirement scenario 137 behavior for coverage review",
+      "category": "negative",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 137",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 137 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-017",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-017-S07"
+    },
+    {
+      "id": "TC-20261001-0138",
+      "title": "Verify requirement scenario 138 behavior for coverage review",
+      "category": "boundary",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 138",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 138 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-018",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-018-S07"
+    },
+    {
+      "id": "TC-20261001-0139",
+      "title": "Verify requirement scenario 139 behavior for coverage review",
+      "category": "edge",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 139",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 139 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-019",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-019-S07"
+    },
+    {
+      "id": "TC-20261001-0140",
+      "title": "Verify requirement scenario 140 behavior for coverage review",
+      "category": "security",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 140",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 140 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-020",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-020-S07"
+    },
+    {
+      "id": "TC-20261001-0141",
+      "title": "Verify requirement scenario 141 behavior for coverage review",
+      "category": "positive",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 141",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 141 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-001",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-001-S08"
+    },
+    {
+      "id": "TC-20261001-0142",
+      "title": "Verify requirement scenario 142 behavior for coverage review",
+      "category": "negative",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 142",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 142 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-002",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-002-S08"
+    },
+    {
+      "id": "TC-20261001-0143",
+      "title": "Verify requirement scenario 143 behavior for coverage review",
+      "category": "boundary",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 143",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 143 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-003",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-003-S08"
+    },
+    {
+      "id": "TC-20261001-0144",
+      "title": "Verify requirement scenario 144 behavior for coverage review",
+      "category": "edge",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 144",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 144 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-004",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-004-S08"
+    },
+    {
+      "id": "TC-20261001-0145",
+      "title": "Verify requirement scenario 145 behavior for coverage review",
+      "category": "security",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 145",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 145 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-005",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-005-S08"
+    },
+    {
+      "id": "TC-20261001-0146",
+      "title": "Verify requirement scenario 146 behavior for coverage review",
+      "category": "positive",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 146",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 146 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-006",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-006-S08"
+    },
+    {
+      "id": "TC-20261001-0147",
+      "title": "Verify requirement scenario 147 behavior for coverage review",
+      "category": "negative",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 147",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 147 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-007",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-007-S08"
+    },
+    {
+      "id": "TC-20261001-0148",
+      "title": "Verify requirement scenario 148 behavior for coverage review",
+      "category": "boundary",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 148",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 148 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-008",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-008-S08"
+    },
+    {
+      "id": "TC-20261001-0149",
+      "title": "Verify requirement scenario 149 behavior for coverage review",
+      "category": "edge",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 149",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 149 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-009",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-009-S08"
+    },
+    {
+      "id": "TC-20261001-0150",
+      "title": "Verify requirement scenario 150 behavior for coverage review",
+      "category": "security",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 150",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 150 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-010",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-010-S08"
+    },
+    {
+      "id": "TC-20261001-0151",
+      "title": "Verify requirement scenario 151 behavior for coverage review",
+      "category": "positive",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 151",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 151 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-011",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-011-S08"
+    },
+    {
+      "id": "TC-20261001-0152",
+      "title": "Verify requirement scenario 152 behavior for coverage review",
+      "category": "negative",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 152",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 152 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-012",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-012-S08"
+    },
+    {
+      "id": "TC-20261001-0153",
+      "title": "Verify requirement scenario 153 behavior for coverage review",
+      "category": "boundary",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 153",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 153 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-013",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-013-S08"
+    },
+    {
+      "id": "TC-20261001-0154",
+      "title": "Verify requirement scenario 154 behavior for coverage review",
+      "category": "edge",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 154",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 154 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-014",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-014-S08"
+    },
+    {
+      "id": "TC-20261001-0155",
+      "title": "Verify requirement scenario 155 behavior for coverage review",
+      "category": "security",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 155",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 155 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-015",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-015-S08"
+    },
+    {
+      "id": "TC-20261001-0156",
+      "title": "Verify requirement scenario 156 behavior for coverage review",
+      "category": "positive",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 156",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 156 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-016",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-016-S08"
+    },
+    {
+      "id": "TC-20261001-0157",
+      "title": "Verify requirement scenario 157 behavior for coverage review",
+      "category": "negative",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 157",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 157 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-017",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-017-S08"
+    },
+    {
+      "id": "TC-20261001-0158",
+      "title": "Verify requirement scenario 158 behavior for coverage review",
+      "category": "boundary",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 158",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 158 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-018",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-018-S08"
+    },
+    {
+      "id": "TC-20261001-0159",
+      "title": "Verify requirement scenario 159 behavior for coverage review",
+      "category": "edge",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 159",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 159 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-019",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-019-S08"
+    },
+    {
+      "id": "TC-20261001-0160",
+      "title": "Verify requirement scenario 160 behavior for coverage review",
+      "category": "security",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 160",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 160 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-020",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-020-S08"
+    },
+    {
+      "id": "TC-20261001-0161",
+      "title": "Verify requirement scenario 161 behavior for coverage review",
+      "category": "positive",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 161",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 161 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-001",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-001-S09"
+    },
+    {
+      "id": "TC-20261001-0162",
+      "title": "Verify requirement scenario 162 behavior for coverage review",
+      "category": "negative",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 162",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 162 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-002",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-002-S09"
+    },
+    {
+      "id": "TC-20261001-0163",
+      "title": "Verify requirement scenario 163 behavior for coverage review",
+      "category": "boundary",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 163",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 163 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-003",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-003-S09"
+    },
+    {
+      "id": "TC-20261001-0164",
+      "title": "Verify requirement scenario 164 behavior for coverage review",
+      "category": "edge",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 164",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 164 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-004",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-004-S09"
+    },
+    {
+      "id": "TC-20261001-0165",
+      "title": "Verify requirement scenario 165 behavior for coverage review",
+      "category": "security",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 165",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 165 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-005",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-005-S09"
+    },
+    {
+      "id": "TC-20261001-0166",
+      "title": "Verify requirement scenario 166 behavior for coverage review",
+      "category": "positive",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 166",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 166 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-006",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-006-S09"
+    },
+    {
+      "id": "TC-20261001-0167",
+      "title": "Verify requirement scenario 167 behavior for coverage review",
+      "category": "negative",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 167",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 167 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-007",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-007-S09"
+    },
+    {
+      "id": "TC-20261001-0168",
+      "title": "Verify requirement scenario 168 behavior for coverage review",
+      "category": "boundary",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 168",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 168 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-008",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-008-S09"
+    },
+    {
+      "id": "TC-20261001-0169",
+      "title": "Verify requirement scenario 169 behavior for coverage review",
+      "category": "edge",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 169",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 169 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-009",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-009-S09"
+    },
+    {
+      "id": "TC-20261001-0170",
+      "title": "Verify requirement scenario 170 behavior for coverage review",
+      "category": "security",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 170",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 170 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-010",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-010-S09"
+    },
+    {
+      "id": "TC-20261001-0171",
+      "title": "Verify requirement scenario 171 behavior for coverage review",
+      "category": "positive",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 171",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 171 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-011",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-011-S09"
+    },
+    {
+      "id": "TC-20261001-0172",
+      "title": "Verify requirement scenario 172 behavior for coverage review",
+      "category": "negative",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 172",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 172 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-012",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-012-S09"
+    },
+    {
+      "id": "TC-20261001-0173",
+      "title": "Verify requirement scenario 173 behavior for coverage review",
+      "category": "boundary",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 173",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 173 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-013",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-013-S09"
+    },
+    {
+      "id": "TC-20261001-0174",
+      "title": "Verify requirement scenario 174 behavior for coverage review",
+      "category": "edge",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 174",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 174 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-014",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-014-S09"
+    },
+    {
+      "id": "TC-20261001-0175",
+      "title": "Verify requirement scenario 175 behavior for coverage review",
+      "category": "security",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 175",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 175 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-015",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-015-S09"
+    },
+    {
+      "id": "TC-20261001-0176",
+      "title": "Verify requirement scenario 176 behavior for coverage review",
+      "category": "positive",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 176",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 176 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-016",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-016-S09"
+    },
+    {
+      "id": "TC-20261001-0177",
+      "title": "Verify requirement scenario 177 behavior for coverage review",
+      "category": "negative",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 177",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 177 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-017",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-017-S09"
+    },
+    {
+      "id": "TC-20261001-0178",
+      "title": "Verify requirement scenario 178 behavior for coverage review",
+      "category": "boundary",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 178",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 178 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-018",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-018-S09"
+    },
+    {
+      "id": "TC-20261001-0179",
+      "title": "Verify requirement scenario 179 behavior for coverage review",
+      "category": "edge",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 179",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 179 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-019",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-019-S09"
+    },
+    {
+      "id": "TC-20261001-0180",
+      "title": "Verify requirement scenario 180 behavior for coverage review",
+      "category": "security",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 180",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 180 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-020",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-020-S09"
+    },
+    {
+      "id": "TC-20261001-0181",
+      "title": "Verify requirement scenario 181 behavior for coverage review",
+      "category": "positive",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 181",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 181 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-001",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-001-S10"
+    },
+    {
+      "id": "TC-20261001-0182",
+      "title": "Verify requirement scenario 182 behavior for coverage review",
+      "category": "negative",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 182",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 182 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-002",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-002-S10"
+    },
+    {
+      "id": "TC-20261001-0183",
+      "title": "Verify requirement scenario 183 behavior for coverage review",
+      "category": "boundary",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 183",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 183 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-003",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-003-S10"
+    },
+    {
+      "id": "TC-20261001-0184",
+      "title": "Verify requirement scenario 184 behavior for coverage review",
+      "category": "edge",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 184",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 184 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-004",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-004-S10"
+    },
+    {
+      "id": "TC-20261001-0185",
+      "title": "Verify requirement scenario 185 behavior for coverage review",
+      "category": "security",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 185",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 185 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-005",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-005-S10"
+    },
+    {
+      "id": "TC-20261001-0186",
+      "title": "Verify requirement scenario 186 behavior for coverage review",
+      "category": "positive",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 186",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 186 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-006",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-006-S10"
+    },
+    {
+      "id": "TC-20261001-0187",
+      "title": "Verify requirement scenario 187 behavior for coverage review",
+      "category": "negative",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 187",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 187 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-007",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-007-S10"
+    },
+    {
+      "id": "TC-20261001-0188",
+      "title": "Verify requirement scenario 188 behavior for coverage review",
+      "category": "boundary",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 188",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 188 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-008",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-008-S10"
+    },
+    {
+      "id": "TC-20261001-0189",
+      "title": "Verify requirement scenario 189 behavior for coverage review",
+      "category": "edge",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 189",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 189 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-009",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-009-S10"
+    },
+    {
+      "id": "TC-20261001-0190",
+      "title": "Verify requirement scenario 190 behavior for coverage review",
+      "category": "security",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 190",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 190 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-010",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-010-S10"
+    },
+    {
+      "id": "TC-20261001-0191",
+      "title": "Verify requirement scenario 191 behavior for coverage review",
+      "category": "positive",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 191",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 191 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-011",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-011-S10"
+    },
+    {
+      "id": "TC-20261001-0192",
+      "title": "Verify requirement scenario 192 behavior for coverage review",
+      "category": "negative",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 192",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 192 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-012",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-012-S10"
+    },
+    {
+      "id": "TC-20261001-0193",
+      "title": "Verify requirement scenario 193 behavior for coverage review",
+      "category": "boundary",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 193",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 193 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-013",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-013-S10"
+    },
+    {
+      "id": "TC-20261001-0194",
+      "title": "Verify requirement scenario 194 behavior for coverage review",
+      "category": "edge",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 194",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 194 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-014",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-014-S10"
+    },
+    {
+      "id": "TC-20261001-0195",
+      "title": "Verify requirement scenario 195 behavior for coverage review",
+      "category": "security",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 195",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 195 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-015",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-015-S10"
+    },
+    {
+      "id": "TC-20261001-0196",
+      "title": "Verify requirement scenario 196 behavior for coverage review",
+      "category": "positive",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 196",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 196 behaves exactly as specified in the requirement text.",
+      "technique": "EP",
+      "requirement_ref": "REQ-016",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-016-S10"
+    },
+    {
+      "id": "TC-20261001-0197",
+      "title": "Verify requirement scenario 197 behavior for coverage review",
+      "category": "negative",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 197",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 197 behaves exactly as specified in the requirement text.",
+      "technique": "BVA",
+      "requirement_ref": "REQ-017",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-017-S10"
+    },
+    {
+      "id": "TC-20261001-0198",
+      "title": "Verify requirement scenario 198 behavior for coverage review",
+      "category": "boundary",
+      "priority": "low",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 198",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 198 behaves exactly as specified in the requirement text.",
+      "technique": "negative",
+      "requirement_ref": "REQ-018",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-018-S10"
+    },
+    {
+      "id": "TC-20261001-0199",
+      "title": "Verify requirement scenario 199 behavior for coverage review",
+      "category": "edge",
+      "priority": "high",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 199",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 199 behaves exactly as specified in the requirement text.",
+      "technique": "exploratory",
+      "requirement_ref": "REQ-019",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-019-S10"
+    },
+    {
+      "id": "TC-20261001-0200",
+      "title": "Verify requirement scenario 200 behavior for coverage review",
+      "category": "security",
+      "priority": "medium",
+      "preconditions": [
+        "System is accessible",
+        "User session is valid"
+      ],
+      "steps": [
+        "Open the screen for scenario 200",
+        "Perform the target action",
+        "Observe the visible result"
+      ],
+      "expected_result": "Scenario 200 behaves exactly as specified in the requirement text.",
+      "technique": "security",
+      "requirement_ref": "REQ-099",
+      "language_target": "manual",
+      "generated_at": "2026-10-01T00:00:00Z",
+      "scenario_ref": "SCN-099-S01"
+    }
+  ],
+  "unexpected_scenarios": [
+    "SCN-099-S01"
+  ],
+  "duplicate_scenarios": [],
+  "initial_generated_count": 196,
+  "initial_missing_scenarios": [
+    "SCN-017-S10",
+    "SCN-018-S10",
+    "SCN-019-S10",
+    "SCN-020-S10",
+    "SCN-001-S11",
+    "SCN-002-S11",
+    "SCN-003-S11",
+    "SCN-004-S11",
+    "SCN-005-S11"
+  ],
+  "diagnostics": [
+    "batch item rejected: steps empty"
+  ]
+}

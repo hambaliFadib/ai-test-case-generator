@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 
+from baseline_planner import BaselineEvaluation, evaluate_baseline
 from models.coverage_model import (
     SCENARIO_CATEGORIES,
     SCENARIO_TECHNIQUES,
@@ -12,16 +13,10 @@ from models.coverage_model import (
     EvidenceAtom,
     RequirementCoveragePlan,
     ScenarioIntent,
+    UnresolvedBaselineItem,
 )
 from models.requirement_model import Requirement
-
-
-SUPPORTED_PROFILES: tuple[str, ...] = (
-    "minimal",
-    "balanced",
-    "comprehensive",
-    "security",
-)
+from profiles import DEFAULT_PROFILE, resolve_profile
 
 _MAXIMUM = re.compile(
     r"\b(?:maximum|max|limit|at most)\b[^\d]{0,40}(\d+(?:\.\d+)?)",
@@ -81,27 +76,33 @@ class _AtomicBehavior:
 
 def plan_coverage(
     requirements: list[Requirement],
-    profile: str = "balanced",
+    profile: str = DEFAULT_PROFILE,
 ) -> CoveragePlan:
     """Create a stable coverage plan without calling an LLM or external API."""
 
-    if profile not in SUPPORTED_PROFILES:
-        supported = ", ".join(SUPPORTED_PROFILES)
-        raise ValueError(f"Unsupported coverage profile '{profile}'. Choose: {supported}.")
+    resolved_profile = resolve_profile(profile)
 
     plans: list[RequirementCoveragePlan] = []
     evidence_atoms: list[EvidenceAtom] = []
+    unresolved_baseline: list[UnresolvedBaselineItem] = []
     for requirement in requirements:
         requirement_atoms = extract_evidence_atoms(requirement)
         evidence_atoms.extend(requirement_atoms)
-        scenarios = _scenarios_for_requirement(requirement, profile, requirement_atoms)
+        scenarios, evaluation = _scenarios_for_requirement(
+            requirement, resolved_profile, requirement_atoms
+        )
+        unresolved_baseline.extend(evaluation.unresolved)
         plans.append(
             RequirementCoveragePlan(
                 requirement_ref=requirement.id,
                 scenarios=scenarios,
             )
         )
-    plan = CoveragePlan(requirements=plans, evidence_atoms=evidence_atoms)
+    plan = CoveragePlan(
+        requirements=plans,
+        evidence_atoms=evidence_atoms,
+        unresolved_baseline=unresolved_baseline,
+    )
     # Keep the planning gate local and deterministic.  A silently dropped atom
     # is a planner defect, not something to defer to batching or the provider.
     from coverage_auditor import audit_evidence_coverage
@@ -132,9 +133,9 @@ def _scenarios_for_requirement(
     requirement: Requirement,
     profile: str,
     evidence_atoms: list[EvidenceAtom],
-) -> list[ScenarioIntent]:
+) -> tuple[list[ScenarioIntent], BaselineEvaluation]:
     if requirement.status != "TESTABLE":
-        return []
+        return [], BaselineEvaluation()
 
     text = _requirement_text(requirement)
     subject = _subject(requirement)
@@ -303,23 +304,30 @@ def _scenarios_for_requirement(
             if "application provides the behavior described" not in candidate[2]
         ]
 
-    if profile == "comprehensive":
-        candidates = _add_comprehensive_source_backed_case(candidates, text, subject)
+    evaluation = evaluate_baseline(requirement, evidence_atoms, subject)
+    candidates.extend(evaluation.policy_candidates)
 
-    if profile == "security" and (_SECURITY.search(text) or _SEARCH.search(text)):
-        security_intent = (
-            f"Verify {subject} handles supplied input safely without adding unspecified access rules."
-            if _SEARCH.search(text) and not _SECURITY.search(text)
-            else f"Verify the explicitly described security behavior for {subject}."
-        )
-        candidates.append(
-            (
-                "security",
-                "security",
-                security_intent,
-                "high",
+    if profile in ("comprehensive", "extra"):
+        candidates = _add_comprehensive_source_backed_case(candidates, text, subject)
+        if _SECURITY.search(text) or _SEARCH.search(text):
+            security_intent = (
+                f"Verify {subject} handles supplied input safely without adding unspecified access rules."
+                if _SEARCH.search(text) and not _SECURITY.search(text)
+                else f"Verify the explicitly described security behavior for {subject}."
             )
+            candidates.append(
+                (
+                    "security",
+                    "security",
+                    security_intent,
+                    "high",
+                )
+            )
+        candidates = _add_deeper_source_backed_candidate(
+            candidates, evidence_atoms, subject
         )
+    if profile == "extra":
+        candidates = _add_extra_exploratory_candidate(candidates, evidence_atoms, subject)
 
     candidates = _ensure_evidence_candidates(
         requirement,
@@ -327,7 +335,8 @@ def _scenarios_for_requirement(
         evidence_atoms,
         subject,
     )
-    return _materialize_scenarios(requirement.id, candidates, evidence_atoms, subject)
+    scenarios = _materialize_scenarios(requirement.id, candidates, evidence_atoms, subject)
+    return scenarios, evaluation
 
 
 def extract_evidence_atoms(requirement: Requirement) -> list[EvidenceAtom]:
@@ -1113,6 +1122,44 @@ def _add_comprehensive_source_backed_case(
         )
         if candidate not in candidates:
             candidates.append(candidate)
+    return candidates
+
+
+def _add_deeper_source_backed_candidate(
+    candidates: list[tuple[str, str, str, str]],
+    evidence_atoms: list[EvidenceAtom],
+    subject: str,
+) -> list[tuple[str, str, str, str]]:
+    kinds = {atom.kind for atom in evidence_atoms if atom.kind != "guardrail"}
+    if len(kinds) < 2:
+        return candidates
+    candidate = (
+        "edge",
+        "exploratory",
+        f"Verify the explicitly described aspects of {subject} remain consistent with each other without assuming unspecified semantics.",
+        "low",
+    )
+    if candidate not in candidates:
+        candidates.append(candidate)
+    return candidates
+
+
+def _add_extra_exploratory_candidate(
+    candidates: list[tuple[str, str, str, str]],
+    evidence_atoms: list[EvidenceAtom],
+    subject: str,
+) -> list[tuple[str, str, str, str]]:
+    atoms = [atom for atom in evidence_atoms if atom.kind != "guardrail"]
+    if len(atoms) < 3:
+        return candidates
+    candidate = (
+        "edge",
+        "exploratory",
+        f"Verify combinations limited to the explicitly described aspects of {subject} without assuming unspecified semantics.",
+        "low",
+    )
+    if candidate not in candidates:
+        candidates.append(candidate)
     return candidates
 
 

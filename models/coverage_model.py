@@ -55,11 +55,30 @@ class RequirementCoveragePlan:
 
 
 @dataclass(frozen=True)
+class UnresolvedBaselineItem:
+    """An applicable QA baseline dimension that evidence/policy cannot yet support.
+
+    UBIs are informational only: they never become scenarios, never receive
+    scenario IDs, and never affect coverage metrics or generation status.
+    """
+
+    requirement_ref: str
+    rule_key: str
+    dimension: str
+    status: str
+    disposition: str
+    reason: str
+    evidence_refs: tuple[str, ...] = ()
+    requires_policy: bool = True
+
+
+@dataclass(frozen=True)
 class CoveragePlan:
     """The ordered coverage plan for all analyzed requirements."""
 
     requirements: list[RequirementCoveragePlan] = field(default_factory=list)
     evidence_atoms: list[EvidenceAtom] = field(default_factory=list)
+    unresolved_baseline: list[UnresolvedBaselineItem] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -104,3 +123,4 @@ class GenerationResult:
     initial_missing_scenarios: list[str] = field(default_factory=list)
     diagnostics: list[str] = field(default_factory=list)
     llm_results: list[LLMResult] = field(default_factory=list)
+    unresolved_baseline: list[UnresolvedBaselineItem] = field(default_factory=list)

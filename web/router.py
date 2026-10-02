@@ -13,10 +13,10 @@ from pydantic import BaseModel, Field
 
 from config import SUPPORTED_PROVIDERS, load_settings
 from csv_exporter import export_to_csv, export_traceable_to_csv
-from coverage_planner import SUPPORTED_PROFILES
 from generation_orchestrator import generate_test_suite
 from input_resolver import resolve_input
 from models.test_case_model import TestCase
+from profiles import DEFAULT_PROFILE, resolve_profile
 from security_utils import redact_sensitive_detail
 from validator import validate_test_cases
 
@@ -32,7 +32,7 @@ class TextGenerationRequest(BaseModel):
     model: str | None = None
     language: str = "manual"
     output_language: str = "en"
-    profile: str = "balanced"
+    profile: str = DEFAULT_PROFILE
 
 
 class ExportRequest(BaseModel):
@@ -89,7 +89,7 @@ async def generate_file(
     model: str | None = Form(default=None),
     language: str = Form(default="manual"),
     output_language: str = Form(default="en"),
-    profile: str = Form(default="balanced"),
+    profile: str = Form(default=DEFAULT_PROFILE),
 ) -> dict[str, Any] | JSONResponse:
     """Generate test cases from a temporary uploaded DOCX, PDF, or Markdown file."""
 
@@ -148,17 +148,18 @@ def _generate(
     model: str | None,
     language: str,
     output_language: str = "en",
-    profile: str = "balanced",
+    profile: str = DEFAULT_PROFILE,
 ) -> dict[str, Any]:
     """Run the shared Phase 3 generation engine for one Web request."""
 
     if output_language not in ("en", "id"):
         output_language = "en"  # safe fallback for unsupported output languages
-    if profile not in SUPPORTED_PROFILES:
-        supported = ", ".join(SUPPORTED_PROFILES)
+    try:
+        resolved_profile = resolve_profile(profile)
+    except ValueError as exc:
         return JSONResponse(
             status_code=400,
-            content={"error": "Invalid profile", "detail": f"Choose one of: {supported}."},
+            content={"error": "Invalid profile", "detail": str(exc)},
         )
     settings = load_settings(provider_override=provider, model_override=model)
     result = generate_test_suite(
@@ -166,9 +167,9 @@ def _generate(
         settings,
         language_target=language,
         output_language=output_language,
-        profile=profile,
+        profile=resolved_profile,
     )
-    payload = _serialize_result(result, profile)
+    payload = _serialize_result(result, resolved_profile)
     if result.status == "failed":
         payload["error"] = "Generation failed"
         return JSONResponse(status_code=500, content=payload)
@@ -195,6 +196,9 @@ def _serialize_result(result: Any, profile: str) -> dict[str, Any]:
         "duplicate_scenarios": list(result.duplicate_scenarios),
         "initial_generated_count": result.initial_generated_count,
         "initial_missing_scenarios": list(result.initial_missing_scenarios),
+        "unresolved_baseline": [
+            asdict(item) for item in result.unresolved_baseline
+        ],
         "diagnostics": [_redact(diagnostic) for diagnostic in result.diagnostics],
     }
 

@@ -21,7 +21,8 @@
 - CLI: full command-line support
 - Test design techniques: EP, BVA, Negative, Edge, Security
 - Structured requirement IDs and scenario-level traceability (`requirement_ref` + `scenario_ref`)
-- Coverage profiles: `minimal`, `balanced`, `comprehensive`, and `security`
+- Coverage profiles: `minimal`, `comprehensive` (default), and `extra`; legacy aliases `balanced` and `security` resolve to `comprehensive`
+- QA baseline evaluation with `UnresolvedBaselineItem` records for applicable dimensions that lack product evidence
 - Deterministic scenario planning with bounded prompt batches
 - Coverage auditing and targeted backfill with `complete`, `partial`, or `failed` outcomes
 - Deterministic validation (Python contract checks, not LLM trust)
@@ -143,11 +144,21 @@ python main.py --input requirements.md `
                --output output/test.csv
 ```
 
-Choose a deterministic coverage profile (defaults to `balanced`):
+Choose a deterministic coverage profile (defaults to `comprehensive`):
 
 ```powershell
-python main.py --input requirements.md --profile comprehensive --output output/test.csv
+python main.py --input requirements.md --profile extra --output output/test.csv
 ```
+
+Canonical profiles:
+
+| Profile | Meaning |
+|---|---|
+| `minimal` | Evidence-derived base coverage, QA baseline evaluation with materialized dimensions and unresolved-baseline records, and evidence backfill. No deeper profile overlay. |
+| `comprehensive` | Everything in `minimal`, plus deeper functional, negative, boundary, and state coverage; low-level security coverage where source evidence or product policy supports it; and source-backed edge/exploratory coverage. Default. |
+| `extra` | Everything in `comprehensive`, plus additional evidence-supported exploratory combinations and depth, bounded by the evidence/atomic planning pipeline. |
+
+Profiles select coverage depth only — they never change which product behaviors are treated as true. Legacy aliases `balanced` and `security` resolve to `comprehensive` (CLI and Web API compatibility only; they are not canonical profiles). Unknown profiles are rejected with a message listing the canonical profiles. `Minimal ⊆ Comprehensive ⊆ Extra` holds for every plan.
 
 The CLI exits with `0` for complete coverage, `2` for usable partial coverage, and `1` for failed generation. Its summary includes planned scenarios, generated cases, coverage percentage, initial batches, backfill calls, and missing scenario IDs (with `--verbose`).
 
@@ -193,9 +204,11 @@ Note: the Web UI and the CLI share the same `generate_test_suite()` pipeline. Th
 
 The analyzer preserves explicit requirement IDs and their full document blocks. The deterministic planner extracts source evidence atoms, maps them within their requirement, and turns each testable requirement into source-backed scenario intents. Typed semantic compatibility auditing rejects mappings that would turn presence evidence into behavior or promote guardrails into executable expectations. Each scenario retains evidence and constraint references for scenario-level traceability.
 
+Baseline evaluation keeps three layers distinct: the application-owned QA baseline policy (fixed, ordered, versioned rules such as the authentication baseline A1–A12), product evidence extracted from the source, and explicit product policy statements. A baseline dimension moves through `NOT_APPLICABLE → APPLICABLE_UNRESOLVED → MATERIALIZABLE → MATERIALIZED`; it materializes only when sufficient product evidence or explicit product policy supports it. Applicable dimensions that are unsupported are never dropped — they are retained as `UnresolvedBaselineItem` records in `unresolved_baseline` (planning) and in the serialized API result. UBIs are informational: they never become test cases, never receive scenario IDs, never enter the CSV, and do not affect `generated_count`, `coverage_percentage`, `missing_scenarios`, or generation status. Baseline dimensions are not permission to invent product behavior — lockout thresholds, session timeouts, HTTP status codes, MFA prompts, and similar concrete semantics are only planned when the source explicitly provides them.
+
 Provider generation receives a minimal contract containing planned scenario intents and trace identifiers. Application-owned metadata is injected after parsing, and item-level response salvage/backfill remains bounded. Provider-authored `steps` and `expected_result` may operationalize the supplied scenario intent, but cannot introduce unsupported state changes, side effects, navigation outcomes, dialog behavior, persistence behavior, or other postconditions. Missing scenarios are sent through targeted backfill calls within a bounded retry budget. A result is `complete` only when every planned scenario is covered; valid but incomplete output is `partial`, and an unusable result is `failed`.
 
-The Web API returns the status, requirement counts, planned and generated scenario counts, coverage percentage, initial batch count, backfill call count, missing IDs, and traceable test cases. The production CLI and Web export use the v1.3 traceable CSV schema below.
+The Web API returns the status, requirement counts, planned and generated scenario counts, coverage percentage, initial batch count, backfill call count, missing IDs, the resolved canonical profile, the `unresolved_baseline` list, and traceable test cases. The production CLI and Web export use the v1.3 traceable CSV schema below.
 
 ---
 

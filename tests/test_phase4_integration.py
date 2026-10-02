@@ -82,7 +82,7 @@ def test_cli_complete_and_profile_use_orchestrator(monkeypatch, capsys) -> None:
         exit_code = main.main(["--text", "source", "--output", str(Path(temp_dir) / "suite.csv"), "--profile", "security"])
 
     assert exit_code == 0
-    assert calls[0]["profile"] == "security"
+    assert calls[0]["profile"] == "comprehensive"
     assert "Status: complete" in capsys.readouterr().out
 
 
@@ -98,7 +98,7 @@ def test_cli_default_profile_partial_and_failed_exit_codes(monkeypatch, capsys) 
 
     assert main.main(["--text", "source"]) == 2
     assert main.main(["--text", "source"]) == 1
-    assert calls == ["balanced", "balanced"]
+    assert calls == ["comprehensive", "comprehensive"]
     assert "Missing scenario count: 1" in capsys.readouterr().out
 
 
@@ -130,7 +130,7 @@ def test_web_complete_partial_failed_and_default_profile(monkeypatch) -> None:
     assert partial.json()["coverage_percentage"] < 100
     assert failed.status_code == 500
     assert failed.json()["status"] == "failed"
-    assert calls == ["balanced", "minimal", "balanced"]
+    assert calls == ["comprehensive", "minimal", "comprehensive"]
 
 
 def test_web_rejects_invalid_profile_and_preserves_markdown_upload(monkeypatch) -> None:
@@ -185,8 +185,8 @@ def test_pgn_sized_fake_result_is_presented_truthfully() -> None:
         batch_count=17,
     )
 
-    complete_payload = web_router._serialize_result(complete, "balanced")
-    partial_payload = web_router._serialize_result(partial, "balanced")
+    complete_payload = web_router._serialize_result(complete, "comprehensive")
+    partial_payload = web_router._serialize_result(partial, "comprehensive")
 
     assert (complete_payload["requirement_count"], complete_payload["scenario_count"]) == (97, 191)
     assert complete_payload["status"] == "complete"
@@ -199,9 +199,11 @@ def test_pgn_sized_fake_result_is_presented_truthfully() -> None:
 
 def test_ui_contains_phase4_coverage_contract() -> None:
     html = Path("web/static/index.html").read_text(encoding="utf-8")
+    js = Path("web/static/js/app.js").read_text(encoding="utf-8")
+    bundle = html + js
     for token in ("coverage_percentage", "scenario_count", "generated_count", "missing_scenarios", "status", "scenario_ref"):
-        assert token in html
-    assert "v1.3.0" in html
+        assert token in bundle
+    assert "v1.3.1" in html
 
 
 def test_web_test_client_dependency_is_declared_for_dev_installs() -> None:

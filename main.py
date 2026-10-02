@@ -9,9 +9,18 @@ from config import ConfigurationError, SUPPORTED_PROVIDERS, load_settings
 from csv_exporter import CsvExportError, export_traceable_to_csv
 from input_resolver import InputResolutionError, resolve_input
 from generation_orchestrator import generate_test_suite
-from coverage_planner import SUPPORTED_PROFILES
 from models.test_case_model import TestCase
+from profiles import CANONICAL_PROFILES, DEFAULT_PROFILE, resolve_profile
 from security_utils import redact_sensitive_detail
+
+
+def _profile_argument(value: str) -> str:
+    """Resolve a CLI profile value, including legacy aliases."""
+
+    try:
+        return resolve_profile(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
 
 
 def build_argument_parser() -> argparse.ArgumentParser:
@@ -41,9 +50,14 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model", default=None, help="LLM model override; otherwise LLM_MODEL is used.")
     parser.add_argument(
         "--profile",
-        choices=SUPPORTED_PROFILES,
-        default="balanced",
-        help="Coverage profile used by the deterministic planner.",
+        type=_profile_argument,
+        choices=CANONICAL_PROFILES,
+        default=DEFAULT_PROFILE,
+        help=(
+            "Coverage profile used by the deterministic planner: "
+            "minimal, comprehensive, or extra (legacy aliases balanced and "
+            "security resolve to comprehensive)."
+        ),
     )
     parser.add_argument("--verbose", action="store_true", help="Print requirements and generation summary.")
     return parser
