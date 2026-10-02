@@ -39,8 +39,8 @@ def valid_item(item_scenario: ScenarioIntent, *, requirement_ref: str | None = N
         "category": item_scenario.category,
         "priority": item_scenario.priority,
         "preconditions": [],
-        "steps": ["Perform the source-backed action."],
-        "expected_result": "The source-backed behavior is satisfied.",
+        "steps": ["Check the \"Result\" field."],
+        "expected_result": "The \"Result\" field displays the source-backed value.",
         "technique": item_scenario.technique,
         "requirement_ref": requirement_ref or item_scenario.requirement_ref,
         "language_target": "manual",
@@ -54,8 +54,8 @@ def minimal_item(item_scenario: ScenarioIntent, **overrides: object) -> dict[str
         "scenario_ref": item_scenario.id,
         "title": f"Case for {item_scenario.id}",
         "preconditions": [],
-        "steps": ["Perform the source-backed action."],
-        "expected_result": "The source-backed behavior is satisfied.",
+        "steps": ["Check the \"Result\" field."],
+        "expected_result": "The \"Result\" field displays the source-backed value.",
     }
     item.update(overrides)
     return item

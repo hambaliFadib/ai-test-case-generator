@@ -2,9 +2,10 @@
 
 import json
 
-from models.coverage_model import ScenarioIntent
+from models.coverage_model import EvidenceAtom, ScenarioIntent
 from models.requirement_model import Requirement
 from models.test_case_model import TestCase
+from semantic_quality import authorized_evidence_texts
 
 
 def build_prompt(
@@ -94,6 +95,7 @@ def build_batch_prompt(
     output_language: str = "en",
     *,
     for_sizing: bool = False,
+    evidence_atoms: list[EvidenceAtom] | None = None,
 ) -> str:
     """Build a bounded provider prompt or a full-context sizing equivalent."""
 
@@ -156,6 +158,9 @@ def build_batch_prompt(
             "technique": scenario.technique,
             "intent": scenario.intent,
             "priority": scenario.priority,
+            "authorized_evidence": list(
+                authorized_evidence_texts(scenario, list(evidence_atoms or ()))
+            ),
         }
         for scenario in scenarios
     ]
@@ -208,6 +213,17 @@ If a scenario intent is visibility, presence, or availability-only, keep the gen
 Treat the supplied scenario intent as the complete semantic boundary for steps and expected_result: operationalize its stated behavior, but do not add state changes, side effects, navigation outcomes, dialog behavior, persistence behavior, or other postconditions that the intent does not state. Keep generation constraints such as "not exhaustive" or "not the only value" out of observable expected_result text. If the intent supplies a sample literal, preserve that literal in expected_result.
 The requirement details are context only and must not expand the scenario intent. For example, for "Verify that Cancel keeps the user on the form.", the expected_result may state only that the user remains on the form; do not add dialog closes, discarded changes, navigation, persistence, or any other side effect. For a scenario containing the sample literal "Server Error", preserve "Server Error" in expected_result but do not state that it is non-exhaustive or not the only value.
 Do not mention dialog, modal, popup, or confirmation-window behavior in steps or expected_result unless one of those words is explicitly present in the scenario intent. Words such as "Yes", "confirms", "Are you sure", or "unsaved" do not authorize a dialog assumption.
+
+SCENARIO AUTHORITY (hard semantic boundary):
+- Each planned scenario lists its own authorized_evidence: those are the ONLY product facts its title, preconditions, steps, and expected_result may assert.
+- Facts visible for other scenarios or other requirements in this batch, and facts from general knowledge, are context only and are forbidden as claims for this scenario.
+- Combining evidence from two scenarios is allowed only when both appear in the same scenario's authorized_evidence.
+- Every step must be a concrete manual action or observation with a concrete target (a named button, field, page, message, value, or label). Vague steps such as "Observe the stated behavior" are invalid.
+- expected_result must state exactly one determinate observable outcome a tester can verify to decide PASS. Do not offer alternatives ("or"/"atau") and do not hedge.
+- Preserve exact source literals (quoted messages, labels, values) verbatim. Do not translate, rephrase, shorten, or correct them.
+- Never write internal generation language: no "not assumed", "as stated", "described behavior", "as needed", "behavior is fulfilled", or similar meta/guardrail text in any field.
+- Do not invent product facts: no status codes, timeouts, retry counts, lockout thresholds, session durations, or exact error wording that is not in the scenario's authorized_evidence.
+- For security scenarios (category=security), assert only a concrete security behavior that appears in the authorized_evidence; never write generic "security behavior" checks.
 {language_instruction}
 
 {requirements_heading}

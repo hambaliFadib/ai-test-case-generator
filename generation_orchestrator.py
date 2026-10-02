@@ -14,7 +14,7 @@ from coverage_auditor import audit_coverage
 from coverage_planner import plan_coverage
 from generation_utils import is_truncated
 from llm_adapter import create_adapter
-from models.coverage_model import CoveragePlan, GenerationResult, ScenarioIntent
+from models.coverage_model import CoveragePlan, EvidenceAtom, GenerationResult, ScenarioIntent
 from models.input_model import ParsedInput
 from models.llm_result import LLMResult
 from models.requirement_model import Requirement
@@ -104,6 +104,7 @@ def generate_test_suite(
             output_language,
             diagnostics,
             llm_results,
+            evidence_atoms=plan.evidence_atoms,
         )
         merged_cases.extend(batch_cases)
 
@@ -149,6 +150,7 @@ def generate_test_suite(
                     output_language,
                     diagnostics,
                     llm_results,
+                    evidence_atoms=plan.evidence_atoms,
                 )
             )
             current_audit = audit_coverage(plan, merged_cases)
@@ -212,6 +214,7 @@ def _generate_batch(
     output_language: str,
     diagnostics: list[str],
     llm_results: list[LLMResult],
+    evidence_atoms: list[EvidenceAtom] | None = None,
 ) -> list[TestCase]:
     """Generate one strict batch; failures return no cases and remain auditable."""
 
@@ -221,6 +224,7 @@ def _generate_batch(
             scenarios,
             language_target=language_target,
             output_language=output_language,
+            evidence_atoms=evidence_atoms,
         )
         raw_result = (
             adapter.generate_result(prompt)
@@ -237,6 +241,7 @@ def _generate_batch(
             result.text,
             scenarios,
             language_target=language_target,
+            evidence_atoms=evidence_atoms,
         )
         diagnostics.extend(f"batch item rejected: {error}" for error in parsed.item_errors)
         validate_batch_traceability(parsed.test_cases, scenarios)

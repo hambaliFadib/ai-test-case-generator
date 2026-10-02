@@ -6,8 +6,9 @@ import json
 import re
 from typing import Any
 
-from models.coverage_model import ScenarioIntent
+from models.coverage_model import EvidenceAtom, ScenarioIntent
 from models.test_case_model import TestCase
+from semantic_quality import ScenarioAuthority, build_authorities, validate_content
 
 
 class ParseError(ValueError):
@@ -88,8 +89,15 @@ def parse_batch_response_result(
     raw_response: str,
     expected_scenarios: list[ScenarioIntent],
     language_target: str = "manual",
+    evidence_atoms: list[EvidenceAtom] | None = None,
 ) -> BatchParseResult:
-    """Parse minimal provider content with strict batch traceability."""
+    """Parse minimal provider content with strict batch traceability.
+
+    ``evidence_atoms`` feeds the deterministic semantic-quality gate so every
+    item is validated against its scenario's authorized evidence scope. The
+    same gate applies to normal generation, backfill, and salvage because they
+    all parse through this function.
+    """
 
     if not isinstance(raw_response, str) or not raw_response.strip():
         raise ParseError(f"Could not parse empty batch response. Raw response: {raw_response!r}")
@@ -130,8 +138,11 @@ def parse_batch_response_result(
     item_errors: list[str] = []
     invalid_scenario_ids: list[str] = []
     generated_at = datetime.now(timezone.utc).isoformat()
+    authorities = build_authorities(expected_scenarios, evidence_atoms)
     for index, item, expected in normalized_items:
-        error = _validate_batch_content(item, index, expected)
+        error = _validate_batch_content(
+            item, index, expected, authorities.get(expected.id)
+        )
         if error is not None:
             item_errors.append(f"{expected.id}: {error}")
             invalid_scenario_ids.append(expected.id)
@@ -159,6 +170,7 @@ def _validate_batch_content(
     item: dict[str, Any],
     index: int,
     expected: ScenarioIntent,
+    authority: ScenarioAuthority | None = None,
 ) -> str | None:
     """Return an item-local content error without weakening traceability."""
 
@@ -177,7 +189,21 @@ def _validate_batch_content(
         return f"item {index}: steps must be a non-empty list of non-empty strings"
     if not isinstance(item["expected_result"], str) or not item["expected_result"].strip():
         return f"item {index}: expected_result must be a non-empty string"
-    return _validate_provider_boundary(item, index, expected)
+    boundary_error = _validate_provider_boundary(item, index, expected)
+    if boundary_error is not None:
+        return boundary_error
+    if authority is None:
+        return None
+    quality_error = validate_content(
+        title=item["title"],
+        preconditions=item["preconditions"],
+        steps=item["steps"],
+        expected_result=item["expected_result"],
+        authority=authority,
+    )
+    if quality_error is not None:
+        return f"item {index}: semantic quality: {quality_error}"
+    return None
 
 
 _PROVIDER_CLAIM_FAMILIES: tuple[tuple[str, re.Pattern[str], re.Pattern[str]], ...] = (

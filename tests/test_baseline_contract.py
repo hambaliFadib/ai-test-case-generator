@@ -166,17 +166,39 @@ def echo_adapter():
     class EchoAdapter:
         def generate_result(self, prompt: str) -> LLMResult:
             planned = prompt.split("Planned scenarios for this batch:", 1)[-1]
-            refs = re.findall(r'"scenario_ref":\s*"([^"]+)"', planned)
-            items = [
-                {
-                    "scenario_ref": ref,
-                    "title": f"Case for {ref}",
-                    "preconditions": [],
-                    "steps": ["Perform the documented action."],
-                    "expected_result": "The documented behavior is satisfied.",
-                }
-                for ref in refs
-            ]
+            scenarios = json.loads(planned)
+            items = []
+            for scenario in scenarios:
+                ref = scenario["scenario_ref"]
+                if scenario.get("category") == "security":
+                    items.append(
+                        {
+                            "scenario_ref": ref,
+                            "title": f"Verify credential rejection for {ref}",
+                            "preconditions": ["The login form is open."],
+                            "steps": [
+                                "Enter wrong credentials and check the "
+                                f"\"Login\" response for {ref}."
+                            ],
+                            "expected_result": (
+                                "The \"Login\" form does not accept wrong "
+                                "credentials and shows an error message."
+                            ),
+                        }
+                    )
+                else:
+                    items.append(
+                        {
+                            "scenario_ref": ref,
+                            "title": f"Case for {ref}",
+                            "preconditions": [],
+                            "steps": [f"Check the \"Result\" field for {ref}."],
+                            "expected_result": (
+                                "The \"Result\" field displays the "
+                                "source-backed value."
+                            ),
+                        }
+                    )
             return LLMResult(json.dumps(items), "fake")
 
     return EchoAdapter()
