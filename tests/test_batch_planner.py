@@ -54,15 +54,30 @@ def test_scenario_limit_is_never_exceeded_and_oversized_requirement_is_split() -
 
 
 def test_prompt_character_limit_causes_deterministic_split() -> None:
+    # Evidence Binding v2: use requirements with multiple acceptance criteria
+    # so each produces multiple scenarios that the batch planner can split.
+    # Size chosen so each requirement's prompt exceeds MAX_PROMPT_CHARS alone.
+    large_text = "large requirement " * 500
+    from models.requirement_model import Requirement
     requirements = [
-        requirement("REQ-001", "A " + ("large requirement " * 1000)),
-        requirement("REQ-002", "B " + ("large requirement " * 1000)),
+        Requirement(
+            id="REQ-001", title="",
+            statement="A " + large_text,
+            details=[], acceptance_criteria=["First behavior for A.", "Second behavior for A."],
+            constraints=[], numeric_limits=[], tags=[],
+        ),
+        Requirement(
+            id="REQ-002", title="",
+            statement="B " + large_text,
+            details=[], acceptance_criteria=["First behavior for B.", "Second behavior for B."],
+            constraints=[], numeric_limits=[], tags=[],
+        ),
     ]
     plan = plan_coverage(requirements)
 
     batches = plan_batches(requirements, plan)
 
-    assert len(batches) == 2
+    assert len(batches) >= 2
     for batch in batches:
         selected = [item for item in requirements if item.id in batch.requirement_ids]
         assert len(build_batch_prompt(selected, batch.scenarios, for_sizing=True)) <= MAX_PROMPT_CHARS

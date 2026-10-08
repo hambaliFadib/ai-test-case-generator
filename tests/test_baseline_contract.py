@@ -507,7 +507,9 @@ def test_minimal_subset_of_comprehensive_subset_of_extra() -> None:
 
     assert set(minimal) <= set(comprehensive)
     assert set(comprehensive) <= set(extra)
-    assert len(minimal) < len(comprehensive) < len(extra)
+    # Evidence Binding v2: Extra may equal Comprehensive when no additional
+    # valid explicit combination exists. Subset checks are the contract.
+    assert len(minimal) <= len(comprehensive) <= len(extra)
 
 
 # 11. security only in Comprehensive/Extra
@@ -798,7 +800,7 @@ def test_semantic_gate_remains_intact(monkeypatch) -> None:
 
     original = coverage_planner._ensure_evidence_candidates
 
-    def skip_backfill(requirement, candidates, evidence_atoms, subject):
+    def skip_backfill(requirement, candidates, evidence_atoms, subject, constraint_refs):
         return candidates
 
     monkeypatch.setattr(

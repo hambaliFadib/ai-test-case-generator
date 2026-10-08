@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 
+from models.frozen_utils import FrozenDict
 from models.llm_result import LLMResult
 from models.test_case_model import TestCase
 
@@ -33,8 +34,35 @@ class EvidenceAtom:
 
 
 @dataclass(frozen=True)
+class ScenarioCandidate:
+    """Internal planner candidate with declared evidence authority.
+
+    Authority direction: Evidence Authority → Scenario Objective → Intent.
+    evidence_refs are declared by the producing planner rule, never inferred
+    from natural-language intent text.
+
+    Not exposed in CSV, web payload, UBI schema, or public API.
+    """
+
+    requirement_ref: str
+    category: str
+    technique: str
+    priority: str
+    evidence_refs: tuple[str, ...]
+    constraint_refs: tuple[str, ...]
+    objective_kind: str
+    objective_data: dict | None = None
+
+
+@dataclass(frozen=True)
 class ScenarioIntent:
-    """One deterministic, source-backed scenario expected to become one case."""
+    """One deterministic, source-backed scenario expected to become one case.
+
+    objective_kind and objective_data are internal semantic metadata produced
+    by the planner. They survive materialisation so downstream consumers can
+    reason about evidence scope without re-constraining ScenarioCandidate.
+    These fields do not appear in CSV, API, UBI schema, or public output.
+    """
 
     id: str
     requirement_ref: str
@@ -44,6 +72,8 @@ class ScenarioIntent:
     priority: str = "medium"
     evidence_refs: tuple[str, ...] = ()
     constraint_refs: tuple[str, ...] = ()
+    objective_kind: str = ""
+    objective_data: FrozenDict | None = None
 
 
 @dataclass(frozen=True)

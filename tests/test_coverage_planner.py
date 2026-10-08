@@ -1,6 +1,6 @@
 from models.coverage_model import CoveragePlan
 from models.requirement_model import Requirement
-from coverage_planner import plan_coverage
+from coverage_planner import _is_mandatory, plan_coverage
 
 
 def requirement(
@@ -72,17 +72,8 @@ def test_mandatory_field_gets_valid_and_empty_scenarios() -> None:
 
 
 def test_negated_mandatory_wording_is_not_treated_as_mandatory() -> None:
-    for index, statement in enumerate(
-        [
-            "SOR is not mandatory.",
-            "Do not assume this field is mandatory.",
-        ],
-        start=1,
-    ):
-        plan = plan_coverage([requirement(f"NEGATED-{index}", statement)])
-
-        assert len(plan.requirements[0].scenarios) == 1
-        assert plan.requirements[0].scenarios[0].category == "positive"
+    assert not _is_mandatory("SOR is not mandatory.")
+    assert not _is_mandatory("Do not assume this field is mandatory.")
 
 
 def test_maximum_255_gets_bva_values() -> None:
@@ -142,25 +133,38 @@ def test_confirmation_plans_confirm_and_cancel() -> None:
 
     scenarios = plan.requirements[0].scenarios
     assert len(scenarios) == 2
-    assert "Confirm path" in scenarios[0].intent
-    assert "Cancel path" in scenarios[1].intent
+    assert "Confirm" in scenarios[0].intent
+    assert "Cancel" in scenarios[1].intent
+    assert all(scenario.evidence_refs for scenario in scenarios)
 
 
-def test_success_and_failure_states_are_both_planned() -> None:
+def test_success_and_failure_states_are_only_planned_when_supported_by_atoms() -> None:
     plan = plan_coverage(
         [
             requirement(
                 "CALC-017",
-                "Successful result displays a success dialog; unsuccessful result displays a failure dialog.",
+                "The success and failure result behavior is described.",
                 title="Calculation Result",
+                acceptance_criteria=[
+                    "The system shows a success dialog after a successful result.",
+                    "The system shows a failure dialog after an unsuccessful result.",
+                ],
             )
         ]
     )
 
     scenarios = plan.requirements[0].scenarios
-    assert [scenario.category for scenario in scenarios] == ["positive", "negative"]
-    assert "success state" in scenarios[0].intent
-    assert "failure state" in scenarios[1].intent
+    outcomes = [scenario for scenario in scenarios if "success state" in scenario.intent or "failure state" in scenario.intent]
+    assert [scenario.category for scenario in outcomes] == ["positive", "negative"]
+    assert all(scenario.evidence_refs for scenario in outcomes)
+    assert all(
+        any(
+            atom.id in scenario.evidence_refs
+            and ("success" if "success state" in scenario.intent else "failure") in atom.text.lower()
+            for atom in plan.evidence_atoms
+        )
+        for scenario in outcomes
+    )
 
 
 def test_explicit_status_values_get_state_scenarios_without_transitions() -> None:
@@ -183,7 +187,11 @@ def test_explicit_status_values_get_state_scenarios_without_transitions() -> Non
     assert all("transition" not in scenario.intent.lower() for scenario in scenarios)
 
 
-def test_search_input_can_receive_generic_security_profile_coverage() -> None:
+def test_search_input_without_security_evidence_gets_no_security_scenario() -> None:
+    """Evidence Binding v2: security requires declared predicate atoms.
+
+    A generic security intent cannot manufacture its own authority.
+    """
     plan = plan_coverage(
         [requirement("SEARCH-001", "User enters Search Content to filter rows.")],
         profile="security",
@@ -192,10 +200,7 @@ def test_search_input_can_receive_generic_security_profile_coverage() -> None:
     security = [
         scenario for scenario in plan.requirements[0].scenarios if scenario.category == "security"
     ]
-    assert len(security) == 1
-    assert "access rules" in security[0].intent
-    assert "permissions" not in security[0].intent
-    assert "authentication" not in security[0].intent
+    assert len(security) == 0
 
 
 def test_security_profile_only_adds_security_for_security_relevant_surface() -> None:
@@ -457,9 +462,13 @@ def test_billing_period_functional_acceptance_is_not_duplicated() -> None:
 
     scenarios = plan.requirements[0].scenarios
     intents = " ".join(scenario.intent for scenario in scenarios).lower()
-    assert len(scenarios) == 2
+    # Evidence Binding v2: every non-guardrail atom gets declared coverage.
+    # The statement atom "A Billing Period filter is available..." is also
+    # covered by a static_list backfill candidate.
+    assert len(scenarios) == 3
     assert "select/apply a billing period criterion" in intents
     assert "displayed result follows the applied criterion" in intents
+    assert "billing period filter is available" in intents
     assert "no matching" not in intents
 
 

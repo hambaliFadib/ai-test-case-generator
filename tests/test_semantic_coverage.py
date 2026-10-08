@@ -349,14 +349,20 @@ def test_presence_only_controls_do_not_gain_functionality() -> None:
     assert "displayed result follows the applied criterion" in rate_functional
 
 
-def test_typed_audit_rejects_functional_mapping_for_presence_evidence() -> None:
+def test_typed_audit_checks_locality_and_coverage() -> None:
+    """Evidence Binding v2: auditor verifies locality, not lexical compatibility.
+
+    Compatibility is enforced at candidate construction time in the planner.
+    The auditor checks that declared refs are requirement-local and cover
+    all non-guardrail atoms.
+    """
     atom = EvidenceAtom("SEM-E01", "SEM", "presence", "Search Content")
     scenario = ScenarioIntent(
         "SEM-S01",
         "SEM",
         "positive",
         "EP",
-        "Verify Search Content allows input and filters rows.",
+        "Verify Search Content is visible and available.",
         evidence_refs=(atom.id,),
     )
     plan = CoveragePlan(
@@ -366,7 +372,29 @@ def test_typed_audit_rejects_functional_mapping_for_presence_evidence() -> None:
 
     audit = audit_evidence_coverage(plan)
     assert audit.uncovered_evidence_atom_ids == []
-    assert audit.incompatible_mapping_ids == ["SEM-E01"]
+    assert audit.incompatible_mapping_ids == []
+
+
+def test_typed_audit_rejects_foreign_requirement_refs() -> None:
+    """Foreign requirement evidence is a planner defect."""
+    atom_a = EvidenceAtom("REQ-A-E01", "REQ-A", "presence", "Search field")
+    atom_b = EvidenceAtom("REQ-B-E01", "REQ-B", "presence", "Cancel control")
+    scenario = ScenarioIntent(
+        "REQ-A-S01",
+        "REQ-A",
+        "positive",
+        "EP",
+        "Verify the Search field is visible and available.",
+        evidence_refs=("REQ-B-E01",),  # foreign ref
+    )
+    plan = CoveragePlan(
+        requirements=[RequirementCoveragePlan("REQ-A", [scenario])],
+        evidence_atoms=[atom_a, atom_b],
+    )
+
+    audit = audit_evidence_coverage(plan)
+    assert "REQ-B-E01" in audit.incompatible_mapping_ids
+    assert "REQ-A-E01" in audit.uncovered_evidence_atom_ids
 
 
 def test_mixed_positive_guardrail_sentence_preserves_positive_clause() -> None:

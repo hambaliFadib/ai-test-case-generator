@@ -589,8 +589,8 @@ def test_canonical_profile_contract_is_unchanged() -> None:
     requirements = [
         Requirement(
             id="REQ-P-001",
-            title="Search",
-            statement="Search Content filters displayed rows.",
+            title="Access",
+            statement="Only authenticated users can access the dashboard.",
         ),
     ]
 

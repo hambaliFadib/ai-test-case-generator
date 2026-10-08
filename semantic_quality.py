@@ -384,20 +384,22 @@ def authorized_evidence_texts(
 ) -> tuple[str, ...]:
     """Return the authorized evidence texts for one scenario.
 
-    Scenario-bound atoms take precedence (Rule C). When the scenario binds no
-    atoms, the requirement-local atoms are the fallback scope (Rule A).
+    Evidence Binding v2: authority is declared, not inferred.
+
+    - Declared refs: return bound atom texts (Rule C, with locality).
+    - Empty refs: return empty tuple. Policy scenarios carry authority in
+      their intent (rule_key-scoped). Zero-atom requirements have no atoms
+      to return. Non-policy scenarios with empty refs are a planner defect
+      caught by the coverage gate — they must not widen authority here.
     """
 
     by_id = {atom.id: atom for atom in evidence_atoms}
     bound = tuple(
-        by_id[ref].text for ref in scenario.evidence_refs if ref in by_id
+        by_id[ref].text
+        for ref in scenario.evidence_refs
+        if ref in by_id and by_id[ref].requirement_ref == scenario.requirement_ref
     )
-    if bound:
-        return bound
-    return tuple(
-        atom.text for atom in evidence_atoms
-        if atom.requirement_ref == scenario.requirement_ref
-    )
+    return bound
 
 
 def build_authorities(

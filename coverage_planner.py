@@ -1,4 +1,11 @@
-"""Deterministic, conservative coverage planning for Phase 2."""
+"""Deterministic, conservative coverage planning for Phase 2 — Evidence Binding v2.
+
+Authority direction:
+    Evidence Authority → Scenario Objective → Natural-Language Intent
+
+ScenarioCandidate.evidence_refs are declared by the producing planner rule.
+Natural-language intent MUST NOT determine evidence authorization.
+"""
 
 from __future__ import annotations
 
@@ -12,9 +19,11 @@ from models.coverage_model import (
     CoveragePlan,
     EvidenceAtom,
     RequirementCoveragePlan,
+    ScenarioCandidate,
     ScenarioIntent,
     UnresolvedBaselineItem,
 )
+from models.frozen_utils import freeze_objective_data
 from models.requirement_model import Requirement
 from profiles import DEFAULT_PROFILE, resolve_profile
 
@@ -59,8 +68,19 @@ _SECURITY = re.compile(
     r"\b(?:security|secure|authentication|authenticated|authorization|authorized|permission|role|access control|login|sign in|password|credential|token|session|unauthorized|forbidden|privilege)\b",
     re.IGNORECASE,
 )
+_SECURITY_PREDICATE = re.compile(
+    r"\b(?:authenticated|authentication|authorization|authorized|permission|role|access control|password|credentials?|token|session|unauthorized|forbidden|privilege|mfa|otp|lockout|plain\s+text|plaintext|displayed\s+as)\b",
+    re.IGNORECASE,
+)
 _STATE = re.compile(
     r"\b(?:status(?:es)?|state(?:s)?|lifecycle|values include|states include)\b",
+    re.IGNORECASE,
+)
+_BEHAVIOR_PHRASE = re.compile(
+    r"\b(?:filters?\s+(?:displayed|rows|results?)|displayed\s+(?:rows?|results?)\s+(?:are\s+)?follow|"
+    r"displayed\s+(?:rows?|results?)\s+(?:are\s+)?filter\w*|"
+    r"system\s+saves?|saves?\s+the\s+changes|returns?\s+the\s+(?:displayed\s+)?results?|"
+    r"applies?\s+(?:the\s+)?(?:selected\s+|applied\s+)?criterion)\b",
     re.IGNORECASE,
 )
 
@@ -87,10 +107,10 @@ def plan_coverage(
     unresolved_baseline: list[UnresolvedBaselineItem] = []
     for requirement in requirements:
         requirement_atoms = extract_evidence_atoms(requirement)
-        evidence_atoms.extend(requirement_atoms)
-        scenarios, evaluation = _scenarios_for_requirement(
+        scenarios, evaluation, all_atoms = _scenarios_for_requirement(
             requirement, resolved_profile, requirement_atoms
         )
+        evidence_atoms.extend(all_atoms)
         unresolved_baseline.extend(evaluation.unresolved)
         plans.append(
             RequirementCoveragePlan(
@@ -103,8 +123,6 @@ def plan_coverage(
         evidence_atoms=evidence_atoms,
         unresolved_baseline=unresolved_baseline,
     )
-    # Keep the planning gate local and deterministic.  A silently dropped atom
-    # is a planner defect, not something to defer to batching or the provider.
     from coverage_auditor import audit_evidence_coverage
 
     evidence_audit = audit_evidence_coverage(plan)
@@ -129,215 +147,935 @@ def plan_coverage(
     return plan
 
 
+# ---------------------------------------------------------------------------
+# Objective → Intent renderer
+# ---------------------------------------------------------------------------
+
+def render_intent(
+    requirement_id: str,
+    objective_kind: str,
+    objective_data: dict | None,
+    atoms: list[EvidenceAtom],
+    subject: str,
+) -> str:
+    """Render natural-language intent from declared objective and bound atoms.
+
+    The renderer produces intent FROM objective_data + declared atom texts.
+    It never determines which atoms are bound — refs are already declared.
+    """
+    if objective_data is None:
+        objective_data = {}
+    atoms_by_id = {a.id: a for a in atoms}
+
+    if objective_kind == "presence":
+        primary = objective_data.get("primary_ref")
+        if primary and primary in atoms_by_id:
+            label = _presence_label(atoms_by_id[primary].text)
+            return f"Verify the explicitly described {label} is visible and available."
+        refs = objective_data.get("refs") or ()
+        labels = []
+        for r in refs:
+            if r in atoms_by_id:
+                labels.append(atoms_by_id[r].text.rstrip(".").strip())
+        if labels:
+            return f"Verify the explicitly listed items for {subject}: {'; '.join(labels)}."
+        return f"Verify the explicitly described {subject} is visible and available."
+
+    if objective_kind == "behavior":
+        primary = objective_data.get("primary_ref")
+        if primary and primary in atoms_by_id:
+            text = atoms_by_id[primary].text.rstrip(".").strip()
+            return f"Verify that {text}."
+        return f"Verify {subject} displays the explicitly defined behavior."
+
+    if objective_kind == "combination":
+        primary = objective_data.get("primary_ref")
+        supporting = objective_data.get("supporting_refs") or ()
+        primary_text = ""
+        if primary and primary in atoms_by_id:
+            primary_text = atoms_by_id[primary].text.rstrip(".").strip()
+        intent = f"Verify that {primary_text}." if primary_text else f"Verify the documented behavior for {subject}."
+        supporting_labels = []
+        for r in supporting:
+            if r in atoms_by_id:
+                supporting_labels.append(_presence_label(atoms_by_id[r].text))
+        if supporting_labels:
+            intent += f" The related control is present: {'; '.join(supporting_labels)}."
+        return intent
+
+    if objective_kind == "boundary":
+        value = objective_data.get("value", "")
+        direction = objective_data.get("direction", "")
+        unit = objective_data.get("unit", "")
+        limit_direction = objective_data.get("limit_direction", "maximum")
+        if direction == "below":
+            verb = "rejects or prevents" if limit_direction == "minimum" else "accepts"
+            return f"Verify {subject} {verb} a value of {value}{unit}, below the explicit limit."
+        if direction == "exact":
+            return f"Verify {subject} accepts the explicit limit value of {value}{unit}."
+        if direction == "above":
+            verb = "accepts" if limit_direction == "minimum" else "rejects or prevents"
+            return f"Verify {subject} {verb} a value of {value}{unit}, beyond the explicit limit."
+        return f"Verify the explicit boundary rule for {subject}."
+
+    if objective_kind == "mandatory":
+        field_label = objective_data.get("field_label") or subject
+        variant = objective_data.get("variant", "populated")
+        if variant == "populated":
+            return f"Verify {field_label} accepts a valid populated value."
+        return f"Verify {field_label} is rejected or prevented when it is left empty."
+
+    if objective_kind == "state":
+        state_value = objective_data.get("state_value", "")
+        return f"Verify {subject} displays the explicitly defined {state_value} state."
+
+    if objective_kind == "policy":
+        policy_line = objective_data.get("policy_line", "")
+        return f"Verify the explicit product policy for {subject}: {policy_line}."
+
+    if objective_kind == "security":
+        primary = objective_data.get("predicate_ref")
+        if primary and primary in atoms_by_id:
+            text = atoms_by_id[primary].text.rstrip(".").strip()
+            return f"Verify the explicitly described security behavior for {subject}: {text}."
+        return f"Verify the explicitly described security behavior for {subject}."
+
+    if objective_kind == "file_type":
+        variant = objective_data.get("variant", "accept")
+        if variant == "reject":
+            return f"Verify the upload rejects or prevents non-PDF or unsupported file types under {subject}."
+        return f"Verify the upload accepts PDF files as explicitly required by {subject}."
+
+    if objective_kind == "sample_value":
+        refs = objective_data.get("refs") or ()
+        for r in refs:
+            if r in atoms_by_id:
+                return (
+                    f"Verify the sample value '{atoms_by_id[r].text}' is shown as a "
+                    f"non-exhaustive example for {subject}."
+                )
+        return f"Verify the sample value is shown as a non-exhaustive example for {subject}."
+
+    if objective_kind == "static_list":
+        refs = objective_data.get("refs") or ()
+        labels = [atoms_by_id[r].text for r in refs if r in atoms_by_id]
+        if labels:
+            return f"Verify the explicitly listed items for {subject}: {'; '.join(labels)}."
+        return f"Verify the explicitly listed items for {subject}."
+
+    if objective_kind == "no_results":
+        return f"Verify {subject} displays the empty result state as explicitly described."
+
+    if objective_kind == "action_visibility":
+        return f"Verify the explicitly described {subject} is visible and available."
+
+    if objective_kind == "success_failure":
+        variant = objective_data.get("variant", "success")
+        if variant == "success":
+            return f"Verify {subject} displays the explicitly defined success state."
+        return f"Verify {subject} displays the explicitly defined failure state."
+
+    return f"Verify the application provides the behavior described for {subject}."
+
+
+def _presence_label(atom_text: str) -> str:
+    text = atom_text.strip().rstrip(".")
+    match = re.match(r"^the page provides\s+(.+)$", text, re.IGNORECASE)
+    if match:
+        return match.group(1).strip().strip('"')
+    return text
+
+
+def _normalize_objective_data(objective_data: dict | None) -> tuple:
+    """Deterministic normalization of objective_data for dedup identity."""
+    if not objective_data:
+        return ()
+    items = []
+    for key in sorted(objective_data.keys()):
+        value = objective_data[key]
+        if isinstance(value, (list, tuple)):
+            items.append((key, tuple(str(v) for v in value)))
+        else:
+            items.append((key, str(value)))
+    return tuple(items)
+
+
+def _candidate_identity(c: ScenarioCandidate) -> tuple:
+    """Proposed dedup identity: (requirement_ref, category, technique,
+    objective_kind, normalized_objective_data, evidence_refs)."""
+    return (
+        c.requirement_ref,
+        c.category,
+        c.technique,
+        c.objective_kind,
+        _normalize_objective_data(c.objective_data),
+        c.evidence_refs,
+    )
+
+
+def _is_security_predicate_atom(atom: EvidenceAtom) -> bool:
+    """Security predicate recognition: predicate flag + kind in {observed_value, explicit_behavior}."""
+    return (
+        atom.kind in {"observed_value", "explicit_behavior"}
+        and bool(_SECURITY_PREDICATE.search(atom.text))
+    )
+
+
+def _find_atom_by_normalized(atoms: list[EvidenceAtom], text: str) -> EvidenceAtom | None:
+    normalized = _normalize_evidence(text)
+    for atom in atoms:
+        if _normalize_evidence(atom.text) == normalized:
+            return atom
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Producer: atomic behaviors → ScenarioCandidate
+# ---------------------------------------------------------------------------
+
+def _atomic_candidates(
+    behaviors: list[_AtomicBehavior],
+    atoms: list[EvidenceAtom],
+    subject: str,
+) -> list[ScenarioCandidate]:
+    """Convert atomic behaviors into declared-binding candidates."""
+    candidates: list[ScenarioCandidate] = []
+    constraint_refs = tuple(a.id for a in atoms if a.kind == "guardrail")
+    for behavior in behaviors:
+        label = behavior.label
+        if behavior.kind in {"limit", "state"}:
+            continue
+        atom = _find_atom_by_normalized(atoms, behavior.source_text)
+        ref = atom.id if atom else None
+        req_ref = atom.requirement_ref if atom else ""
+        if atom is None:
+            continue
+        if behavior.kind == "file_type":
+            candidates.append(
+                ScenarioCandidate(
+                    requirement_ref=req_ref,
+                    category="positive",
+                    technique="EP",
+                    priority="high",
+                    evidence_refs=(ref,) if ref else (),
+                    constraint_refs=constraint_refs,
+                    objective_kind="file_type",
+                    objective_data={"primary_ref": ref} if ref else None,
+                )
+            )
+            candidates.append(
+                ScenarioCandidate(
+                    requirement_ref=req_ref,
+                    category="negative",
+                    technique="negative",
+                    priority="high",
+                    evidence_refs=(ref,) if ref else (),
+                    constraint_refs=constraint_refs,
+                    objective_kind="file_type",
+                    objective_data={"primary_ref": ref, "variant": "reject"} if ref else None,
+                )
+            )
+        elif behavior.kind == "confirmation":
+            candidates.append(
+                ScenarioCandidate(
+                    requirement_ref=req_ref,
+                    category="positive",
+                    technique="EP",
+                    priority="medium",
+                    evidence_refs=(ref,) if ref else (),
+                    constraint_refs=constraint_refs,
+                    objective_kind="presence",
+                    objective_data={"primary_ref": ref} if ref else None,
+                )
+            )
+        elif behavior.kind == "confirmation_behavior":
+            candidates.append(
+                ScenarioCandidate(
+                    requirement_ref=req_ref,
+                    category="positive",
+                    technique="EP",
+                    priority="high",
+                    evidence_refs=(ref,) if ref else (),
+                    constraint_refs=constraint_refs,
+                    objective_kind="behavior",
+                    objective_data={"primary_ref": ref} if ref else None,
+                )
+            )
+        elif behavior.kind in {"action", "control", "tab"}:
+            candidates.append(
+                ScenarioCandidate(
+                    requirement_ref=req_ref,
+                    category="positive",
+                    technique="EP",
+                    priority="medium",
+                    evidence_refs=(ref,) if ref else (),
+                    constraint_refs=constraint_refs,
+                    objective_kind="presence",
+                    objective_data={"primary_ref": ref} if ref else None,
+                )
+            )
+        elif behavior.kind == "behavior":
+            if atom.kind not in {"explicit_behavior", "observed_value"}:
+                continue
+            if _is_no_result_evidence(behavior.source_text):
+                category, priority = "negative", "medium"
+            else:
+                category, priority = "positive", "medium"
+            candidates.append(
+                ScenarioCandidate(
+                    requirement_ref=req_ref,
+                    category=category,
+                    technique="EP",
+                    priority=priority,
+                    evidence_refs=(ref,),
+                    constraint_refs=constraint_refs,
+                    objective_kind="behavior",
+                    objective_data={"primary_ref": ref},
+                )
+            )
+    return candidates
+
+
+# ---------------------------------------------------------------------------
+# Producer: _scenarios_for_requirement → ScenarioCandidate list
+# ---------------------------------------------------------------------------
+
 def _scenarios_for_requirement(
     requirement: Requirement,
     profile: str,
     evidence_atoms: list[EvidenceAtom],
-) -> tuple[list[ScenarioIntent], BaselineEvaluation]:
+) -> tuple[list[ScenarioIntent], BaselineEvaluation, list[EvidenceAtom]]:
     if requirement.status != "TESTABLE":
-        return [], BaselineEvaluation()
+        return [], BaselineEvaluation(), evidence_atoms
 
     text = _requirement_text(requirement)
     subject = _subject(requirement)
     atomic_behaviors = _extract_atomic_behaviors(requirement)
-    atomic_candidates = _atomic_candidates(atomic_behaviors)
     has_confirmation_children = any(
         item.kind in {"confirmation", "confirmation_behavior"} for item in atomic_behaviors
     )
-    candidates: list[tuple[str, str, str, str]] = []
+    non_guardrail = [a for a in evidence_atoms if a.kind != "guardrail"]
+    constraint_refs = tuple(a.id for a in evidence_atoms if a.kind == "guardrail")
+    zero_atom_requirement = len(non_guardrail) == 0
 
-    candidates.extend(atomic_candidates)
+    candidates: list[ScenarioCandidate] = []
 
+    # a. Atomic candidates
+    candidates.extend(_atomic_candidates(atomic_behaviors, evidence_atoms, subject))
+
+    # b. Mandatory
     if _is_mandatory(text):
-        candidates.extend(
-            [
-                (
-                    "positive",
-                    "EP",
-                    f"Verify {subject} accepts a valid populated value.",
-                    "high",
-                ),
-                (
-                    "negative",
-                    "negative",
-                    f"Verify {subject} is rejected or prevented when it is left empty.",
-                    "high",
-                ),
-            ]
-        )
+        mandatory_atom = next((a for a in evidence_atoms if a.kind == "mandatory"), None)
+        mref = mandatory_atom.id if mandatory_atom else None
+        if mref:
+            candidates.append(
+                ScenarioCandidate(
+                    requirement_ref=requirement.id,
+                    category="positive",
+                    technique="EP",
+                    priority="high",
+                    evidence_refs=(mref,),
+                    constraint_refs=constraint_refs,
+                    objective_kind="mandatory",
+                    objective_data={"field_label": subject, "variant": "populated", "primary_ref": mref},
+                )
+            )
+            candidates.append(
+                ScenarioCandidate(
+                    requirement_ref=requirement.id,
+                    category="negative",
+                    technique="negative",
+                    priority="high",
+                    evidence_refs=(mref,),
+                    constraint_refs=constraint_refs,
+                    objective_kind="mandatory",
+                    objective_data={"field_label": subject, "variant": "empty", "primary_ref": mref},
+                )
+            )
 
+    # c. BVA / boundary
     limit = _explicit_limit(requirement, text)
     if limit is not None:
         value, direction, unit = limit
-        below, exact, above = _boundary_values(value, direction)
-        below_verb = "rejects or prevents" if direction == "minimum" else "accepts"
-        above_verb = "accepts" if direction == "minimum" else "rejects or prevents"
-        candidates.extend(
-            [
-                (
-                    "boundary",
-                    "BVA",
-                    f"Verify {subject} {below_verb} a value of {below}{unit}, below the explicit limit.",
-                    "medium",
-                ),
-                (
-                    "boundary",
-                    "BVA",
-                    f"Verify {subject} accepts the explicit limit value of {exact}{unit}.",
-                    "high",
-                ),
-                (
-                    "boundary",
-                    "BVA",
-                    f"Verify {subject} {above_verb} a value of {above}{unit}, beyond the explicit limit.",
-                    "high",
-                ),
-            ]
-        )
+        boundary_atom = next((a for a in evidence_atoms if a.kind == "boundary"), None)
+        bref = boundary_atom.id if boundary_atom else None
+        if bref:
+            below, exact, above = _boundary_values(value, direction)
+            for val, dirn, prio in ((below, "below", "medium"), (exact, "exact", "high"), (above, "above", "high")):
+                candidates.append(
+                    ScenarioCandidate(
+                        requirement_ref=requirement.id,
+                        category="boundary",
+                        technique="BVA",
+                        priority=prio,
+                        evidence_refs=(bref,),
+                        constraint_refs=constraint_refs,
+                        objective_kind="boundary",
+                        objective_data={
+                            "value": val, "direction": dirn, "unit": unit,
+                            "limit_direction": direction, "primary_ref": bref,
+                        },
+                    )
+                )
 
+    # d. State
+    if _STATE.search(text):
+        for state_atom in (a for a in evidence_atoms if a.kind == "state"):
+            candidates.append(
+                ScenarioCandidate(
+                    requirement_ref=requirement.id,
+                    category="positive",
+                    technique="EP",
+                    priority="medium",
+                    evidence_refs=(state_atom.id,),
+                    constraint_refs=constraint_refs,
+                    objective_kind="state",
+                    objective_data={"state_value": state_atom.text, "primary_ref": state_atom.id},
+                )
+            )
+
+    # Confirmation path (synthesized presence atoms when source names Confirm+Cancel)
     if (
         _CONFIRMATION.search(text)
         and _has_confirm_and_cancel(text)
         and not has_confirmation_children
     ):
-        candidates.extend(
-            [
-                (
-                    "positive",
-                    "EP",
-                    f"Verify the Confirm path for {subject} proceeds as explicitly described.",
-                    "high",
-                ),
-                (
-                    "edge",
-                    "exploratory",
-                    f"Verify the Cancel path for {subject} follows the explicitly described behavior.",
-                    "medium",
-                ),
-            ]
-        )
-
-    if _SUCCESS.search(requirement.statement) and _FAILURE.search(requirement.statement):
-        candidates.extend(
-            [
-                (
-                    "positive",
-                    "EP",
-                    f"Verify {subject} displays the explicitly defined success state.",
-                    "high",
-                ),
-                (
-                    "negative",
-                    "negative",
-                    f"Verify {subject} displays the explicitly defined failure state.",
-                    "high",
-                ),
-            ]
-        )
-
-    if _STATE.search(text):
-        states = _explicit_states(requirement)
-        for state in states:
+        control_atoms = [
+            a for a in evidence_atoms
+            if a.kind in {"presence", "observed_value"} and _CONFIRMATION.search(a.text)
+        ]
+        if not control_atoms:
+            synthesized = []
+            for label in ("Confirm", "Cancel"):
+                if re.search(rf"\b{label}\b", text, re.IGNORECASE):
+                    synth_id = f"{requirement.id}-E{len(evidence_atoms) + len(synthesized) + 1:02d}"
+                    synthesized.append(
+                        EvidenceAtom(
+                            id=synth_id,
+                            requirement_ref=requirement.id,
+                            kind="presence",
+                            text=f"{label} action",
+                        )
+                    )
+            control_atoms = synthesized
+            evidence_atoms = [*evidence_atoms, *synthesized]
+        for atom in control_atoms:
             candidates.append(
-                (
-                    "positive",
-                    "EP",
-                    f"Verify {subject} displays the explicitly defined {state} state.",
-                    "medium",
+                ScenarioCandidate(
+                    requirement_ref=requirement.id,
+                    category="positive",
+                    technique="EP",
+                    priority="high",
+                    evidence_refs=(atom.id,),
+                    constraint_refs=constraint_refs,
+                    objective_kind="presence",
+                    objective_data={"primary_ref": atom.id},
                 )
             )
 
+    # Success and failure outcomes require explicit outcome evidence atoms.
+    if _SUCCESS.search(text) and _FAILURE.search(text):
+        for variant, pattern in (("success", _SUCCESS), ("failure", _FAILURE)):
+            variant_atoms = [
+                atom for atom in non_guardrail
+                if pattern.search(atom.text)
+                and _is_success_failure_outcome(atom.text, variant)
+                and any(
+                    behavior.kind == "behavior"
+                    and _normalize_evidence(behavior.source_text) == _normalize_evidence(atom.text)
+                    for behavior in atomic_behaviors
+                )
+            ]
+            if variant_atoms:
+                candidates.append(
+                    ScenarioCandidate(
+                        requirement_ref=requirement.id,
+                        category="positive" if variant == "success" else "negative",
+                        technique="EP" if variant == "success" else "negative",
+                        priority="high",
+                        evidence_refs=tuple(atom.id for atom in variant_atoms),
+                        constraint_refs=constraint_refs,
+                        objective_kind="success_failure",
+                        objective_data={"variant": variant},
+                    )
+                )
+
+    # Action-only visibility fallback requires explicit presence evidence.
     if not candidates and _ACTION.search(text):
-        candidates.append(
-            (
-                "positive",
-                "EP",
-                f"Verify the explicitly described {subject} is visible and available.",
-                "medium",
-            )
-        )
-    elif not candidates:
-        candidates.append(
-            (
-                "positive",
-                "EP",
-                f"Verify the application provides the behavior described for {subject}.",
-                "medium",
-            )
-        )
-    elif _ACTION.search(text) and not (
-        _is_mandatory(text)
-        or limit is not None
-        or _SEARCH.search(text)
-        or _CONFIRMATION.search(text)
-        or (_SUCCESS.search(requirement.statement) and _FAILURE.search(requirement.statement))
-        or _STATE.search(text)
-        or atomic_behaviors
-    ):
-        # Action-only requirements remain a single visibility/access scenario.
-        candidates = [
-            (
-                "positive",
-                "EP",
-                f"Verify the explicitly described {subject} is visible and available.",
-                "medium",
-            )
+        action_atoms = [
+            atom for atom in non_guardrail
+            if atom.kind in {"presence", "observed_value"}
+            and _ACTION.search(atom.text)
         ]
-
-    should_render_evidence = any(
-        atom.kind in {"explicit_behavior", "presence", "mandatory", "boundary", "file_boundary"}
-        for atom in evidence_atoms
-    ) or (
-        sum(len(atom.text) for atom in evidence_atoms) <= 2_000
-        and any(
-            atom.kind in {"observed_value", "sample_value", "option", "state"}
-            for atom in evidence_atoms
-        )
-    )
-    if evidence_atoms and should_render_evidence and any(
-        "application provides the behavior described" in intent
-        for _, _, intent, _ in candidates
-    ):
-        candidates = [
-            candidate
-            for candidate in candidates
-            if "application provides the behavior described" not in candidate[2]
-        ]
-
-    evaluation = evaluate_baseline(requirement, evidence_atoms, subject)
-    candidates.extend(evaluation.policy_candidates)
-
-    if profile in ("comprehensive", "extra"):
-        candidates = _add_comprehensive_source_backed_case(candidates, text, subject)
-        if _SECURITY.search(text) or _SEARCH.search(text):
-            security_intent = (
-                f"Verify {subject} handles supplied input safely without adding unspecified access rules."
-                if _SEARCH.search(text) and not _SECURITY.search(text)
-                else f"Verify the explicitly described security behavior for {subject}."
-            )
+        if len(action_atoms) == 1:
+            atom = action_atoms[0]
             candidates.append(
-                (
-                    "security",
-                    "security",
-                    security_intent,
-                    "high",
+                ScenarioCandidate(
+                    requirement_ref=requirement.id,
+                    category="positive",
+                    technique="EP",
+                    priority="medium",
+                    evidence_refs=(atom.id,),
+                    constraint_refs=constraint_refs,
+                    objective_kind="action_visibility",
+                    objective_data={"primary_ref": atom.id},
                 )
             )
-        candidates = _add_deeper_source_backed_candidate(
-            candidates, evidence_atoms, subject
+    elif not candidates and zero_atom_requirement and _supports_zero_atom_behavior(requirement):
+        candidates.append(
+            ScenarioCandidate(
+                requirement_ref=requirement.id,
+                category="positive",
+                technique="EP",
+                priority="medium",
+                evidence_refs=(),
+                constraint_refs=constraint_refs,
+                objective_kind="behavior",
+                objective_data=None,
+            )
         )
-    if profile == "extra":
-        candidates = _add_extra_exploratory_candidate(candidates, evidence_atoms, subject)
 
+    # Baseline policy candidates
+    evaluation = evaluate_baseline(requirement, evidence_atoms, subject)
+    for cat, tech, _intent, prio in evaluation.policy_candidates:
+        rule_key_match = re.search(r"policy for [^:]+: (.+)\.$", _intent)
+        policy_line = rule_key_match.group(1) if rule_key_match else _intent
+        candidates.append(
+            ScenarioCandidate(
+                requirement_ref=requirement.id,
+                category=cat,
+                technique=tech,
+                priority=prio,
+                evidence_refs=(),
+                constraint_refs=constraint_refs,
+                objective_kind="policy",
+                objective_data={"rule_key": "", "policy_line": policy_line},
+            )
+        )
+
+    # f. Backfill via declared-ref set arithmetic
+    candidates = [
+        candidate for candidate in candidates
+        if candidate.objective_kind != "behavior"
+        or candidate.evidence_refs
+        or not non_guardrail
+    ]
     candidates = _ensure_evidence_candidates(
-        requirement,
-        candidates,
-        evidence_atoms,
-        subject,
+        requirement, candidates, evidence_atoms, subject, constraint_refs
     )
-    scenarios = _materialize_scenarios(requirement.id, candidates, evidence_atoms, subject)
-    return scenarios, evaluation
 
+    # g/h. Comprehensive/Extra combination candidates
+    if profile in ("comprehensive", "extra"):
+        candidates = _add_combination_candidates(
+            candidates, evidence_atoms, subject, constraint_refs, zero_atom_requirement
+        )
+
+    # i. Security candidates
+    if profile in ("comprehensive", "extra"):
+        if _SECURITY.search(text):
+            predicate_atoms = [a for a in non_guardrail if _is_security_predicate_atom(a)]
+            for atom in predicate_atoms:
+                candidates.append(
+                    ScenarioCandidate(
+                        requirement_ref=requirement.id,
+                        category="security",
+                        technique="security",
+                        priority="high",
+                        evidence_refs=(atom.id,),
+                        constraint_refs=constraint_refs,
+                        objective_kind="security",
+                        objective_data={"predicate_ref": atom.id},
+                    )
+                )
+
+    # Second backfill pass after comprehensive/extra additions
+    candidates = _ensure_evidence_candidates(
+        requirement, candidates, evidence_atoms, subject, constraint_refs
+    )
+
+    scenarios = _materialize_scenarios(requirement.id, candidates, evidence_atoms, subject)
+    return scenarios, evaluation, evidence_atoms
+
+
+# ---------------------------------------------------------------------------
+# Combination construction
+# ---------------------------------------------------------------------------
+
+def _add_combination_candidates(
+    candidates: list[ScenarioCandidate],
+    evidence_atoms: list[EvidenceAtom],
+    subject: str,
+    constraint_refs: tuple[str, ...],
+    zero_atom_requirement: bool,
+) -> list[ScenarioCandidate]:
+    """Explicit combination candidates: presence/observed_value + explicit_behavior.
+
+    Locked matrix: presence/observed_value + explicit_behavior allowed via
+    explicit planner op (co-observation only). Renderer must not introduce
+    causal connectives.
+    """
+    if zero_atom_requirement:
+        return candidates
+    non_guardrail = [a for a in evidence_atoms if a.kind != "guardrail"]
+    behavior_atoms = [a for a in non_guardrail if a.kind == "explicit_behavior"]
+    presence_atoms = [a for a in non_guardrail if a.kind in {"presence", "observed_value"}]
+    if not behavior_atoms or not presence_atoms:
+        return candidates
+    primary = behavior_atoms[0]
+    supporting = tuple(a.id for a in presence_atoms)
+    combo = ScenarioCandidate(
+        requirement_ref=primary.requirement_ref,
+        category="edge",
+        technique="exploratory",
+        priority="low",
+        evidence_refs=(primary.id, *supporting),
+        constraint_refs=constraint_refs,
+        objective_kind="combination",
+        objective_data={
+            "primary_ref": primary.id,
+            "supporting_refs": supporting,
+            "relationship": "coobservation",
+        },
+    )
+    if _candidate_identity(combo) not in {_candidate_identity(c) for c in candidates}:
+        candidates.append(combo)
+    return candidates
+
+
+# ---------------------------------------------------------------------------
+# Backfill via declared-ref set arithmetic
+# ---------------------------------------------------------------------------
+
+def _ensure_evidence_candidates(
+    requirement: Requirement,
+    candidates: list[ScenarioCandidate],
+    evidence_atoms: list[EvidenceAtom],
+    subject: str,
+    constraint_refs: tuple[str, ...],
+) -> list[ScenarioCandidate]:
+    """Add the smallest declared-binding candidates for atoms not yet referenced.
+
+    Unmatched calculation uses declared-ref set arithmetic, not lexical matching.
+    """
+    declared_refs: set[str] = set()
+    for c in candidates:
+        declared_refs.update(c.evidence_refs)
+
+    unmatched = [
+        a for a in evidence_atoms
+        if a.kind != "guardrail" and a.id not in declared_refs
+    ]
+    if not unmatched:
+        return candidates
+
+    sample_atoms = [a for a in unmatched if a.kind == "sample_value"]
+    for atom in sample_atoms:
+        candidates.append(
+            ScenarioCandidate(
+                requirement_ref=requirement.id,
+                category="positive",
+                technique="EP",
+                priority="medium",
+                evidence_refs=(atom.id,),
+                constraint_refs=constraint_refs,
+                objective_kind="sample_value",
+                objective_data={"refs": (atom.id,)},
+            )
+        )
+    unmatched = [a for a in unmatched if a not in sample_atoms]
+    if not unmatched:
+        return candidates
+
+    static_atoms = [
+        a for a in unmatched
+        if a.kind in {"observed_value", "option", "state", "presence"}
+    ]
+    if static_atoms:
+        candidates.append(
+            ScenarioCandidate(
+                requirement_ref=requirement.id,
+                category="positive",
+                technique="EP",
+                priority="medium",
+                evidence_refs=tuple(a.id for a in static_atoms),
+                constraint_refs=constraint_refs,
+                objective_kind="static_list",
+                objective_data={"refs": tuple(a.id for a in static_atoms)},
+            )
+        )
+        unmatched = [a for a in unmatched if a not in static_atoms]
+
+    for atom in unmatched:
+        if atom.kind == "guardrail":
+            continue
+        if atom.kind == "mandatory":
+            candidates.append(
+                ScenarioCandidate(
+                    requirement_ref=requirement.id,
+                    category="positive",
+                    technique="EP",
+                    priority="high",
+                    evidence_refs=(atom.id,),
+                    constraint_refs=constraint_refs,
+                    objective_kind="mandatory",
+                    objective_data={"field_label": subject, "variant": "populated", "primary_ref": atom.id},
+                )
+            )
+            candidates.append(
+                ScenarioCandidate(
+                    requirement_ref=requirement.id,
+                    category="negative",
+                    technique="negative",
+                    priority="high",
+                    evidence_refs=(atom.id,),
+                    constraint_refs=constraint_refs,
+                    objective_kind="mandatory",
+                    objective_data={"field_label": subject, "variant": "empty", "primary_ref": atom.id},
+                )
+            )
+            continue
+        if atom.kind == "boundary":
+            candidates.append(
+                ScenarioCandidate(
+                    requirement_ref=requirement.id,
+                    category="boundary",
+                    technique="BVA",
+                    priority="high",
+                    evidence_refs=(atom.id,),
+                    constraint_refs=constraint_refs,
+                    objective_kind="boundary",
+                    objective_data={"value": "", "direction": "rule", "unit": "", "primary_ref": atom.id},
+                )
+            )
+            continue
+        if atom.kind == "file_boundary":
+            candidates.append(
+                ScenarioCandidate(
+                    requirement_ref=requirement.id,
+                    category="positive",
+                    technique="EP",
+                    priority="high",
+                    evidence_refs=(atom.id,),
+                    constraint_refs=constraint_refs,
+                    objective_kind="file_type",
+                    objective_data={"primary_ref": atom.id},
+                )
+            )
+            continue
+        if (
+            atom.kind == "explicit_behavior"
+            or _BEHAVIOR_PHRASE.search(atom.text)
+            or _classify_atomic_behavior(atom.text, _context_mode(atom.text), "source") == "behavior"
+        ):
+            candidates.append(
+                ScenarioCandidate(
+                    requirement_ref=requirement.id,
+                    category="positive",
+                    technique="EP",
+                    priority="medium",
+                    evidence_refs=(atom.id,),
+                    constraint_refs=constraint_refs,
+                    objective_kind="behavior",
+                    objective_data={"primary_ref": atom.id},
+                )
+            )
+        else:
+            candidates.append(
+                ScenarioCandidate(
+                    requirement_ref=requirement.id,
+                    category="positive",
+                    technique="EP",
+                    priority="medium",
+                    evidence_refs=(atom.id,),
+                    constraint_refs=constraint_refs,
+                    objective_kind="presence",
+                    objective_data={"primary_ref": atom.id},
+                )
+            )
+    return candidates
+
+
+# ---------------------------------------------------------------------------
+# Materialization: ScenarioCandidate → ScenarioIntent
+# ---------------------------------------------------------------------------
+
+def validate_candidate_authority(
+    candidate: ScenarioCandidate,
+    atoms: list[EvidenceAtom],
+) -> None:
+    """Reject candidates whose declared authority is invalid for their objective."""
+    atoms_by_id = {atom.id: atom for atom in atoms}
+    requirement_atoms = [
+        atom for atom in atoms if atom.requirement_ref == candidate.requirement_ref
+    ]
+    non_guardrail = [atom for atom in requirement_atoms if atom.kind != "guardrail"]
+
+    if candidate.objective_kind != "policy" and non_guardrail and not candidate.evidence_refs:
+        raise ValueError(
+            f"Candidate '{candidate.objective_kind}' for requirement "
+            f"'{candidate.requirement_ref}' has no declared evidence refs."
+        )
+    if candidate.objective_kind != "policy" and not non_guardrail and candidate.evidence_refs:
+        raise ValueError(
+            f"Candidate '{candidate.objective_kind}' for requirement "
+            f"'{candidate.requirement_ref}' declares refs without non-guardrail source evidence."
+        )
+
+    declared_atoms: list[EvidenceAtom] = []
+    for ref in candidate.evidence_refs:
+        atom = atoms_by_id.get(ref)
+        if atom is None:
+            raise ValueError(f"Candidate declares unknown evidence ref '{ref}'.")
+        if atom.requirement_ref != candidate.requirement_ref:
+            raise ValueError(f"Candidate declares foreign evidence ref '{ref}'.")
+        if atom.kind == "guardrail":
+            raise ValueError(f"Candidate declares guardrail evidence ref '{ref}'.")
+        declared_atoms.append(atom)
+
+    if candidate.objective_kind == "security":
+        predicate_ref = (candidate.objective_data or {}).get("predicate_ref")
+        if (
+            not declared_atoms
+            or not predicate_ref
+            or predicate_ref not in candidate.evidence_refs
+            or not any(_is_security_predicate_atom(atom) for atom in declared_atoms)
+        ):
+            raise ValueError(
+                f"Security candidate for requirement '{candidate.requirement_ref}' "
+                "requires a declared predicate-bearing evidence ref."
+            )
+
+    if candidate.objective_kind == "action_visibility":
+        if not declared_atoms or any(atom.kind not in {"presence", "observed_value"} for atom in declared_atoms):
+            raise ValueError(
+                f"Action-visibility candidate for requirement '{candidate.requirement_ref}' "
+                "requires compatible presence evidence."
+            )
+
+    if candidate.objective_kind == "success_failure":
+        variant = (candidate.objective_data or {}).get("variant")
+        declared_refs = set(candidate.evidence_refs)
+        if declared_refs != {atom.id for atom in declared_atoms}:
+            raise ValueError(
+                f"Success/failure candidate for requirement '{candidate.requirement_ref}' "
+                "must bind exactly its declared outcome atoms."
+            )
+        outcome = _SUCCESS if variant == "success" else _FAILURE if variant == "failure" else None
+        if (
+            outcome is None
+            or not declared_atoms
+            or any(not outcome.search(atom.text) for atom in declared_atoms)
+            or any(not re.search(r"\b(?:dialog|message|state|result)\b", atom.text, re.IGNORECASE) for atom in declared_atoms)
+            or any(not _is_success_failure_outcome(atom.text, variant) for atom in declared_atoms)
+        ):
+            raise ValueError(
+                f"Success/failure candidate for requirement '{candidate.requirement_ref}' "
+                "requires compatible outcome evidence."
+            )
+
+    if candidate.objective_kind == "combination":
+        objective_data = candidate.objective_data or {}
+        required_refs = {
+            objective_data.get("primary_ref"),
+            *(objective_data.get("supporting_refs") or ()),
+        }
+        required_refs.discard(None)
+        if not required_refs or set(candidate.evidence_refs) != required_refs:
+            raise ValueError(
+                f"Combination candidate for requirement '{candidate.requirement_ref}' "
+                "must declare exactly its objective refs."
+            )
+
+    objective_data = candidate.objective_data or {}
+    primary_ref = objective_data.get("primary_ref") or objective_data.get("predicate_ref")
+    expected_kinds = {
+        "boundary": {"boundary"},
+        "mandatory": {"mandatory"},
+        "state": {"state"},
+        "presence": {"presence", "observed_value", "option"},
+        "behavior": {"explicit_behavior", "observed_value"},
+        "file_type": {"file_boundary"},
+        "action_visibility": {"presence", "observed_value"},
+    }
+    if candidate.objective_kind in expected_kinds and non_guardrail:
+        primary_atom = atoms_by_id.get(primary_ref) if primary_ref else None
+        if not primary_ref or primary_ref not in candidate.evidence_refs:
+            raise ValueError(
+                f"Candidate '{candidate.objective_kind}' for requirement "
+                f"'{candidate.requirement_ref}' must declare its primary evidence ref."
+            )
+        compatible_kind = primary_atom is not None and primary_atom.kind in expected_kinds[candidate.objective_kind]
+        source_behavior = (
+            candidate.objective_kind == "behavior"
+            and primary_atom is not None
+            and _classify_atomic_behavior(
+                primary_atom.text,
+                _context_mode(primary_atom.text),
+                "source",
+            ) == "behavior"
+        )
+        if not compatible_kind and not source_behavior:
+            raise ValueError(
+                f"Candidate '{candidate.objective_kind}' for requirement "
+                f"'{candidate.requirement_ref}' declares incompatible primary evidence."
+            )
+
+
+def _materialize_scenarios(
+    requirement_id: str,
+    candidates: list[ScenarioCandidate],
+    evidence_atoms: list[EvidenceAtom],
+    subject: str,
+) -> list[ScenarioIntent]:
+    """Convert declared candidates to ScenarioIntents.
+
+    - Validates declared authority before rendering or materialization.
+    - Renders intent from objective_kind/objective_data + bound atoms.
+    - Copies candidate.evidence_refs and constraint_refs verbatim.
+    - Dedups by (requirement_ref, category, technique, objective_kind,
+      normalized_objective_data, evidence_refs).
+    - Never calls _atom_matches_candidate to derive refs.
+    """
+    scenarios: list[ScenarioIntent] = []
+    seen: set[tuple] = set()
+    for candidate in candidates:
+        validate_candidate_authority(candidate, evidence_atoms)
+        if candidate.category not in SCENARIO_CATEGORIES:
+            raise ValueError(f"Unsupported scenario category '{candidate.category}'.")
+        if candidate.technique not in SCENARIO_TECHNIQUES:
+            raise ValueError(f"Unsupported scenario technique '{candidate.technique}'.")
+        identity = _candidate_identity(candidate)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        intent = render_intent(
+            requirement_id,
+            candidate.objective_kind,
+            candidate.objective_data,
+            evidence_atoms,
+            subject,
+        )
+        scenario_id = f"{requirement_id}-S{len(scenarios) + 1:02d}"
+        scenarios.append(
+            ScenarioIntent(
+                id=scenario_id,
+                requirement_ref=candidate.requirement_ref or requirement_id,
+                category=candidate.category,
+                technique=candidate.technique,
+                intent=intent,
+                priority=candidate.priority,
+                evidence_refs=candidate.evidence_refs,
+                constraint_refs=candidate.constraint_refs,
+                objective_kind=candidate.objective_kind,
+                objective_data=freeze_objective_data(candidate.objective_data),
+            )
+        )
+    return scenarios
+
+
+# ---------------------------------------------------------------------------
+# Evidence atom extraction
+# ---------------------------------------------------------------------------
 
 def extract_evidence_atoms(requirement: Requirement) -> list[EvidenceAtom]:
     """Extract explicit, requirement-local testable evidence in source order."""
@@ -409,8 +1147,6 @@ def extract_evidence_atoms(requirement: Requirement) -> list[EvidenceAtom]:
                         )
                     )
 
-    # A title-only ``Mandatory.`` statement is a real constraint on the
-    # requirement even though the field name lives in the title.
     if (
         requirement.status == "TESTABLE"
         and _is_mandatory(requirement.statement)
@@ -434,7 +1170,7 @@ def _classify_evidence(value: str, mode: str | None, source_name: str) -> str | 
     lowered = value.lower()
     if _is_guardrail_text(value):
         return "guardrail"
-    if _NEGATED_MANDATORY.search(value):
+    if _is_negated_mandatory(value):
         return None
     if _is_explicit_mandatory(value):
         return "mandatory"
@@ -444,7 +1180,12 @@ def _classify_evidence(value: str, mode: str | None, source_name: str) -> str | 
         return "file_boundary"
     if _is_sample_text(value):
         return "sample_value"
-    if "opens a modal" in lowered or _is_confirmation_behavior(value) or _is_functional_evidence(value):
+    if (
+        "opens a modal" in lowered
+        or _is_confirmation_behavior(value)
+        or _is_functional_evidence(value)
+        or _BEHAVIOR_PHRASE.search(value)
+    ):
         return "explicit_behavior"
     if mode == "state":
         return "state"
@@ -452,12 +1193,14 @@ def _classify_evidence(value: str, mode: str | None, source_name: str) -> str | 
         return "sample_value"
     if mode == "option":
         return "option"
-    if _is_presence_control(value) or _is_action_label(value):
+    if _is_presence_control(value):
+        return "presence"
+    if re.search(r"\btry\s+again\b", value, re.IGNORECASE) and re.search(r"\bretry\b", value, re.IGNORECASE):
+        return "explicit_behavior"
+    if _is_action_label(value):
         return "presence"
     if mode in {"action", "control", "tab"}:
         return "presence"
-    # A non-heading, non-guardrail list item is still explicit evidence.  It
-    # is intentionally represented as static data rather than as behavior.
     return "observed_value"
 
 
@@ -486,143 +1229,13 @@ def _is_explicit_mandatory(value: str) -> bool:
     ) and not _NEGATED_MANDATORY.search(value)
 
 
+def _is_negated_mandatory(value: str) -> bool:
+    return bool(_NEGATED_MANDATORY.search(value))
+
+
 def _normalize_evidence(value: str) -> str:
     normalized = re.sub(r"[^\w]+", " ", value.lower(), flags=re.UNICODE)
     return re.sub(r"\s+", " ", normalized).strip()
-
-
-def _ensure_evidence_candidates(
-    requirement: Requirement,
-    candidates: list[tuple[str, str, str, str]],
-    evidence_atoms: list[EvidenceAtom],
-    subject: str,
-) -> list[tuple[str, str, str, str]]:
-    """Add the smallest source-backed candidates for atoms not yet represented."""
-
-    unmatched = [
-        atom
-        for atom in evidence_atoms
-        if not any(_atom_matches_candidate(atom, intent, subject) for _, _, intent, _ in candidates)
-    ]
-    sample_atoms = [atom for atom in unmatched if atom.kind == "sample_value"]
-    for atom in sample_atoms:
-        candidates.append(
-            (
-                "positive",
-                "EP",
-                f"Verify the sample value '{atom.text}' is shown as a non-exhaustive example for {subject}.",
-                "medium",
-            )
-        )
-    unmatched = [atom for atom in unmatched if atom not in sample_atoms]
-    if not unmatched:
-        return candidates
-
-    static_atoms = [
-        atom
-        for atom in unmatched
-        if atom.kind in {"observed_value", "option", "state", "presence"}
-    ]
-    if static_atoms:
-        labels = "; ".join(atom.text for atom in static_atoms)
-        candidates.append(
-            (
-                "positive",
-                "EP",
-                f"Verify the explicitly listed items for {subject}: {labels}.",
-                "medium",
-            )
-        )
-        unmatched = [atom for atom in unmatched if atom not in static_atoms]
-
-    for atom in unmatched:
-        if atom.kind == "guardrail":
-            continue
-        if atom.kind == "mandatory":
-            candidates.append(
-                (
-                    "positive",
-                    "EP",
-                    f"Verify {subject} accepts a valid populated value for the explicit mandatory rule.",
-                    "high",
-                )
-            )
-            continue
-        if atom.kind == "boundary":
-            candidates.append(
-                (
-                    "boundary",
-                    "BVA",
-                    f"Verify the explicit boundary rule for {subject}: {atom.text}.",
-                    "high",
-                )
-            )
-            continue
-        if atom.kind == "file_boundary":
-            candidates.append(
-                (
-                    "positive",
-                    "EP",
-                    f"Verify the explicitly required file rule for {subject}: {atom.text}.",
-                    "high",
-                )
-            )
-            continue
-        candidates.append(
-            (
-                "positive",
-                "EP",
-                f"Verify that {atom.text.rstrip('.').strip()}.",
-                "medium",
-            )
-        )
-    return candidates
-
-
-def _atom_matches_candidate(atom: EvidenceAtom, intent: str, subject: str) -> bool:
-    if atom.kind == "guardrail":
-        return False
-    intent_normalized = intent.lower()
-    atom_text = atom.text.rstrip(".").strip()
-    atom_normalized = atom_text.lower()
-    if (
-        subject
-        and "application provides the behavior described" in intent_normalized
-        and re.search(rf"(?<!\w){re.escape(subject.lower().strip())}(?!\w)", intent_normalized)
-    ):
-        return True
-    if atom_normalized and re.search(
-        rf"(?<!\w){re.escape(atom_normalized)}(?!\w)", intent_normalized
-    ):
-        return True
-    if atom.kind == "mandatory":
-        if subject:
-            subject_normalized = subject.lower().strip()
-            if subject_normalized and re.search(
-                rf"(?<!\w){re.escape(subject_normalized)}(?!\w)", intent_normalized
-            ):
-                return True
-        field = re.sub(
-            r"\b(?:is|are|not|do not|don't|mandatory|required|must be provided)\b",
-            " ",
-            atom_normalized,
-        )
-        field = re.sub(r"\s+", " ", field).strip(" .`*:-")
-        return bool(field and re.search(rf"(?<!\w){re.escape(field)}(?!\w)", intent_normalized))
-    if atom.kind in {"explicit_behavior", "presence"}:
-        core = _evidence_core_phrase(atom.text)
-        if core and re.search(rf"(?<!\w){re.escape(core)}(?!\w)", intent_normalized):
-            return True
-        if subject:
-            subject_normalized = subject.lower().strip()
-            if subject_normalized and re.search(
-                rf"(?<!\w){re.escape(subject_normalized)}(?!\w)", intent_normalized
-            ):
-                return True
-    if atom.kind == "boundary":
-        number = re.search(r"\d+(?:\.\d+)?", atom.text)
-        return bool(number and number.group(0) in intent_normalized)
-    return False
 
 
 def _evidence_core_phrase(value: str) -> str:
@@ -673,9 +1286,6 @@ def _extract_atomic_behaviors(requirement: Requirement) -> list[_AtomicBehavior]
                     )
                 )
 
-    # A standalone statement may itself name an explicit functional behavior
-    # or file-type rule. Generic display/action sentences remain on the
-    # existing planner path so they do not become redundant atomic scenarios.
     value = _clean_atomic_text(requirement.statement)
     if value and not _is_atomic_parent(value) and not _is_guardrail_text(value):
         kind = _classify_atomic_behavior(value, _context_mode(value), "statement")
@@ -692,76 +1302,6 @@ def _extract_atomic_behaviors(requirement: Requirement) -> list[_AtomicBehavior]
                 )
 
     return behaviors
-
-
-def _atomic_candidates(
-    behaviors: list[_AtomicBehavior],
-) -> list[tuple[str, str, str, str]]:
-    candidates: list[tuple[str, str, str, str]] = []
-    for behavior in behaviors:
-        label = behavior.label
-        if behavior.kind in {"limit", "state"}:
-            continue
-        if behavior.kind == "file_type":
-            candidates.extend(
-                [
-                    (
-                        "positive",
-                        "EP",
-                        f"Verify the upload accepts PDF files as explicitly required by {label}.",
-                        "high",
-                    ),
-                    (
-                        "negative",
-                        "negative",
-                        f"Verify the upload rejects or prevents non-PDF or unsupported file types under {label}.",
-                        "high",
-                    ),
-                ]
-            )
-        elif behavior.kind == "confirmation":
-            candidates.append(
-                (
-                    "positive",
-                    "EP",
-                    f"Verify the explicitly described {label} is visible and available.",
-                    "medium",
-                )
-            )
-        elif behavior.kind == "confirmation_behavior":
-            candidates.append(
-                (
-                    "positive",
-                    "EP",
-                    _functional_intent(behavior.source_text),
-                    "high",
-                )
-            )
-        elif behavior.kind in {"action", "control", "tab"}:
-            suffix = "is available for navigation" if behavior.kind == "tab" else "is visible and available"
-            candidates.append(
-                (
-                    "positive",
-                    "EP",
-                    f"Verify the explicitly described {label} {suffix}.",
-                    "medium",
-                )
-            )
-        elif behavior.kind == "behavior":
-            source_text = behavior.source_text.rstrip(".").strip()
-            if _is_no_result_evidence(source_text):
-                category, technique, priority = "negative", "negative", "medium"
-            else:
-                category, technique, priority = "positive", "EP", "medium"
-            candidates.append(
-                (
-                    category,
-                    technique,
-                    _functional_intent(source_text),
-                    priority,
-                )
-            )
-    return candidates
 
 
 def _clean_atomic_text(value: str) -> str:
@@ -797,6 +1337,8 @@ def _is_guardrail_text(value: str) -> bool:
 def _split_guardrail_clauses(value: str) -> tuple[list[str], list[str]]:
     """Split a supported positive clause from a trailing guardrail clause."""
 
+    if _NEGATED_MANDATORY.search(value):
+        return [], [value]
     parts = re.split(
         r"\s+(?:,\s*)?but\s+|\s*;\s*",
         value,
@@ -864,7 +1406,7 @@ def _is_atomic_parent(value: str) -> bool:
     normalized = value.strip().rstrip(".").lower()
     return value.rstrip().endswith(":") or bool(
         re.search(r"\bprovides?\s+.+\bactions?\b$", normalized)
-    ) or bool(_SUCCESS.search(value) and _FAILURE.search(value)) or normalized in {
+    ) or bool(_SUCCESS.search(value) and _FAILURE.search(value) and not re.search(r";", value)) or normalized in {
         "expected",
         "expected behavior",
         "expected result",
@@ -950,6 +1492,15 @@ def _is_functional_evidence(value: str) -> bool:
     )
 
 
+def _is_success_failure_outcome(value: str, variant: str) -> bool:
+    outcome = _SUCCESS if variant == "success" else _FAILURE
+    return bool(
+        outcome.search(value)
+        and re.search(r"\b(?:dialog|message|state|result)\b", value, re.IGNORECASE)
+        and re.search(r"\b(?:displays?|shows?|renders?|presents?)\b", value, re.IGNORECASE)
+    )
+
+
 def _is_no_result_evidence(value: str) -> bool:
     return bool(
         re.search(
@@ -1017,15 +1568,27 @@ def _requirement_text(requirement: Requirement) -> str:
     ).strip()
 
 
+def _supports_zero_atom_behavior(requirement: Requirement) -> bool:
+    sources = (
+        requirement.statement,
+        *requirement.acceptance_criteria,
+        *requirement.details,
+        *requirement.constraints,
+    )
+    return any(
+        not _is_atomic_parent(source)
+        and not _is_guardrail_text(source)
+        and _classify_atomic_behavior(source, _context_mode(source), "source") == "behavior"
+        for source in sources
+    )
+
+
 def _is_mandatory(text: str) -> bool:
     """Recognize affirmative mandatory wording without treating guardrails as requirements."""
 
     for line in text.splitlines() or [text]:
         if _NEGATED_MANDATORY.search(line):
             continue
-        # A trailing asterisk on a control listed inside another requirement
-        # is presence evidence, not a mandatory rule for the whole block.  The
-        # explicit wording belongs to the field's own requirement block.
         if _is_explicit_mandatory(line):
             return True
     return False
@@ -1085,8 +1648,6 @@ def _explicit_limit(
 def _boundary_values(value: float, direction: str) -> tuple[str, str, str]:
     if value.is_integer():
         exact = int(value)
-        if direction == "maximum":
-            return str(exact - 1), str(exact), str(exact + 1)
         return str(exact - 1), str(exact), str(exact + 1)
     exact_text = f"{value:g}"
     return f"{value - 1:g}", exact_text, f"{value + 1:g}"
@@ -1108,95 +1669,25 @@ def _explicit_states(requirement: Requirement) -> list[str]:
     return states
 
 
-def _add_comprehensive_source_backed_case(
-    candidates: list[tuple[str, str, str, str]],
-    text: str,
-    subject: str,
-) -> list[tuple[str, str, str, str]]:
-    if _SEARCH.search(text) or _ACTION.search(text):
-        candidate = (
-            "edge",
-            "exploratory",
-            f"Verify the explicitly described edge behavior for {subject} without assuming unspecified semantics.",
-            "low",
-        )
-        if candidate not in candidates:
-            candidates.append(candidate)
-    return candidates
+# ---------------------------------------------------------------------------
+# _atom_matches_candidate — DEMOTED
+# ---------------------------------------------------------------------------
 
+def _atom_matches_candidate(atom: EvidenceAtom, intent: str, subject: str) -> bool:
+    """DEPRECATED: post-render consistency check only.
 
-def _add_deeper_source_backed_candidate(
-    candidates: list[tuple[str, str, str, str]],
-    evidence_atoms: list[EvidenceAtom],
-    subject: str,
-) -> list[tuple[str, str, str, str]]:
-    kinds = {atom.kind for atom in evidence_atoms if atom.kind != "guardrail"}
-    if len(kinds) < 2:
-        return candidates
-    candidate = (
-        "edge",
-        "exploratory",
-        f"Verify the explicitly described aspects of {subject} remain consistent with each other without assuming unspecified semantics.",
-        "low",
-    )
-    if candidate not in candidates:
-        candidates.append(candidate)
-    return candidates
-
-
-def _add_extra_exploratory_candidate(
-    candidates: list[tuple[str, str, str, str]],
-    evidence_atoms: list[EvidenceAtom],
-    subject: str,
-) -> list[tuple[str, str, str, str]]:
-    atoms = [atom for atom in evidence_atoms if atom.kind != "guardrail"]
-    if len(atoms) < 3:
-        return candidates
-    candidate = (
-        "edge",
-        "exploratory",
-        f"Verify combinations limited to the explicitly described aspects of {subject} without assuming unspecified semantics.",
-        "low",
-    )
-    if candidate not in candidates:
-        candidates.append(candidate)
-    return candidates
-
-
-def _materialize_scenarios(
-    requirement_id: str,
-    candidates: list[tuple[str, str, str, str]],
-    evidence_atoms: list[EvidenceAtom],
-    subject: str,
-) -> list[ScenarioIntent]:
-    scenarios: list[ScenarioIntent] = []
-    seen: set[tuple[str, str, str]] = set()
-    for category, technique, intent, priority in candidates:
-        if category not in SCENARIO_CATEGORIES:
-            raise ValueError(f"Unsupported scenario category '{category}'.")
-        if technique not in SCENARIO_TECHNIQUES:
-            raise ValueError(f"Unsupported scenario technique '{technique}'.")
-        identity = (category, technique, intent)
-        if identity in seen:
-            continue
-        seen.add(identity)
-        scenario_id = f"{requirement_id}-S{len(scenarios) + 1:02d}"
-        scenarios.append(
-            ScenarioIntent(
-                id=scenario_id,
-                requirement_ref=requirement_id,
-                category=category,
-                technique=technique,
-                intent=intent,
-                priority=priority,
-                evidence_refs=tuple(
-                    atom.id
-                    for atom in evidence_atoms
-                    if _atom_matches_candidate(atom, intent, subject)
-                ),
-                constraint_refs=tuple(
-                    atom.id for atom in evidence_atoms if atom.kind == "guardrail"
-                ),
-            )
-        )
-    return scenarios
+    This function MUST NOT derive evidence_refs. Refs are declared by
+    ScenarioCandidate producers. This function may only be used as an optional
+    post-render sanity assertion that a declared atom's text still appears in
+    the rendered intent. It never adds, removes, or authorizes refs.
+    """
+    if atom.kind == "guardrail":
+        return False
+    intent_normalized = intent.lower()
+    atom_text = atom.text.rstrip(".").strip()
+    atom_normalized = atom_text.lower()
+    if atom_normalized and re.search(
+        rf"(?<!\w){re.escape(atom_normalized)}(?!\w)", intent_normalized
+    ):
+        return True
+    return False
