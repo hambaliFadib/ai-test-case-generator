@@ -622,7 +622,7 @@ def _check_foreign_leakage(content: str, authority: ScenarioAuthority) -> str | 
         # evidence does not make the foreign "Login" button literal local.
         own_literals = {
             extracted.casefold()
-            for extracted in _extract_literals([*authority.support_texts, *authority.own_texts])
+            for extracted in _extract_literals(authority.own_texts)
         }
         if literal_folded in own_literals:
             continue
