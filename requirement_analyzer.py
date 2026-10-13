@@ -390,8 +390,9 @@ def _criteria_for_candidate(lines: list[str], source_line_index: int) -> list[st
 def _constraints_for_statement(
     statement: str,
     lines: list[str],
+    *,
+    source_line_index: int,
     region_end: int | None = None,
-    source_line_index: int = 0,
 ) -> list[str]:
     """Collect constraint lines inside the statement's own region.
 
@@ -403,6 +404,11 @@ def _constraints_for_statement(
     ``source_line_index`` is the verified line index of the statement,
     avoiding substring-based re-search that can anchor to the wrong line.
     """
+    if not 0 <= source_line_index < len(lines):
+        raise IndexError(
+            f"source_line_index={source_line_index} out of range "
+            f"for {len(lines)} lines"
+        )
 
     statement_index = source_line_index
     boundary = len(lines) if region_end is None else min(region_end, len(lines))

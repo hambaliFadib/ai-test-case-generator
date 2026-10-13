@@ -166,12 +166,14 @@ def test_constraint_bounded_to_own_requirement_region() -> None:
     constraints = _constraints_for_statement(
         "Username accepts alphanumeric.",
         lines,
+        source_line_index=0,
         region_end=1,
     )
     assert constraints == []
     own_region = _constraints_for_statement(
         "Login form must not expose entered password as plain text.",
         lines,
+        source_line_index=2,
         region_end=len(lines),
     )
     assert own_region == [
@@ -394,3 +396,15 @@ def test_provenance_constraint_from_other_requirement_excluded() -> None:
     assert any(
         "masked in transit" in c for c in target.constraints
     ), "Own constraint not found"
+
+
+def test_constraints_for_statement_requires_source_line_index() -> None:
+    """``_constraints_for_statement`` must raise ``TypeError`` if
+    ``source_line_index`` is not provided, preventing silent fallback to the
+    first line."""
+    lines = [
+        "statement line",
+        "constraint line must not be stored",
+    ]
+    with pytest.raises(TypeError, match="source_line_index"):
+        _constraints_for_statement("statement line", lines)
