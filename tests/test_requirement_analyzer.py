@@ -239,7 +239,9 @@ def test_constraint_extraction_anchored_to_correct_statement_not_substring() -> 
         "constraint: password must be logged for audit",
     ]
     stmt = "password must be displayed as plain text for diagnostics"
-    result = _constraints_for_statement(stmt, lines, region_end=4)
+    result = _constraints_for_statement(
+        stmt, lines, region_end=4, source_line_index=2
+    )
     assert "password must not be stored without encryption" not in result, (
         "Constraint from a different requirement leaked via substring match"
     )
@@ -275,3 +277,120 @@ def test_constraint_anchored_in_full_analyzer_path_not_substring() -> None:
     assert any(
         "password logging" in c for c in target.constraints
     ), "Own requirement's constraint was not found"
+
+
+def test_provenance_substring_line_does_not_leak_criteria() -> None:
+    """Acceptance criteria on a line containing the statement as substring
+    must not leak into the target requirement."""
+    from models.input_model import ParsedInput
+    text = (
+        "password must not be stored without encryption\n"
+        "The system accepts login and password must be displayed as plain text for diagnostics\n"
+        "password must be displayed as plain text for diagnostics\n"
+        "and the password is visible in diagnostics mode to operators\n"
+        "and the password is masked in logs for audit\n"
+    )
+    requirements = analyze_requirements(
+        ParsedInput(source_type="text", source_name="test", text=text)
+    )
+    target = next(
+        r for r in requirements if r.statement == "password must be displayed as plain text for diagnostics"
+    )
+    # Criteria must come from lines 4 and 5 (target's own region), not line 2.
+    assert any("visible in diagnostics mode" in c for c in target.acceptance_criteria), (
+        "Own requirement's acceptance criteria not found"
+    )
+    assert any("masked in logs" in c for c in target.acceptance_criteria), (
+        "Second own criterion not found"
+    )
+    assert not any(
+        "must not be stored" in c for c in target.acceptance_criteria
+    ), "Criteria from earlier line leaked via substring"
+
+
+def test_provenance_identical_statements_keep_own_criteria_and_constraints() -> None:
+    """Two requirements with the same statement must each keep their own
+    acceptance criteria and constraints, anchored by source line index."""
+    from models.input_model import ParsedInput
+    text = (
+        "password must be displayed as plain text for diagnostics\n"
+        "and the password is visible to operators\n"
+        "Password fields are only masked in transit\n"
+        "password must be displayed as plain text for diagnostics\n"
+        "and the password is visible to auditors\n"
+        "Password fields are only masked in logs\n"
+    )
+    requirements = analyze_requirements(
+        ParsedInput(source_type="text", source_name="test", text=text)
+    )
+    targets = [
+        r for r in requirements
+        if r.statement == "password must be displayed as plain text for diagnostics"
+    ]
+    assert len(targets) == 2, f"Expected 2 identical-statement requirements, got {len(targets)}"
+    # First requirement gets Criterion A and Constraint A.
+    assert any("visible to operators" in c for c in targets[0].acceptance_criteria)
+    assert any("masked in transit" in c for c in targets[0].constraints), (
+        "First requirement should have its own constraint"
+    )
+    assert not any("masked in logs" in c for c in targets[0].constraints), (
+        "Second requirement's constraint leaked into first"
+    )
+    # Second requirement gets Criterion B and Constraint B.
+    assert any("visible to auditors" in c for c in targets[1].acceptance_criteria)
+    assert any("masked in logs" in c for c in targets[1].constraints), (
+        "Second requirement should have its own constraint"
+    )
+    assert not any("masked in transit" in c for c in targets[1].constraints), (
+        "First requirement's constraint leaked into second"
+    )
+
+
+def test_provenance_statement_with_marker_maps_to_source_line() -> None:
+    """Statement prefixed with requirement marker (e.g., 'REQ-001:') must
+    still map to its correct source line."""
+    from models.input_model import ParsedInput
+    text = (
+        "REQ-001 password must be displayed as plain text for diagnostics\n"
+        "Password fields are only masked in transit\n"
+        "password must not be stored without encryption\n"
+    )
+    requirements = analyze_requirements(
+        ParsedInput(source_type="text", source_name="test", text=text)
+    )
+    target = next(
+        r for r in requirements if "displayed as plain text for diagnostics" in r.statement
+    )
+    assert not any(
+        "must not be stored" in c for c in target.constraints
+    ), "Constraint from next requirement leaked"
+    assert any(
+        "masked in transit" in c for c in target.constraints
+    ), "Own constraint not found"
+
+
+def test_provenance_constraint_from_other_requirement_excluded() -> None:
+    """Constraint belonging to a different requirement must not appear in
+    the target requirement's constraints."""
+    from models.input_model import ParsedInput
+    text = (
+        "password must be displayed as plain text for diagnostics\n"
+        "Password fields are only masked in transit\n"
+        "password must not be stored without encryption\n"
+        "User fields are only validated on change\n"
+        "max retries cannot exceed 3\n"
+    )
+    requirements = analyze_requirements(
+        ParsedInput(source_type="text", source_name="test", text=text)
+    )
+    target = next(
+        r for r in requirements if "displayed as plain text for diagnostics" in r.statement
+        and "system accepts" not in r.statement
+    )
+    assert not any(
+        "must be stored" in c or "validated on change" in c
+        for c in target.constraints
+    ), "Foreign constraint leaked"
+    assert any(
+        "masked in transit" in c for c in target.constraints
+    ), "Own constraint not found"

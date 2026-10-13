@@ -176,14 +176,22 @@ def build_batch_prompt(
     ]
     masking_guidance = []
     for scenario in scenarios:
-        authorized = " ".join(
-            authorized_evidence_texts(scenario, list(evidence_atoms or ()))
-        ).casefold()
-        if (
-            "plain text" in authorized
-            and "password" in authorized
-            and _MASKING_PATTERN.search(authorized) is not None
-        ):
+        evidence_texts = authorized_evidence_texts(scenario, list(evidence_atoms or ()))
+        authorized = " ".join(evidence_texts).casefold()
+        # Check each evidence atom individually to ensure "password" and
+        # the non-disclosure pattern co-occur in the same atom.
+        password_masking_atom = any(
+            "password" in text.casefold()
+            and "plain text" in text.casefold()
+            and _MASKING_PATTERN.search(text) is not None
+            for text in evidence_texts
+        )
+        nondisclosure_atom = any(
+            "plain text" in text.casefold()
+            and _NON_DISCLOSURE_PATTERN.search(text) is not None
+            for text in evidence_texts
+        )
+        if password_masking_atom:
             masking_guidance.append(
                 f"- {scenario.id}: the authorized_evidence requires password "
                 "masking or non-disclosure as plain text; its expected_result "
@@ -194,7 +202,7 @@ def build_batch_prompt(
                 "establishes that authorized observable behavior. Do not invent "
                 "a specific masking symbol, character, or UI widget."
             )
-        elif "plain text" in authorized and _NON_DISCLOSURE_PATTERN.search(authorized) is not None:
+        elif nondisclosure_atom:
             masking_guidance.append(
                 f"- {scenario.id}: the authorized_evidence requires non-disclosure "
                 "as plain text; its expected_result must state the visible, "

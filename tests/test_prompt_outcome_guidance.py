@@ -563,6 +563,56 @@ def test_non_password_non_disclosure_gets_neutral_guidance() -> None:
     )
 
 
+def test_mixed_evidence_password_display_does_not_trigger_masking() -> None:
+    """A scenario with both a password display requirement and a non-password
+    non-disclosure requirement must not receive password masking guidance,
+    because the password evidence does not prohibit display."""
+    req = Requirement(
+        id="REQ-MIXED",
+        title="Mixed evidence scenario",
+        statement="Password displayed as plain text for diagnostics; API token not shown as plain text.",
+        status="TESTABLE",
+        details=[],
+        acceptance_criteria=[],
+        constraints=[],
+    )
+    display_atom = EvidenceAtom(
+        id="REQ-MIXED-E01",
+        requirement_ref="REQ-MIXED",
+        kind="explicit_behavior",
+        text="password must be displayed as plain text for diagnostic verification",
+    )
+    non_disclosure_atom = EvidenceAtom(
+        id="REQ-MIXED-E02",
+        requirement_ref="REQ-MIXED",
+        kind="security",
+        text="API token must not be displayed as plain text in logs",
+    )
+    scenario = ScenarioIntent(
+        id="REQ-MIXED-S01",
+        requirement_ref="REQ-MIXED",
+        category="security",
+        technique="security",
+        priority="high",
+        intent="Verify password display and API token non-disclosure.",
+        evidence_refs=("REQ-MIXED-E01", "REQ-MIXED-E02"),
+        objective_kind="static_list",
+        objective_data={"refs": ("REQ-MIXED-E01", "REQ-MIXED-E02")},
+    )
+    prompt = build_batch_prompt(
+        [req], [scenario], evidence_atoms=[display_atom, non_disclosure_atom]
+    )
+    password_guidance = [
+        line for line in prompt.splitlines()
+        if line.startswith("- REQ-MIXED-S01:")
+        and "password masking or non-disclosure" in line
+    ]
+    assert not password_guidance, (
+        "Scenario with password display evidence should not trigger password "
+        "masking guidance, even when non-password non-disclosure evidence exists"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Gate invariants remain enforced
 # ---------------------------------------------------------------------------
