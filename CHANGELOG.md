@@ -6,6 +6,15 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## [Unreleased]
 
+### Fixed
+
+- Requirement provenance: constraints and evidence are now bounded to their owning requirement's document region, preventing evidence from a later requirement from contaminating an earlier requirement's constraint extraction.
+- Evidence-bound scenario intent rendering preserves the exact sequence of evidence refs declared in `objective_data["refs"]`, retaining every referenced atom label instead of reordering by id.
+- Semantic quality literal-ownership validation now matches quoted UI literals against the scenario's own evidence atoms rather than performing bare-word substring matching, so an ordinary word like "Login" in evidence does not authorize a foreign quoted button literal from another requirement.
+- Prompt guidance: expected_result phrasing now defaults to a generic sensitive-value non-disclosure formulation; password-specific masking guidance is only injected when the scenario's own authorized evidence explicitly mentions both "plain text" and "password".
+- Provider unavailability is classified solely from typed HTTP status (429 or 5xx), never from error-message text; a fully unavailable provider skips backfill instead of burning the retry budget on unrecoverable failures, while mixed-wave failures continue recovering through backfill.
+- Regression coverage added for requirement provenance, evidence-order preservation, quoted-literal ownership, scenario-specific masking guidance, and provider unavailability classification and recovery.
+
 ### Added
 
 - Canonical coverage profiles `minimal`, `comprehensive`, and `extra`, with a shared `resolve_profile()` used by the CLI, Web API, and planner; legacy aliases `balanced` and `security` resolve to `comprehensive` and the default is now `comprehensive`
