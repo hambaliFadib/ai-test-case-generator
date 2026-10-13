@@ -169,7 +169,11 @@ def build_batch_prompt(
         authorized = " ".join(
             authorized_evidence_texts(scenario, list(evidence_atoms or ()))
         ).casefold()
-        if "plain text" in authorized and "password" in authorized:
+        if (
+            "plain text" in authorized
+            and "password" in authorized
+            and "not" in authorized
+        ):
             masking_guidance.append(
                 f"- {scenario.id}: the authorized_evidence requires password "
                 "masking or non-disclosure as plain text; its expected_result "
@@ -180,7 +184,7 @@ def build_batch_prompt(
                 "establishes that authorized observable behavior. Do not invent "
                 "a specific masking symbol, character, or UI widget."
             )
-        elif "plain text" in authorized:
+        elif "plain text" in authorized and "not" in authorized:
             masking_guidance.append(
                 f"- {scenario.id}: the authorized_evidence requires non-disclosure "
                 "as plain text; its expected_result must state the visible, "

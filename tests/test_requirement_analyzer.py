@@ -223,3 +223,26 @@ def test_password_masking_evidence_belongs_only_to_its_own_requirement() -> None
             "plain text" not in atom.text.lower()
             for atom in extract_evidence_atoms(requirement)
         )
+
+
+def test_constraint_extraction_anchored_to_correct_statement_not_substring() -> None:
+    """When a requirement's statement is a substring of another requirement's
+    source line, constraint extraction must anchor to the requirement's own
+    statement line, not the first line that merely contains the statement text.
+    """
+    from requirement_analyzer import _constraints_for_statement
+
+    lines = [
+        "login timeout is 30 seconds",
+        "password must not be stored without encryption",
+        "password must be displayed as plain text for diagnostics",
+        "constraint: password must be logged for audit",
+    ]
+    stmt = "password must be displayed as plain text for diagnostics"
+    result = _constraints_for_statement(stmt, lines, region_end=4)
+    assert "password must not be stored without encryption" not in result, (
+        "Constraint from a different requirement leaked via substring match"
+    )
+    assert "constraint: password must be logged for audit" in result, (
+        "Own requirement's constraint was not found"
+    )

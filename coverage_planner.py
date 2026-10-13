@@ -365,26 +365,34 @@ def _render_behavior_intent_from_atom(atom_text: str) -> str:
             return f"When {condition}, verify that the {target} is displayed."
         return f"When {condition}, verify {action}."
 
-    # Pattern C: "The system accepts X and allows Y" → credential
-    # submission + allowed outcome. A credential-acceptance behavior:
-    # the tester submits the credential values and the system allows
-    # login. Rendering with named credential-value targets keeps the
-    # intent executable and concrete (step targets are field/value
-    # names, not UI controls), while "submit ... credentials"
-    # explicitly authorizes a generic credential-submission claim in
-    # the provider-boundary validator.
+    # Pattern C (credential-special case): "The system accepts valid
+    # username[+valid password] and allows login" → credential submission.
+    # Checked first so the generic Pattern C below does not swallow it.
+    m = re.match(
+        r"(?:the\s+system\s+)?accepts?\s+valid\s+username[\s+]*valid\s+password"
+        r"\s+and\s+allows?\s+(.+)",
+        clean,
+        re.IGNORECASE,
+    )
+    if m:
+        outcome = m.group(1)
+        return (
+            f"Submit valid username and valid password as the username and "
+            f"password credentials; verify that {outcome} is allowed."
+        )
+    # Pattern C (generic): "The system accepts X and allows Y" → submission
+    # of X and verification of Y. The accepted-value group is rendered
+    # verbatim as the submission target so no credential type is
+    # invented when the evidence does not mention credentials.
     m = re.match(
         r"(?:the\s+system\s+)?(?:accepts?|accept)\s+(.+?)\s+and\s+allows?\s+(.+)",
         clean,
         re.IGNORECASE,
     )
     if m:
-        credentials = m.group(1)
+        accepted = m.group(1)
         outcome = m.group(2)
-        return (
-            f"Submit {credentials} as the username and password "
-            f"credentials; verify that {outcome} is allowed."
-        )
+        return f"Submit {accepted} and verify that {outcome} is allowed."
 
     # Fallback: lowercase first char only, wrap normally.
     if len(clean) > 1 and clean[0].isupper():

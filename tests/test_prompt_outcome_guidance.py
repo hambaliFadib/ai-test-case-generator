@@ -396,6 +396,99 @@ def test_non_password_plain_text_gets_neutral_guidance_not_password_masking() ->
     )
 
 
+def test_password_must_display_as_plain_text_does_not_trigger_masking() -> None:
+    """Evidence requiring a password to be displayed as plain text must NOT
+    trigger password-masking guidance — only evidence requiring non-disclosure
+    triggers masking guidance. """
+    req = Requirement(
+        id="REQ-DISP-PT",
+        title="Diagnostic password display",
+        statement="For diagnostic purposes, the entered password must be "
+        "displayable as plain text so operators can verify input.",
+        status="TESTABLE",
+        details=[],
+        acceptance_criteria=[],
+        constraints=[],
+    )
+    atom = EvidenceAtom(
+        id="REQ-DISP-PT-E01",
+        requirement_ref="REQ-DISP-PT",
+        kind="observed_value",
+        text="password must be displayed as plain text for diagnostic verification",
+    )
+    scenario = ScenarioIntent(
+        id="REQ-DISP-PT-S01",
+        requirement_ref="REQ-DISP-PT",
+        category="positive",
+        technique="EP",
+        priority="medium",
+        intent=(
+            "Verify the explicitly listed item for diagnostic password display: "
+            "the entered password must be displayed as plain text for "
+            "diagnostic verification."
+        ),
+        evidence_refs=("REQ-DISP-PT-E01",),
+        objective_kind="static_list",
+        objective_data={"refs": ("REQ-DISP-PT-E01",)},
+    )
+    prompt = build_batch_prompt(
+        [req],
+        [scenario],
+        evidence_atoms=[atom],
+    )
+    # Must NOT receive password-masking guidance line (which mentions masking or
+    # "not displayed as plain text").
+    scenario_guidance_lines = [
+        line for line in prompt.splitlines() if line.startswith("- REQ-DISP-PT-S01:")
+    ]
+    assert not scenario_guidance_lines, (
+        "Evidence requiring display as plain text must not trigger "
+        "masking/non-disclosure guidance"
+    )
+
+
+def test_sibling_scenario_without_masking_evidence_gains_no_guidance() -> None:
+    """A sibling scenario whose authorized evidence does not mention 'not',
+    'plain text', or 'password' together must not receive any masking guidance."""
+    req = Requirement(
+        id="REQ-SIB",
+        title="Login form navigation",
+        statement="The login form must be navigable via keyboard.",
+        status="TESTABLE",
+        details=[],
+        acceptance_criteria=[],
+        constraints=[],
+    )
+    atom = EvidenceAtom(
+        id="REQ-SIB-E01",
+        requirement_ref="REQ-SIB",
+        kind="observed_value",
+        text="login form is navigable via keyboard and displays a login button",
+    )
+    scenario = ScenarioIntent(
+        id="REQ-SIB-S01",
+        requirement_ref="REQ-SIB",
+        category="positive",
+        technique="EP",
+        priority="low",
+        intent="Verify keyboard navigation on the login form.",
+        evidence_refs=("REQ-SIB-E01",),
+        objective_kind="static_list",
+        objective_data={"refs": ("REQ-SIB-E01",)},
+    )
+    prompt = build_batch_prompt(
+        [req],
+        [scenario],
+        evidence_atoms=[atom],
+    )
+    scenario_guidance_lines = [
+        line for line in prompt.splitlines() if line.startswith("- REQ-SIB-S01:")
+    ]
+    assert not scenario_guidance_lines, (
+        "Scenario without masking/negation evidence must not receive masking guidance"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Gate invariants remain enforced
 # ---------------------------------------------------------------------------

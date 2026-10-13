@@ -402,8 +402,13 @@ def _constraints_for_statement(
     belongs to a later requirement cannot attach to an earlier one.
     """
 
+    cleaned_statement = statement.strip()
     statement_index = next(
-        (index for index, line in enumerate(lines) if statement in _clean_markup(line)),
+        (
+            index
+            for index, line in enumerate(lines)
+            if _clean_markup(line) == cleaned_statement
+        ),
         0,
     )
     boundary = len(lines) if region_end is None else min(region_end, len(lines))
