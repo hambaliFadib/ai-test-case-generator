@@ -233,7 +233,7 @@ def test_constraint_extraction_anchored_to_correct_statement_not_substring() -> 
     from requirement_analyzer import _constraints_for_statement
 
     lines = [
-        "login timeout is 30 seconds",
+        "The system accepts all login types and password must be displayed as plain text for diagnostics",
         "password must not be stored without encryption",
         "password must be displayed as plain text for diagnostics",
         "constraint: password must be logged for audit",
@@ -246,3 +246,32 @@ def test_constraint_extraction_anchored_to_correct_statement_not_substring() -> 
     assert "constraint: password must be logged for audit" in result, (
         "Own requirement's constraint was not found"
     )
+
+
+def test_constraint_anchored_in_full_analyzer_path_not_substring() -> None:
+    """End-to-end: the legacy analyzer must compute region boundaries from the
+    statement's actual source line, not from a first-occurrence substring
+    match that lands on an earlier unrelated line containing the statement
+    text as a substring."""
+    from requirement_analyzer import analyze_requirements
+    from models.input_model import ParsedInput
+    text = (
+        "password must not be stored without encryption\n"
+        "The system accepts login and password must be displayed as plain text for diagnostics\n"
+        "password must be displayed as plain text for diagnostics\n"
+        "Limit password logging to audit events\n"
+    )
+    requirements = analyze_requirements(ParsedInput(source_type="text", source_name="test", text=text))
+    target = next(
+        (r for r in requirements if "displayed as plain text for diagnostics" in r.statement
+         and "system accepts" not in r.statement),
+        None,
+    )
+    assert target is not None, "Target requirement not parsed"
+    assert not any(
+        "must not be stored" in c
+        for c in target.constraints
+    ), "Constraint from earlier line leaked into requirement via substring match"
+    assert any(
+        "password logging" in c for c in target.constraints
+    ), "Own requirement's constraint was not found"

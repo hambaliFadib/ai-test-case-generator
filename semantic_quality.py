@@ -414,15 +414,11 @@ def build_authorities(
         support = tuple(
             [scenario.intent, *authorized_evidence_texts(scenario, atoms)]
         )
-        own = tuple(
-            [scenario.intent, *(
-                atom.text for atom in atoms
-                if atom.requirement_ref == scenario.requirement_ref
-            )]
-        )
+        own = tuple([scenario.intent, *authorized_evidence_texts(scenario, atoms)])
         foreign = tuple(
             atom.text for atom in atoms
             if atom.requirement_ref != scenario.requirement_ref
+            or atom.id not in scenario.evidence_refs
         )
         authorities[scenario.id] = ScenarioAuthority(
             scenario=scenario,

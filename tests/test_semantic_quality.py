@@ -1192,3 +1192,29 @@ def test_literal_ownership_uses_case_insensitive_quoted_match() -> None:
     error = check(leaking, scn, [own, foreign])
     assert error is not None
     assert "literal" in error
+
+
+def test_sibling_literal_not_in_own_texts() -> None:
+    """A literal supported only by a sibling scenario's evidence must not
+    be treated as authorized. Even if both atoms are from the same requirement,
+    only atoms bound via scenario.evidence_refs are in own_texts."""
+    save_atom = atom("REQ-X", 1, 'The form provides a "Save" button.')
+    cancel_atom = atom("REQ-X", 2, 'The form provides a "Cancel" button.')
+    # Scenario bound only to "Save" evidence.
+    scn_save = scenario("REQ-X", intent="Verify Save button.", refs=("REQ-X-E01",))
+    # Using "Cancel" literal — only supported by sibling scenario's evidence.
+    leaking = item(
+        steps=['Click the "Cancel" button.'],
+        expected_result='The "Cancel" button is visible.',
+    )
+    error = check(leaking, scn_save, [save_atom, cancel_atom])
+    assert error is not None, (
+        "Sibling scenario's literal 'Cancel' must not be in own_texts"
+    )
+    # The scenario bound to "Cancel" evidence must be accepted.
+    scn_cancel = scenario("REQ-X", intent="Verify Cancel button.", refs=("REQ-X-E02",))
+    accepted = item(
+        steps=['Click the "Cancel" button.'],
+        expected_result='The "Cancel" button is visible.',
+    )
+    assert check(accepted, scn_cancel, [save_atom, cancel_atom]) is None

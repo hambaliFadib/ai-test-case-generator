@@ -489,6 +489,80 @@ def test_sibling_scenario_without_masking_evidence_gains_no_guidance() -> None:
     )
 
 
+def test_password_not_displayed_as_plain_text_triggers_masking_guidance() -> None:
+    """Evidence explicitly requiring password not be displayed as plain text
+    must trigger password-specific masking guidance."""
+    req = Requirement(
+        id="REQ-ND",
+        title="Password non-disclosure",
+        statement="Password must not be displayed as plain text.",
+        status="TESTABLE",
+        details=[],
+        acceptance_criteria=[],
+        constraints=[],
+    )
+    atom = EvidenceAtom(
+        id="REQ-ND-E01",
+        requirement_ref="REQ-ND",
+        kind="security",
+        text="password must not be displayed as plain text; values are masked.",
+    )
+    scenario = ScenarioIntent(
+        id="REQ-ND-S01",
+        requirement_ref="REQ-ND",
+        category="security",
+        technique="security",
+        priority="high",
+        intent="Verify password masking on the login form.",
+        evidence_refs=("REQ-ND-E01",),
+        objective_kind="static_list",
+        objective_data={"refs": ("REQ-ND-E01",)},
+    )
+    prompt = build_batch_prompt([req], [scenario], evidence_atoms=[atom])
+    scenario_guidance_lines = [
+        line for line in prompt.splitlines() if line.startswith("- REQ-ND-S01:")
+    ]
+    assert scenario_guidance_lines, (
+        "Evidence requiring non-disclosure should trigger masking guidance"
+    )
+
+
+def test_non_password_non_disclosure_gets_neutral_guidance() -> None:
+    """A non-password requirement with non-disclosure as plain text evidence
+    gets neutral (non password-specific) guidance only if evidence supports it."""
+    req = Requirement(
+        id="REQ-ND-TOKEN",
+        title="API token non-disclosure",
+        statement="API token must not be displayed as plain text.",
+        status="TESTABLE",
+        details=[],
+        acceptance_criteria=[],
+        constraints=[],
+    )
+    atom = EvidenceAtom(
+        id="REQ-ND-TOKEN-E01",
+        requirement_ref="REQ-ND-TOKEN",
+        kind="security",
+        text="API token must not be displayed as plain text in logs.",
+    )
+    scenario = ScenarioIntent(
+        id="REQ-ND-TOKEN-S01",
+        requirement_ref="REQ-ND-TOKEN",
+        category="security",
+        technique="security",
+        priority="high",
+        intent="Verify API token is not shown as plain text in logs.",
+        evidence_refs=("REQ-ND-TOKEN-E01",),
+        objective_kind="static_list",
+        objective_data={"refs": ("REQ-ND-TOKEN-E01",)},
+    )
+    prompt = build_batch_prompt([req], [scenario], evidence_atoms=[atom])
+    combined_guidance = prompt.split("---")[-1]
+    assert "not rendered in cleartext" in combined_guidance, (
+        "Non-password non-disclosure should get neutral obfuscation guidance"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Gate invariants remain enforced
 # ---------------------------------------------------------------------------

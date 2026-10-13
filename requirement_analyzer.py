@@ -308,11 +308,12 @@ def _analyze_legacy_requirements(text: str) -> list[Requirement]:
 
     requirements: list[Requirement] = []
     for index, (statement, section) in enumerate(candidates, start=1):
+        cleaned_statement = statement.strip()
         statement_index = next(
             (
                 line_index
                 for line_index, line in enumerate(lines)
-                if statement in _clean_markup(line)
+                if _clean_markup(line) == cleaned_statement
             ),
             0,
         )

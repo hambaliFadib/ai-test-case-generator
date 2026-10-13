@@ -1,11 +1,21 @@
 """Build strict, QA-oriented prompts for test-case generation."""
 
 import json
+import re
 
 from models.coverage_model import EvidenceAtom, ScenarioIntent
 from models.requirement_model import Requirement
 from models.test_case_model import TestCase
 from semantic_quality import authorized_evidence_texts
+
+_MASKING_PATTERN = re.compile(
+    r"\bnot\s+\w+(?:\s+\w+)*?\s+as\s+plain\s+text\b",
+    re.IGNORECASE,
+)
+_NON_DISCLOSURE_PATTERN = re.compile(
+    r"\bnot\s+\w+(?:\s+\w+)*?\s+as\s+plain\s+text\b",
+    re.IGNORECASE,
+)
 
 
 def build_prompt(
@@ -172,7 +182,7 @@ def build_batch_prompt(
         if (
             "plain text" in authorized
             and "password" in authorized
-            and "not" in authorized
+            and _MASKING_PATTERN.search(authorized) is not None
         ):
             masking_guidance.append(
                 f"- {scenario.id}: the authorized_evidence requires password "
@@ -184,7 +194,7 @@ def build_batch_prompt(
                 "establishes that authorized observable behavior. Do not invent "
                 "a specific masking symbol, character, or UI widget."
             )
-        elif "plain text" in authorized and "not" in authorized:
+        elif "plain text" in authorized and _NON_DISCLOSURE_PATTERN.search(authorized) is not None:
             masking_guidance.append(
                 f"- {scenario.id}: the authorized_evidence requires non-disclosure "
                 "as plain text; its expected_result must state the visible, "
