@@ -3,7 +3,12 @@ from pathlib import Path
 import pytest
 
 from models.input_model import ParsedInput
-from requirement_analyzer import RequirementAnalysisError, analyze_requirements
+from requirement_analyzer import (
+    RequirementAnalysisError,
+    _constraints_for_statement,
+    _is_requirement_candidate,
+    analyze_requirements,
+)
 
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -124,3 +129,97 @@ def test_nested_heading_remains_inside_explicit_requirement_block() -> None:
     assert requirements[2].source_section == "Product > Notes"
     assert "matching results are displayed" in requirements[2].details
     assert "unrelated results are not displayed" in requirements[2].acceptance_criteria
+
+
+# ---------------------------------------------------------------------------
+# Analyzer provenance regression (Evidence Binding v2 smoke regression)
+# ---------------------------------------------------------------------------
+
+_SMOKE_LOGIN_TEXT = """\
+User Login
+
+The system provides a login form with:
+- Username
+- Password
+
+The user submits by clicking "Login".
+The system accepts valid username+valid password and allows login.
+If username/password combination invalid, displays "Invalid username or password".
+Username required.
+Password required.
+Username accepts alphanumeric.
+Password accepts alphanumeric and special characters.
+After successful login, displays Dashboard.
+Dashboard provides Logout.
+Logout returns to Login page.
+Login page displays Forgot Password link.
+Login form must not expose entered password as plain text.
+"""
+
+
+def test_constraint_bounded_to_own_requirement_region() -> None:
+    lines = [
+        "Username accepts alphanumeric.",
+        "Password accepts alphanumeric and special characters.",
+        "Login form must not expose entered password as plain text.",
+    ]
+    constraints = _constraints_for_statement(
+        "Username accepts alphanumeric.",
+        lines,
+        region_end=1,
+    )
+    assert constraints == []
+    own_region = _constraints_for_statement(
+        "Login form must not expose entered password as plain text.",
+        lines,
+        region_end=len(lines),
+    )
+    assert own_region == [
+        "Login form must not expose entered password as plain text."
+    ]
+
+
+def test_legacy_constraint_stays_inside_own_block() -> None:
+    text = """\
+### REQ-A — Username
+Username accepts alphanumeric characters.
+
+### REQ-B — Password visibility
+Login form must not expose entered password as plain text.
+"""
+    requirements = analyze_requirements(parsed(text, "provenance.md"))
+    assert [requirement.id for requirement in requirements] == [
+        "REQ-001",
+        "REQ-002",
+    ]
+    assert requirements[0].constraints == []
+    assert requirements[1].constraints == [
+        "Login form must not expose entered password as plain text."
+    ]
+
+
+def test_password_masking_evidence_belongs_only_to_its_own_requirement() -> None:
+    from coverage_planner import extract_evidence_atoms
+
+    requirements = analyze_requirements(
+        parsed(_SMOKE_LOGIN_TEXT, "smoke-login.md")
+    )
+    assert len(requirements) == 13
+
+    masking_refs = [
+        atom
+        for requirement in requirements
+        for atom in extract_evidence_atoms(requirement)
+        if "plain text" in atom.text.lower()
+    ]
+    assert [(atom.requirement_ref, atom.text) for atom in masking_refs] == [
+        (
+            "REQ-013",
+            "Login form must not expose entered password as plain text.",
+        )
+    ]
+    for requirement in requirements[:12]:
+        assert all(
+            "plain text" not in atom.text.lower()
+            for atom in extract_evidence_atoms(requirement)
+        )

@@ -308,8 +308,26 @@ def _analyze_legacy_requirements(text: str) -> list[Requirement]:
 
     requirements: list[Requirement] = []
     for index, (statement, section) in enumerate(candidates, start=1):
+        statement_index = next(
+            (
+                line_index
+                for line_index, line in enumerate(lines)
+                if statement in _clean_markup(line)
+            ),
+            0,
+        )
+        next_candidate_index = min(
+            (
+                line_index
+                for line_index in range(statement_index + 1, len(lines))
+                if _is_requirement_candidate(lines[line_index].strip())
+            ),
+            default=len(lines),
+        )
         criteria = _criteria_for_candidate(lines, statement)
-        constraints = _constraints_for_statement(statement, lines)
+        constraints = _constraints_for_statement(
+            statement, lines, region_end=next_candidate_index
+        )
         requirements.append(
             Requirement(
                 id=f"REQ-{index:03d}",
@@ -373,19 +391,30 @@ def _criteria_for_candidate(lines: list[str], statement: str) -> list[str]:
     return criteria
 
 
-def _constraints_for_statement(statement: str, lines: list[str]) -> list[str]:
-    """Collect nearby lines that explicitly describe legacy constraints or limits."""
+def _constraints_for_statement(
+    statement: str, lines: list[str], region_end: int | None = None
+) -> list[str]:
+    """Collect constraint lines inside the statement's own region.
 
+    The region spans the statement line through the line immediately
+    before the next requirement candidate (or region_end). Constraint
+    extraction never scans beyond the region, so a constraint that
+    belongs to a later requirement cannot attach to an earlier one.
+    """
+
+    statement_index = next(
+        (index for index, line in enumerate(lines) if statement in _clean_markup(line)),
+        0,
+    )
+    boundary = len(lines) if region_end is None else min(region_end, len(lines))
     constraints: list[str] = []
-    for line in lines:
+    for line in lines[statement_index:boundary]:
         cleaned = _clean_markup(line)
         if re.search(
             r"\b(?:constraint|limit|maximum|minimum|only|must not|cannot|within)\b",
             cleaned,
             re.IGNORECASE,
         ):
-            if cleaned not in constraints and (
-                cleaned == statement or statement in cleaned or not constraints
-            ):
+            if cleaned not in constraints:
                 constraints.append(cleaned)
     return constraints

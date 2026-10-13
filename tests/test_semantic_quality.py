@@ -7,6 +7,7 @@ fixture contracts. No LLM is involved anywhere in this module.
 """
 
 import json
+import sys
 from pathlib import Path
 import re
 
@@ -1055,3 +1056,139 @@ def test_m5_foreign_security_predicate_rejected() -> None:
         atoms,
     )
     assert error is not None
+
+
+# ---------------------------------------------------------------------------
+# Literal ownership: a bare word must not authorize a quoted UI literal
+# ---------------------------------------------------------------------------
+
+
+def _canonical_authorities():
+    """Build authorities from the canonical login fixture (real planner path)."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "_tcp_fixture", Path(__file__).parent / "test_coverage_planner.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["_tcp_fixture"] = module
+    spec.loader.exec_module(module)
+    requirements = analyze_requirements(
+        ParsedInput("markdown", "smoke-login.md", module._SMOKE_LOGIN_TEXT)
+    )
+    plan = plan_coverage(requirements, profile="minimal")
+    scenarios = [s for rp in plan.requirements for s in rp.scenarios]
+    scenario_by_id = {s.id: s for s in scenarios}
+    authorities = build_authorities(scenarios, plan.evidence_atoms)
+    return scenario_by_id, authorities
+
+
+def test_bare_word_is_not_quoted_literal_authorization() -> None:
+    # REQ-003 own evidence contains the ordinary word "login"
+    # ("...and allows login."). A bare-word substring match must not
+    # authorize the foreign quoted "Login" button literal from REQ-002.
+    _scenario_by_id, authorities = _canonical_authorities()
+    authority = authorities["REQ-003-S01"]
+    scenario = authority.scenario
+    leaking = item(
+        steps=["Enter a valid username and a valid password.", 'Click the "Login" button.'],
+        expected_result="Login is allowed for valid username and valid password.",
+    )
+    error = validate_content(
+        title=scenario.intent,
+        preconditions=leaking["preconditions"],
+        steps=leaking["steps"],
+        expected_result=leaking["expected_result"],
+        authority=authority,
+    )
+    assert error is not None
+    assert "literal 'Login'" in error
+
+
+def test_own_quoted_literal_remains_authorized() -> None:
+    # REQ-004 owns the quoted "Invalid username or password" message;
+    # the same quoted message in generated content stays accepted.
+    _scenario_by_id, authorities = _canonical_authorities()
+    authority = authorities["REQ-004-S01"]
+    scenario = authority.scenario
+    accepted = item(
+        steps=["Enter an invalid username and an invalid password."],
+        expected_result='The "Invalid username or password" message is displayed.',
+    )
+    error = validate_content(
+        title=scenario.intent,
+        preconditions=accepted["preconditions"],
+        steps=accepted["steps"],
+        expected_result=accepted["expected_result"],
+        authority=authority,
+    )
+    assert error is None, error
+
+
+def test_foreign_login_literal_rejected_for_empty_field_scenarios() -> None:
+    # REQ-005-S02 and REQ-006-S02 do not own the "Login" literal;
+    # it exists only in another requirement's evidence.
+    _scenario_by_id, authorities = _canonical_authorities()
+    for scenario_id, expected in (
+        ("REQ-005-S02", "The empty required Username value is rejected."),
+        ("REQ-006-S02", "The empty required Password value is prevented."),
+    ):
+        authority = authorities[scenario_id]
+        scenario = authority.scenario
+        leaking = item(
+            steps=[f'Click the "Login" button with an empty field.'],
+            expected_result=expected,
+        )
+        error = validate_content(
+            title=scenario.intent,
+            preconditions=leaking["preconditions"],
+            steps=leaking["steps"],
+            expected_result=leaking["expected_result"],
+            authority=authority,
+        )
+        assert error is not None, scenario_id
+        assert "literal 'Login'" in error, scenario_id
+
+
+def test_valid_login_outcome_without_button_label_remains_accepted() -> None:
+    # REQ-003 may state login is allowed for valid credentials without
+    # inventing a button label.
+    _scenario_by_id, authorities = _canonical_authorities()
+    authority = authorities["REQ-003-S01"]
+    scenario = authority.scenario
+    valid = item(
+        steps=["Enter a valid username and a valid password."],
+        expected_result="Login is allowed for valid username and valid password.",
+    )
+    error = validate_content(
+        title=scenario.intent,
+        preconditions=valid["preconditions"],
+        steps=valid["steps"],
+        expected_result=valid["expected_result"],
+        authority=authority,
+    )
+    assert error is None, error
+
+
+def test_literal_ownership_uses_case_insensitive_quoted_match() -> None:
+    # Case-insensitive comparison of the quoted literal itself, not a
+    # bare-word substring. A differently-cased own quoted literal is the
+    # same literal; a bare-word occurrence is not.
+    own = atom("REQ-Q", 1, 'The form shows "Sign In" on submit.')
+    foreign = atom("REQ-R", 1, 'The form shows "Log In" on submit.')
+    # Own evidence holds the quoted literal "Sign In".
+    scn = scenario("REQ-Q", intent="Verify the sign-in label.", refs=("REQ-Q-E01",))
+    # Content quotes the own literal with different casing.
+    accepted = item(
+        steps=['Check the "sign in" label.'],
+        expected_result='The "SIGN IN" label is displayed.',
+    )
+    assert check(accepted, scn, [own, foreign]) is None
+    # Content quotes a literal that only exists in another requirement.
+    leaking = item(
+        steps=['Check the "log in" label.'],
+        expected_result='The "LOG IN" label is displayed.',
+    )
+    error = check(leaking, scn, [own, foreign])
+    assert error is not None
+    assert "literal" in error

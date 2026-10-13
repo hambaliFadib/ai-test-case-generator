@@ -1,6 +1,9 @@
-from models.coverage_model import CoveragePlan
+from models.coverage_model import CoveragePlan, EvidenceAtom
+from models.input_model import ParsedInput
 from models.requirement_model import Requirement
+
 from coverage_planner import _is_mandatory, plan_coverage
+from requirement_analyzer import analyze_requirements
 
 
 def requirement(
@@ -509,3 +512,259 @@ def test_explicit_no_result_evidence_can_create_negative_coverage() -> None:
     assert len(scenarios) == 1
     assert scenarios[0].category == "negative"
     assert "empty result state" in scenarios[0].intent.lower()
+
+
+# ---------------------------------------------------------------------------
+# Analyzer provenance regression (Evidence Binding v2 smoke regression)
+# ---------------------------------------------------------------------------
+
+_SMOKE_LOGIN_TEXT = """\
+User Login
+
+The system provides a login form with:
+- Username
+- Password
+
+The user submits by clicking "Login".
+The system accepts valid username+valid password and allows login.
+If username/password combination invalid, displays "Invalid username or password".
+Username required.
+Password required.
+Username accepts alphanumeric.
+Password accepts alphanumeric and special characters.
+After successful login, displays Dashboard.
+Dashboard provides Logout.
+Logout returns to Login page.
+Login page displays Forgot Password link.
+Login form must not expose entered password as plain text.
+"""
+
+
+def test_minimal_plan_after_provenance_fix() -> None:
+    from models.input_model import ParsedInput
+    from requirement_analyzer import analyze_requirements
+
+    requirements = analyze_requirements(
+        ParsedInput("markdown", "smoke-login.md", _SMOKE_LOGIN_TEXT)
+    )
+    assert len(requirements) == 13
+
+    plan = plan_coverage(requirements, profile="minimal")
+    scenarios = [
+        scenario
+        for requirement_plan in plan.requirements
+        for scenario in requirement_plan.scenarios
+    ]
+    scenario_ids = [scenario.id for scenario in scenarios]
+    assert len(scenarios) == 15
+    assert "REQ-005-S03" not in scenario_ids
+    assert "REQ-006-S03" not in scenario_ids
+
+    masking_refs = {
+        scenario.id: scenario.evidence_refs
+        for scenario in scenarios
+        if any(
+            atom.id in scenario.evidence_refs
+            and "plain text" in atom.text.lower()
+            for atom in plan.evidence_atoms
+        )
+    }
+    assert list(masking_refs) == ["REQ-013-S01"]
+
+    for scenario in scenarios:
+        if scenario.requirement_ref != "REQ-013":
+            assert not any(
+                atom.id in scenario.evidence_refs
+                and "plain text" in atom.text.lower()
+                for atom in plan.evidence_atoms
+            )
+
+
+# ---------------------------------------------------------------------------
+# Intent-shaping regressions — evidence-grounded rendering
+# ---------------------------------------------------------------------------
+
+def test_req003_valid_login_preserves_outcome_without_dashboard() -> None:
+    """REQ-003 preserves valid-login outcome; no Dashboard leakage."""
+    plan = plan_coverage(
+        [requirement("REQ-003", "The system accepts valid username+valid password and allows login.")],
+        profile="minimal",
+    )
+    intent = plan.requirements[0].scenarios[0].intent.lower()
+    # The intent expresses the generic credential submission and the
+    # allowed-login outcome, without naming a UI control.
+    assert "submit" in intent
+    assert "credential" in intent
+    assert "valid username" in intent
+    assert "valid password" in intent
+    assert "allowed" in intent
+    assert "dashboard" not in intent
+    assert "logout" not in intent
+    assert "button" not in intent
+
+
+def test_req009_dashboard_visibility_no_form_steps() -> None:
+    """REQ-009 verifies Dashboard visibility without inventing form submission."""
+    plan = plan_coverage(
+        [requirement("REQ-009", "After successful login, displays Dashboard.")],
+        profile="minimal",
+    )
+    scenario = plan.requirements[0].scenarios[0]
+    intent = scenario.intent
+    # Login is precondition; Dashboard is verification target.
+    assert "successful login" in intent.lower()
+    assert "dashboard" in intent.lower()
+    assert "password" not in intent.lower()
+    assert "type" not in intent.lower()
+
+
+def test_req010_logout_presence_only() -> None:
+    """REQ-010 checks presence only; does not assert logout transition."""
+    plan = plan_coverage(
+        [requirement("REQ-010", "Dashboard provides Logout.")],
+        profile="minimal",
+    )
+    intent = plan.requirements[0].scenarios[0].intent
+    assert "visible and available" in intent
+    assert "logout" in intent.lower()
+    # Must NOT assert what Logout does (transition belongs to REQ-011).
+    assert "returns" not in intent.lower() or "login page" not in intent.lower()
+
+
+def test_req011_returns_to_login_no_dashboard_claim() -> None:
+    """REQ-011 verifies return-to-login without introducing unsupported Dashboard claims."""
+    plan = plan_coverage(
+        [requirement("REQ-011", "Logout returns to Login page.")],
+        profile="minimal",
+    )
+    intent = plan.requirements[0].scenarios[0].intent
+    intent_lower = intent.lower()
+    assert "login page" in intent_lower
+    assert "logout" in intent_lower
+    # Must NOT introduce a Dashboard assertion into its title/steps/result.
+    assert "dashboard" not in intent_lower
+
+
+def test_req001_not_promoted_to_fabricated_test() -> None:
+    """REQ-001 source ('User Login') doesn't specify product behaviour or observable result."""
+    plan = plan_coverage(
+        [requirement("REQ-001", "User Login")],
+        profile="minimal",
+    )
+    scenario = plan.requirements[0].scenarios[0]
+    intent = scenario.intent.lower()
+    # No fabricated functional keywords — no login-form, no password, no dashboard,
+    # no navigation, no authentication verb we haven't seen in evidence.
+    forbidden = ("login form", "enter password", "dashboard", "navigate", "click")
+    for phrase in forbidden:
+        assert phrase not in intent, f"Fabricated phrase found: '{phrase}' in '{intent}'"
+
+
+def test_static_list_with_multiple_evidence_refs_preserves_all_labels() -> None:
+    """Multi-ref static_list must render ALL evidence labels, not just the first.
+
+    Regression guard: render_intent() must check len(labels) > 1 *before*
+    applying behavior/presence single-label rendering, so no evidence is lost.
+    """
+    req = requirement(
+        "REQ-001",
+        "Login page must display the following elements.",
+        details=["Username field", "Password field", "Login button"],
+    )
+    plan = plan_coverage([req], profile="minimal")
+    # The multi-label static_list scenario is the one with >1 evidence ref.
+    multi_ref_scenarios = [
+        s for rp in plan.requirements for s in rp.scenarios
+        if s.objective_kind == "static_list"
+        and len(s.objective_data.get("refs") or ()) > 1
+    ]
+    assert len(multi_ref_scenarios) == 1, f"Expected 1 multi-ref scenario, got {len(multi_ref_scenarios)}"
+    scenario = multi_ref_scenarios[0]
+    intent = scenario.intent
+    # Every evidence label must appear in the rendered intent.
+    assert "Username field" in intent, f"Missing 'Username field' in: {intent}"
+    assert "Password field" in intent, f"Missing 'Password field' in: {intent}"
+    # The first label (statement) should also be present.
+    assert "Login page must display the following elements" in intent, (
+        f"Missing statement label in: {intent}"
+    )
+
+
+def test_static_list_evidence_order_preserved_not_alphabetized() -> None:
+    """render_intent() must preserve refs order from objective_data, not sort."""
+    from coverage_planner import render_intent
+
+    # Atoms deliberately ordered so alphabetical sorting differs from refs order.
+    atom_b = EvidenceAtom(id="atom-B", requirement_ref="REQ-Z", kind="label", text="Zebra text")
+    atom_a = EvidenceAtom(id="atom-A", requirement_ref="REQ-Z", kind="label", text="Apple text")
+    atoms = [atom_b, atom_a]
+    # refs in non-alphabetical, non-ID order: B then A
+    intent = render_intent(
+        "REQ-Z",
+        "static_list",
+        {"refs": ("atom-B", "atom-A")},
+        atoms,
+        "subject Z",
+    )
+    assert "Zebra text" in intent
+    assert "Apple text" in intent
+    # Zebra (atom-B) must appear before Apple (atom-A) — refs order preserved.
+    assert intent.index("Zebra text") < intent.index("Apple text"), (
+        f"Evidence order not preserved in: {intent}"
+    )
+
+
+def test_req002_no_invented_system_outcome() -> None:
+    """REQ-002 identifies an action but defines no independent resulting behaviour."""
+    req = requirement("REQ-002", 'The user submits by clicking "Login".')
+    plan = plan_coverage([req], profile="minimal")
+    scenario = plan.requirements[0].scenarios[0]
+    intent = scenario.intent.lower()
+    # Must not invent success state, error, password-behavior, or navigation.
+    forbidden = {"accepted", "rejected", "error", "invalid", "success", "redirected"}
+    assert not any(word in intent for word in forbidden), (
+        f"REQ-002 intent invented system outcome: '{intent}'"
+    )
+
+
+def test_all_15_scenarios_correct_evidence_ownership() -> None:
+    """Every scenario's evidence_refs are requirement-local."""
+    requirements = analyze_requirements(
+        ParsedInput("markdown", "smoke-login.md", _SMOKE_LOGIN_TEXT)
+    )
+    plan = plan_coverage(requirements, profile="minimal")
+    all_scenarios = []
+    for rp in plan.requirements:
+        all_scenarios.extend(rp.scenarios)
+    atoms_by_id = {a.id: a for a in plan.evidence_atoms}
+    for s in all_scenarios:
+        for eid in s.evidence_refs:
+            atom = atoms_by_id.get(eid)
+            assert atom is not None, f"{s.id} references unknown atom {eid}"
+            assert atom.requirement_ref == s.requirement_ref, (
+                f"{s.id} has foreign evidence atom {eid} from {atom.requirement_ref}"
+            )
+
+
+def test_masking_evidence_exclusive_to_req013() -> None:
+    """Password masking evidence remains exclusive to REQ-013."""
+    requirements = analyze_requirements(
+        ParsedInput("markdown", "smoke-login.md", _SMOKE_LOGIN_TEXT)
+    )
+    plan = plan_coverage(requirements, profile="minimal")
+    all_scenarios = []
+    for rp in plan.requirements:
+        all_scenarios.extend(rp.scenarios)
+    atoms_by_id = {a.id: a for a in plan.evidence_atoms}
+    masking_atoms = {
+        a.id
+        for a in plan.evidence_atoms
+        if "plain text" in a.text.lower()
+    }
+    for s in all_scenarios:
+        if s.requirement_ref == "REQ-013":
+            continue
+        for eid in s.evidence_refs:
+            assert eid not in masking_atoms, (
+                f"{s.id} leaked masking atom {eid}"
+            )

@@ -619,7 +619,16 @@ def _check_foreign_leakage(content: str, authority: ScenarioAuthority) -> str | 
             )
     for literal in _extract_literals([content]):
         literal_folded = literal.casefold()
-        if literal_folded in own_folded:
+        # A literal is locally authorized only when the same quoted
+        # literal exists in the scenario's own declared evidence.
+        # A bare-word substring match must not authorize a quoted UI
+        # literal: an ordinary occurrence of the word "login" in own
+        # evidence does not make the foreign "Login" button literal local.
+        own_literals = {
+            extracted.casefold()
+            for extracted in _extract_literals([*authority.support_texts, *authority.own_texts])
+        }
+        if literal_folded in own_literals:
             continue
         for foreign in authority.foreign_texts:
             if literal_folded and literal_folded in foreign.casefold():

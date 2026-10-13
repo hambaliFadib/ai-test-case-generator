@@ -10,7 +10,44 @@ from config import ConfigurationError, Settings
 from models.llm_result import LLMResult
 
 class LLMError(RuntimeError):
-    """Raised when an LLM provider cannot generate a response."""
+    """Raised when an LLM provider cannot generate a response.
+
+    ``status_code`` carries the provider's HTTP status when the failure
+    surfaced as a typed HTTP error. ``provider_unavailable`` is derived
+    from that status (429 rate limiting or 5xx server errors), never
+    from the rendered message text.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        status_code: int | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.provider_unavailable = (
+            status_code is not None
+            and (status_code == 429 or 500 <= status_code < 600)
+        )
+
+
+def _http_status_code(exc: BaseException) -> int | None:
+    """Extract the HTTP status from typed exception metadata."""
+
+    status = getattr(exc, "status_code", None)
+    if isinstance(status, int):
+        return status
+    status = getattr(exc, "status", None)
+    if isinstance(status, int):
+        return status
+    response = getattr(exc, "response", None)
+    response_status = getattr(response, "status_code", None)
+    if isinstance(response_status, int):
+        return response_status
+    if isinstance(exc, HTTPError):
+        return exc.code
+    return None
 
 
 class LLMAdapter(ABC):
@@ -62,7 +99,10 @@ class AnthropicAdapter(LLMAdapter):
             text_parts = [getattr(block, "text", "") for block in content]
             result = "".join(part for part in text_parts if part)
         except Exception as exc:
-            raise LLMError(f"Anthropic request failed: {exc}") from exc
+            raise LLMError(
+                f"Anthropic request failed: {exc}",
+                status_code=_http_status_code(exc),
+            ) from exc
         if not result.strip():
             raise LLMError("Anthropic returned an empty response.")
         usage = getattr(response, "usage", None)
@@ -113,7 +153,10 @@ class OpenAIAdapter(LLMAdapter):
             choice = response.choices[0]
             result = choice.message.content or ""
         except Exception as exc:
-            raise LLMError(f"OpenAI request failed: {exc}") from exc
+            raise LLMError(
+                f"OpenAI request failed: {exc}",
+                status_code=_http_status_code(exc),
+            ) from exc
         if not result.strip():
             raise LLMError("OpenAI returned an empty response.")
         usage = getattr(response, "usage", None)
@@ -157,7 +200,10 @@ class OllamaAdapter(LLMAdapter):
             decoded: Any = json.loads(body)
             result = decoded.get("response", "")
         except (HTTPError, URLError, TimeoutError, UnicodeError, json.JSONDecodeError) as exc:
-            raise LLMError(f"Ollama request failed: {exc}") from exc
+            raise LLMError(
+                f"Ollama request failed: {exc}",
+                status_code=_http_status_code(exc),
+            ) from exc
         if not isinstance(result, str) or not result.strip():
             raise LLMError("Ollama returned an empty response.")
         return LLMResult(
