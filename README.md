@@ -276,6 +276,7 @@ OCR runs bilingually: English + Bahasa Indonesia (`eng+ind`).
 - [x] v1.3.0 — Deterministic coverage planning, completeness audit, backfill, Web/CLI integration, and traceable export
 - [x] v1.3.1 — Source-evidence-complete planning, typed semantic auditing, and bounded provider generation
 - [x] v1.3.2 — Evidence-bound planning and provenance, QA baseline/UBI contracts, typed provider-unavailability recovery, and the Evidence-first QA Workbench redesign
+- [ ] v1.3.3 — Known-issue fixes from v1.3.2: improve behavior vs. presence/visibility classification in the coverage planner; refine evidence-bound steps and observable expected results; reduce duplicate invalid-credential and password-masking cases; add regression tests for the fixes.
 - [ ] v2.0 — Multi-requirement parallel generation
 - [ ] v2.1 — Existing test framework context injection
 - [ ] v2.2 — Language-aware generation (python -> pytest, js -> Jest, java -> JUnit)
