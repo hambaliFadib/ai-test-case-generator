@@ -6,15 +6,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## [Unreleased]
 
-### Fixed
-
-- Requirement provenance: constraints and evidence are now bounded to their owning requirement's document region, preventing evidence from a later requirement from contaminating an earlier requirement's constraint extraction.
-- Constraint extraction now anchors to the exact statement line (via equality on cleaned markup) rather than the first line containing the statement as a substring, preventing constraint leakage when one requirement's statement appears as a substring within another line's text.
-- Semantic quality literal-ownership validation now matches quoted UI literals against the scenario's own evidence atoms rather than performing bare-word substring matching, so an ordinary word like "Login" in evidence does not authorize a foreign quoted button literal from another requirement.
-- Scenario authority model tightened: `own_texts` includes only atoms bound via `scenario.evidence_refs`, and `foreign_texts` includes same-requirement atoms not bound to the scenario, preventing sibling scenario evidence from authorizing literals in another scenario's test cases.
-- Prompt guidance: password-specific masking guidance is only injected when the scenario's own authorized evidence explicitly prohibits displaying the password as plain text (co-occurrence check per evidence atom: "password" + "not &lt;verb&gt; ... as plain text" within the same atom), so evidence requiring a password to be displayed as plain text does not trigger masking guidance. Non-password non-disclosure evidence (e.g., an API token) receives neutral obfuscation guidance independently, and the presence of "password" in one evidence atom does not cause unrelated non-disclosure evidence to be interpreted as a password masking rule.
-- Provider unavailability is classified solely from typed HTTP status (429 or 5xx), never from error-message text; a fully unavailable provider skips backfill instead of burning the retry budget on unrecoverable failures, while mixed-wave failures continue recovering through backfill.
-- Regression coverage added for requirement provenance, evidence-order preservation, quoted-literal ownership, scenario-specific masking guidance, and provider unavailability classification and recovery.
+## [1.3.2] - 2026-10-14
 
 ### Added
 
@@ -23,6 +15,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 - `UnresolvedBaselineItem` (UBI) records: applicable baseline dimensions that lack sufficient product evidence or explicit product policy are retained in `unresolved_baseline` on the plan, the generation result, and the serialized API response — never dropped, never turned into scenarios
 - Profile composition invariant `Minimal ⊆ Comprehensive ⊆ Extra` by `(category, technique, intent)`; security dimensions apply only in `comprehensive` and `extra`
 - Contract test suite covering baseline applicability and evidence gates, no-invention corpus scanning, alias/default equivalence, deterministic planning, UBI contract and serialization, and the intact semantic gate
+- Regression coverage added for requirement provenance, evidence-order preservation, quoted-literal ownership, scenario-specific masking guidance, and provider unavailability classification and recovery.
 
 ### Changed
 
@@ -37,6 +30,12 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ### Fixed
 
+- Requirement provenance: constraints and evidence are now bounded to their owning requirement's document region, preventing evidence from a later requirement from contaminating an earlier requirement's constraint extraction.
+- Constraint extraction now anchors to the exact statement line (via equality on cleaned markup) rather than the first line containing the statement as a substring, preventing constraint leakage when one requirement's statement appears as a substring within another line's text.
+- Semantic quality literal-ownership validation now matches quoted UI literals against the scenario's own evidence atoms rather than performing bare-word substring matching, so an ordinary word like "Login" in evidence does not authorize a foreign quoted button literal from another requirement.
+- Scenario authority model tightened: `own_texts` includes only atoms bound via `scenario.evidence_refs`, and `foreign_texts` includes same-requirement atoms not bound to the scenario, preventing sibling scenario evidence from authorizing literals in another scenario's test cases.
+- Prompt guidance: password-specific masking guidance is only injected when the scenario's own authorized evidence explicitly prohibits displaying the password as plain text (co-occurrence check per evidence atom: "password" + "not &lt;verb&gt; ... as plain text" within the same atom), so evidence requiring a password to be displayed as plain text does not trigger masking guidance. Non-password non-disclosure evidence (e.g., an API token) receives neutral obfuscation guidance independently, and the presence of "password" in one evidence atom does not cause unrelated non-disclosure evidence to be interpreted as a password masking rule.
+- Provider unavailability is classified solely from typed HTTP status (429 or 5xx), never from error-message text; a fully unavailable provider skips backfill instead of burning the retry budget on unrecoverable failures, while mixed-wave failures continue recovering through backfill.
 - Decorative priority glyphs and the "AI"-styled brand mark removed; status is never conveyed by color alone
 - Failed-with-cases error text was written to the compose error region after compose had collapsed, hiding the failure reason from the workbench
 - Version badge was hardcoded to `v1.3.1` in JavaScript while the backend reported `1.3.0`, so displayed and API versions drifted
@@ -170,3 +169,4 @@ Non-blocking; deferred by owner decision for the v1.3.2 release:
 - Environment-based configuration without hardcoded secrets
 - `.env.example` configuration template
 - Bilingual open-source README documentation
+

@@ -275,7 +275,7 @@ OCR runs bilingually: English + Bahasa Indonesia (`eng+ind`).
 - [x] v1.2.0 — Web UI with dark/light mode
 - [x] v1.3.0 — Deterministic coverage planning, completeness audit, backfill, Web/CLI integration, and traceable export
 - [x] v1.3.1 — Source-evidence-complete planning, typed semantic auditing, and bounded provider generation
-- [ ] v1.3.2 — Evidence-order provenance, literal-ownership hardening, generic non-disclosure guidance, and typed provider-unavailability classification
+- [x] v1.3.2 — Evidence-bound planning and provenance, QA baseline/UBI contracts, typed provider-unavailability recovery, and the Evidence-first QA Workbench redesign
 - [ ] v2.0 — Multi-requirement parallel generation
 - [ ] v2.1 — Existing test framework context injection
 - [ ] v2.2 — Language-aware generation (python -> pytest, js -> Jest, java -> JUnit)

@@ -1,4 +1,4 @@
-"""FastAPI application entrypoint for the v1.3 web interface."""
+"""FastAPI application entrypoint for the Web UI."""
 
 from dotenv import load_dotenv
 

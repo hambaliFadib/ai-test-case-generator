@@ -1,4 +1,4 @@
-"""Web server entrypoint for the v1.3.0 interface."""
+"""Web server entrypoint for the AI Test Case Generator Web UI."""
 
 import uvicorn
 

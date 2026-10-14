@@ -47,4 +47,4 @@ refactor/short-description
 - Changes that collapse the layered architecture
 - Hardcoded API keys or secrets
 - Breaking changes to the CSV schema without versioning discussion
-- Web UI additions; this is planned separately in the roadmap
+- Web UI additions or redesigns that have not been discussed and approved through the linked issue
