@@ -12,14 +12,13 @@
   <header class="topbar">
     <div class="topbar-inner">
       <div class="brand">
-        <span class="brand-mark" aria-hidden="true">AI</span>
         <div class="brand-copy">
           <h1>AI Test Case Generator</h1>
           <p class="brand-sub">Turn requirements into traceable QA coverage.</p>
         </div>
       </div>
       <div class="header-actions">
-        <span class="version" id="version-badge">v1.3.1</span>
+        <span class="version" id="version-badge" aria-live="polite">v—</span>
         <button class="icon-button" id="theme-toggle" type="button" aria-label="Switch to dark mode" title="Switch to dark mode" aria-pressed="false">
           <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
             <circle cx="12" cy="12" r="4"/>
@@ -143,6 +142,7 @@
 
       <!-- Status / metrics -->
       <div class="panel">
+        <div class="message error" id="workbench-error" role="alert" hidden></div>
         <div class="status-row">
           <span class="chip" id="status-chip"><span>—</span></span>
           <span class="shown-count" id="shown-count" aria-live="polite">Showing 0 of 0 cases</span>
@@ -152,10 +152,13 @@
           <div class="coverage-head">
             <span class="detail-label">Planned coverage</span>
             <span class="coverage-pct tnum" id="coverage-pct">0.00%</span>
+            <span class="coverage-level" id="coverage-level"></span>
           </div>
           <div class="coverage-bar" aria-hidden="true">
             <div class="coverage-fill" id="coverage-fill" data-level="none" style="--pct:0"></div>
           </div>
+          <p class="secondary-metrics" id="coverage-detail"></p>
+          <button class="btn btn-ghost btn-sm" id="coverage-gap-button" type="button" hidden></button>
           <p class="secondary-metrics" id="secondary-metrics"></p>
         </div>
 
@@ -179,8 +182,8 @@
               <p class="empty-note tnum" id="evidence-excluded">0</p>
             </div>
           </div>
-          <details class="evidence-col" id="diagnostics-details" style="margin-top:12px;">
-            <summary style="color:var(--text-secondary);font-size:12px;font-weight:650;min-height:28px;display:flex;align-items:center;">Diagnostics</summary>
+          <details class="evidence-col diagnostics-details" id="diagnostics-details">
+            <summary class="diagnostics-summary">Diagnostics</summary>
             <pre id="diagnostics-body"></pre>
           </details>
         </details>
@@ -206,7 +209,7 @@
             <select class="select" id="filter-technique"><option value="">All techniques</option></select>
           </div>
           <div class="toolbar-end">
-            <div class="message success" id="csv-message" hidden></div>
+            <div class="message success" id="csv-message" aria-live="polite" hidden></div>
             <button class="btn btn-secondary" id="download-button" type="button">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M12 3v12"/>
@@ -281,20 +284,5 @@
   <p class="footer-note">AI-assisted generation. Always review test coverage before execution.</p>
 
   <script src="/js/app.js"></script>
-  <script>
-    // Profile contextual help (kept adjacent to the control it describes).
-    (() => {
-      const help = {
-        minimal: "Fewer scenarios focused on core happy-path coverage.",
-        comprehensive: "Deeper scenario coverage including edge and negative cases.",
-        extra: "Adds exploratory combination coverage beyond Comprehensive.",
-      };
-      const profile = document.getElementById("profile");
-      const helpEl = document.getElementById("profile-help");
-      profile.addEventListener("change", () => {
-        helpEl.textContent = help[profile.value] || help.comprehensive;
-      });
-    })();
-  </script>
 </body>
 </html>

@@ -1,5 +1,5 @@
-/* AI Test Case Generator — Workbench UI (v1.3.1)
-   Restrained QA-tool design system: indigo accent, borders over shadows,
+/* AI Test Case Generator — Workbench UI (v1.3.2)
+   Evidence-first QA workbench: navy accent, borders over shadows,
    4px spacing foundation, tabular numbers, monospace refs, no gradients. */
 
 /* ── Tokens ─────────────────────────────────────────────────────── */
@@ -13,18 +13,18 @@
   /* Borders */
   --border: #E8E6E0;
   --border-strong: #D6D3CC;
-  --border-focus: #9BA8F8;
+  --border-focus: #1E40AF;
   /* Text */
   --text-primary: #1C1917;
   --text-secondary: #57534E;
   --text-muted: #6E6862;
   --text-placeholder: #78716C;
-  /* Accent */
-  --accent: #5B63E8;
-  --accent-hover: #4951D4;
-  --accent-subtle: #EEF0FD;
+  /* Accent (navy) */
+  --accent: #1E3A8A;
+  --accent-hover: #1E40AF;
+  --accent-subtle: #EEF2FB;
   --accent-text: #FFFFFF;
-  --accent-border: #C7CBF6;
+  --accent-border: #C7D2F0;
   /* Category badges */
   --positive: #DCFCE7;
   --positive-text: #166534;
@@ -83,7 +83,7 @@
     --surface-sunken: #1F1F23;
     --border: #3F3F46;
     --border-strong: #52525B;
-    --border-focus: #818CF8;
+    --border-focus: #A5B4FC;
     --text-primary: #FAFAFA;
     --text-secondary: #D4D4D8;
     --text-muted: #A1A1AA;
@@ -127,18 +127,20 @@
   --surface: #FFFFFF;
   --surface-raised: #FAFAF8;
   --surface-sunken: #F0EFEA;
+  /* Borders */
   --border: #E8E6E0;
   --border-strong: #D6D3CC;
-  --border-focus: #9BA8F8;
+  --border-focus: #1E40AF;
   --text-primary: #1C1917;
   --text-secondary: #57534E;
   --text-muted: #6E6862;
   --text-placeholder: #78716C;
-  --accent: #5B63E8;
-  --accent-hover: #4951D4;
-  --accent-subtle: #EEF0FD;
+  /* Accent (navy) */
+  --accent: #1E3A8A;
+  --accent-hover: #1E40AF;
+  --accent-subtle: #EEF2FB;
   --accent-text: #FFFFFF;
-  --accent-border: #C7CBF6;
+  --accent-border: #C7D2F0;
   --positive: #DCFCE7;
   --positive-text: #166534;
   --negative: #FEE2E2;
@@ -294,26 +296,10 @@ input, textarea, select { caret-color: var(--accent); }
   padding: 0 var(--gutter);
 }
 
-.brand { align-items: center; display: flex; gap: var(--space-3); min-width: 0; }
-
-.brand-mark {
-  align-items: center;
-  background: var(--accent);
-  border-radius: var(--radius-md);
-  color: var(--accent-text);
-  display: inline-flex;
-  flex: none;
-  font-size: 12px;
-  font-weight: 700;
-  height: 28px;
-  justify-content: center;
-  width: 28px;
-}
-
-.brand-copy { min-width: 0; }
+.brand { align-items: center; display: flex; min-width: 0; }
 
 h1 {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 650;
   letter-spacing: -.01em;
   line-height: 1.3;
@@ -350,11 +336,11 @@ h1 {
   border-radius: var(--radius-md);
   color: var(--text-secondary);
   display: inline-flex;
-  height: 40px;
+  height: 44px;
   justify-content: center;
   padding: 0;
-  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
-  width: 40px;
+  transition: background-color .14s ease, border-color .14s ease, color .14s ease;
+  width: 44px;
 }
 
 .icon-button:hover { background: var(--accent-subtle); border-color: var(--border-focus); color: var(--text-primary); }
@@ -421,7 +407,7 @@ h2 {
   color: var(--text-primary);
   font-size: 14px;
   padding: 10px 11px;
-  transition: border-color .15s ease;
+  transition: border-color .14s ease;
   width: 100%;
 }
 
@@ -475,9 +461,9 @@ h2 {
   font-size: 13px;
   font-weight: 600;
   margin-bottom: -1px;
-  min-height: 40px;
-  padding: 8px 12px;
-  transition: color .15s ease, border-color .15s ease;
+  min-height: 44px;
+  padding: 10px 12px;
+  transition: color .14s ease, border-color .14s ease;
 }
 
 .tab:hover { color: var(--text-primary); }
@@ -498,7 +484,7 @@ h2 {
   min-height: 220px;
   padding: var(--space-6);
   text-align: center;
-  transition: background-color .15s ease, border-color .15s ease;
+  transition: background-color .14s ease, border-color .14s ease;
 }
 
 .dropzone.is-over { background: var(--accent-subtle); border-color: var(--accent); }
@@ -526,7 +512,7 @@ h2 {
   justify-content: center;
   min-height: 44px;
   padding: 8px 16px;
-  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+  transition: background-color .14s ease, border-color .14s ease, color .14s ease;
 }
 
 .btn:disabled { opacity: .55; }
@@ -541,6 +527,8 @@ h2 {
 .btn-ghost:hover:not(:disabled) { background: var(--surface-sunken); color: var(--text-primary); }
 
 .btn-block { width: 100%; }
+
+.btn-sm { min-height: 32px; padding: 4px 12px; }
 
 /* Settings panel */
 .settings-grid { display: grid; gap: var(--space-4); }
@@ -680,6 +668,24 @@ h2 {
 
 /* Evidence (details) */
 .evidence { border-top: 1px solid var(--border); margin-top: var(--space-4); padding-top: var(--space-3); }
+.evidence .diagnostics-details { margin-top: var(--space-3); }
+
+/* Diagnostics summary: matches Evidence & diagnostics affordance */
+.diagnostics-summary {
+  align-items: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  font-size: 12px;
+  font-weight: 650;
+  gap: 6px;
+  list-style: none;
+  min-height: 28px;
+}
+
+.diagnostics-summary::-webkit-details-marker { display: none; }
+.diagnostics-summary::before { content: "▸"; color: var(--text-muted); font-size: 11px; }
+.diagnostics-details[open] > .diagnostics-summary::before { content: "▾"; }
 
 .evidence > summary {
   color: var(--text-secondary);
@@ -759,7 +765,7 @@ thead th {
   font: inherit;
   gap: 4px;
   letter-spacing: inherit;
-  min-height: 38px;
+  min-height: 44px;
   padding: 8px 12px;
   text-transform: inherit;
   width: 100%;
@@ -813,9 +819,6 @@ tbody tr.is-static:hover { background: transparent; }
 .priority-high { color: var(--priority-high); }
 .priority-medium { color: var(--priority-medium); }
 .priority-low { color: var(--priority-low); }
-.priority::before { content: "▲ "; font-size: 8px; vertical-align: 1px; }
-.priority-medium::before { content: "◆ "; }
-.priority-low::before { content: "▼ "; }
 
 .technique { color: var(--text-secondary); white-space: nowrap; }
 
@@ -962,21 +965,21 @@ tbody tr.is-static:hover { background: transparent; }
 }
 
 /* 1. Generation loading: truthful state gains a subtle enter + busy border cue */
-.generating { animation: gen-in .16s ease-out; }
-.panel { transition: border-color .15s ease; }
+.generating { animation: gen-in .18s ease-out; }
+.panel { transition: border-color .14s ease; }
 #compose[aria-busy="true"] { border-color: var(--accent-border); }
 
 /* 2. Inspector content change: visual-only swap, no interaction delay */
-.inspector-body.is-refreshing { animation: swap-in .14s ease-out; }
+.inspector-body.is-refreshing { animation: swap-in .16s ease-out; }
 
 /* Status chip + metrics: one small group enter per run (not per row) */
-.is-refreshing { animation: swap-in .14s ease-out; }
+.is-refreshing { animation: swap-in .16s ease-out; }
 
 /* 3. Drawer enter/exit (JS toggles .is-closing for the exit leg) */
-.inspector.is-drawer { animation: drawer-in .18s ease-out; }
-.inspector.is-drawer.is-closing { animation: drawer-out .14s ease-in forwards; }
-.inspector-scrim.is-open { animation: scrim-in .18s ease-out; }
-.inspector-scrim.is-closing { animation: scrim-out .14s ease-in forwards; }
+.inspector.is-drawer { animation: drawer-in .22s ease-out; }
+.inspector.is-drawer.is-closing { animation: drawer-out .16s ease-in forwards; }
+.inspector-scrim.is-open { animation: scrim-in .22s ease-out; }
+.inspector-scrim.is-closing { animation: scrim-out .16s ease-in forwards; }
 
 /* Coverage bar: transform-only sweep (no layout animation) */
 .coverage-fill {

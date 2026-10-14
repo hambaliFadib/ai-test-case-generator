@@ -10,10 +10,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from app_version import APP_VERSION
 from web.router import router
 
 
-app = FastAPI(title="AI Test Case Generator", version="1.3.0")
+app = FastAPI(title="AI Test Case Generator", version=APP_VERSION)
 
 app.add_middleware(
     CORSMiddleware,

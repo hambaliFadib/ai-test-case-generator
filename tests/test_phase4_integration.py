@@ -8,6 +8,7 @@ from tempfile import TemporaryDirectory
 from fastapi.testclient import TestClient
 
 import main
+from app_version import APP_VERSION
 from csv_exporter import export_to_csv, export_traceable_to_csv
 from models.coverage_model import GenerationResult
 from models.input_model import ParsedInput
@@ -203,7 +204,13 @@ def test_ui_contains_phase4_coverage_contract() -> None:
     bundle = html + js
     for token in ("coverage_percentage", "scenario_count", "generated_count", "missing_scenarios", "status", "scenario_ref"):
         assert token in bundle
-    assert "v1.3.1" in html
+    # Version is sourced at runtime from /api/health, not hardcoded in the HTML.
+    assert 'id="version-badge"' in html
+    assert 'fetch("/api/health")' in js
+    health = client.get("/api/health")
+    assert health.status_code == 200
+    assert health.json() == {"status": "ok", "version": APP_VERSION}
+    assert APP_VERSION == "1.3.2"
 
 
 def test_web_test_client_dependency_is_declared_for_dev_installs() -> None:

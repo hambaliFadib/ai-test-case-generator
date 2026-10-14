@@ -1,6 +1,6 @@
 # AI Test Case Generator
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Python: 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/) [![Version: 1.3.1](https://img.shields.io/badge/Version-1.3.1-blue.svg)](CHANGELOG.md) [![Contributions: By Approval Only](https://img.shields.io/badge/Contributions-By%20Approval%20Only-orange.svg)](CONTRIBUTING.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Python: 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/) [![Version: 1.3.2](https://img.shields.io/badge/Version-1.3.2-blue.svg)](CHANGELOG.md) [![Contributions: By Approval Only](https://img.shields.io/badge/Contributions-By%20Approval%20Only-orange.svg)](CONTRIBUTING.md)
 
 ---
 
@@ -45,7 +45,7 @@ INPUT LAYER -> ANALYSIS LAYER -> GENERATION LAYER
 - **Validation layer** — `validator.py` applies deterministic contract checks and `deduplicator.py` removes duplicate titles.
 - **Output layer** — `csv_exporter.py` writes validated cases using the schema in `models/csv_schema.py`.
 
-**Web UI layer (v1.3.1)**
+**Web UI layer (v1.3.2)**
 
 ```text
 WEB UI -> same generation pipeline as the CLI
@@ -174,7 +174,7 @@ If `--output` is omitted, the CSV is written to `output/test_cases_<timestamp>.c
 
 ---
 
-## Usage — Web UI (v1.3.1)
+## Usage — Web UI (v1.3.2)
 
 Start the web server:
 
