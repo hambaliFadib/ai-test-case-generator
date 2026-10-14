@@ -1432,7 +1432,7 @@ def _extract_atomic_behaviors(requirement: Requirement) -> list[_AtomicBehavior]
     value = _clean_atomic_text(requirement.statement)
     if value and not _is_atomic_parent(value) and not _is_guardrail_text(value):
         kind = _classify_atomic_behavior(value, _context_mode(value), "statement")
-        if kind in {"behavior", "confirmation_behavior", "file_type"}:
+        if kind in {"behavior", "confirmation_behavior", "file_type", "control", "action", "tab"}:
             key = _normalize_behavior(value, kind)
             if key not in seen:
                 seen.add(key)
