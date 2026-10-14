@@ -259,9 +259,19 @@ def render_intent(
     if objective_kind == "static_list":
         refs = objective_data.get("refs") or ()
         labels = [atoms_by_id[r].text for r in refs if r in atoms_by_id]
-        if labels:
+        if not labels:
+            return f"Verify the explicitly listed items for {subject}."
+        if len(labels) > 1:
             return f"Verify the explicitly listed items for {subject}: {'; '.join(labels)}."
-        return f"Verify the explicitly listed items for {subject}."
+        primary_text = _clean_atomic_text(labels[0]).rstrip(".")
+        # Behavior-scenario rendering: extract the observable action from the atom.
+        if _looks_like_behavior(primary_text):
+            return _render_behavior_intent_from_atom(primary_text)
+        # Presence-only rendering: control/element visibility check.
+        if _looks_like_presence(primary_text):
+            label = _presence_label(primary_text)
+            return f"Verify the explicitly described {label} is visible and available."
+        return f"Verify the explicitly listed items for {subject}: {primary_text}."
 
     if objective_kind == "no_results":
         return f"Verify {subject} displays the empty result state as explicitly described."
@@ -279,11 +289,117 @@ def render_intent(
 
 
 def _presence_label(atom_text: str) -> str:
+    """Extract a short noun label from presence-only text."""
     text = atom_text.strip().rstrip(".")
     match = re.match(r"^the page provides\s+(.+)$", text, re.IGNORECASE)
     if match:
         return match.group(1).strip().strip('"')
-    return text
+    # "Dashboard provides Logout" → strip subject prefix for the label.
+    match = re.match(r"^[\w ]+\s+provides?\s+(.+)$", text, re.IGNORECASE)
+    if match:
+        return match.group(1).strip()
+    return atom_text.strip()
+
+
+def _looks_like_behavior(text: str) -> bool:
+    """Return True when *text* describes an observable system action.
+
+    A behaviour atom starts with a subject (system/page/feature) and uses an
+    active predicate — accept, display, show, allow, reject, return — rather
+    than stating that something exists or listing items.
+    """
+    t = text.strip().lower()
+    if re.search(r"^(the system|after\s+|if\s+)", t):
+        return True
+    if re.search(
+        r"\b(?:accepts?|displays?|shows?|allows?|rejects?|returns?|"
+        r"(?:is|are)\s+(?:available|visible|supported))\b",
+        t,
+    ):
+        return True
+    return False
+
+
+def _looks_like_presence(text: str) -> bool:
+    """Return True when *text* asserts presence without specifying a transition.
+
+    Pattern: "Dashboard provides Logout" — control element present on page.
+    Excludes behaviour atoms caught by _looks_like_behavior.
+    """
+    if _looks_like_behavior(text):
+        return False
+    t = text.strip().lower()
+    return bool(re.search(r"\bprovides?\b", t))
+
+
+def _render_behavior_intent_from_atom(atom_text: str) -> str:
+    """Build an executable, well-formed intent sentence from a behavior atom.
+
+    Preserves entity capitalization (e.g. "Dashboard"). Detects several common
+    atom structures so the wrapped intent stays grammatical.
+    """
+    clean = _clean_atomic_text(atom_text).rstrip(".")
+
+    # Pattern A: "After X, display/show/return(s) Y" → "Given X, verify Y."
+    m = re.match(
+        r"(?:after\s|After\s)(.+),\s*(.+)", clean, re.IGNORECASE
+    )
+    if m:
+        condition = m.group(1)
+        action = m.group(2)
+        # Convert "displays Dashboard" → "the Dashboard is displayed"
+        m_show = re.match(r"(?:displays?|shows?|reveals)\s+(.+)", action, re.IGNORECASE)
+        if m_show:
+            target = m_show.group(1)
+            return f"Given {condition}, verify that the {target} is displayed."
+        return f"Given {condition}, verify {action}."
+
+    # Pattern B: "If X, display/show/return(s) Y" → "When X, verify Y."
+    m = re.match(r"(?:if\s|If\s)(.+),\s*(.+)", clean, re.IGNORECASE)
+    if m:
+        condition = m.group(1)
+        action = m.group(2)
+        m_show = re.match(r"(?:displays?|shows?|reveals)\s+(.+)", action, re.IGNORECASE)
+        if m_show:
+            target = m_show.group(1)
+            return f"When {condition}, verify that the {target} is displayed."
+        return f"When {condition}, verify {action}."
+
+    # Pattern C (credential-special case): "The system accepts valid
+    # username[+valid password] and allows login" → credential submission.
+    # Checked first so the generic Pattern C below does not swallow it.
+    m = re.match(
+        r"(?:the\s+system\s+)?accepts?\s+valid\s+username[\s+]*valid\s+password"
+        r"\s+and\s+allows?\s+(.+)",
+        clean,
+        re.IGNORECASE,
+    )
+    if m:
+        outcome = m.group(1)
+        return (
+            f"Submit valid username and valid password as the username and "
+            f"password credentials; verify that {outcome} is allowed."
+        )
+    # Pattern C (generic): "The system accepts X and allows Y" → submission
+    # of X and verification of Y. The accepted-value group is rendered
+    # verbatim as the submission target so no credential type is
+    # invented when the evidence does not mention credentials.
+    m = re.match(
+        r"(?:the\s+system\s+)?(?:accepts?|accept)\s+(.+?)\s+and\s+allows?\s+(.+)",
+        clean,
+        re.IGNORECASE,
+    )
+    if m:
+        accepted = m.group(1)
+        outcome = m.group(2)
+        return f"Submit {accepted} and verify that {outcome} is allowed."
+
+    # Fallback: lowercase first char only, wrap normally.
+    if len(clean) > 1 and clean[0].isupper():
+        clean = clean[0].lower() + clean[1:]
+    elif len(clean) == 1:
+        clean = clean.lower()
+    return f"Verify that {clean}."
 
 
 def _normalize_objective_data(objective_data: dict | None) -> tuple:
@@ -1466,16 +1582,6 @@ def _is_action_label(value: str) -> bool:
     return bool(
         re.search(
             r"\b(?:action|button|icon|download|upload|retry|recalculate|clear data|approval|settings|sorting|filter|advanced search)\b",
-            value,
-            re.IGNORECASE,
-        )
-    )
-
-
-def _looks_like_behavior(value: str) -> bool:
-    return bool(
-        re.search(
-            r"\b(?:user can|users can|system |page |display(?:s|ed)? |the user|accepts|rejects|follows|select|apply|provides)\b",
             value,
             re.IGNORECASE,
         )

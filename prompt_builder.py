@@ -1,11 +1,21 @@
 """Build strict, QA-oriented prompts for test-case generation."""
 
 import json
+import re
 
 from models.coverage_model import EvidenceAtom, ScenarioIntent
 from models.requirement_model import Requirement
 from models.test_case_model import TestCase
 from semantic_quality import authorized_evidence_texts
+
+_MASKING_PATTERN = re.compile(
+    r"\bnot\s+\w+(?:\s+\w+)*?\s+as\s+plain\s+text\b",
+    re.IGNORECASE,
+)
+_NON_DISCLOSURE_PATTERN = re.compile(
+    r"\bnot\s+\w+(?:\s+\w+)*?\s+as\s+plain\s+text\b",
+    re.IGNORECASE,
+)
 
 
 def build_prompt(
@@ -164,6 +174,45 @@ def build_batch_prompt(
         }
         for scenario in scenarios
     ]
+    masking_guidance = []
+    for scenario in scenarios:
+        evidence_texts = authorized_evidence_texts(scenario, list(evidence_atoms or ()))
+        authorized = " ".join(evidence_texts).casefold()
+        # Check each evidence atom individually to ensure "password" and
+        # the non-disclosure pattern co-occur in the same atom.
+        password_masking_atom = any(
+            "password" in text.casefold()
+            and "plain text" in text.casefold()
+            and _MASKING_PATTERN.search(text) is not None
+            for text in evidence_texts
+        )
+        nondisclosure_atom = any(
+            "plain text" in text.casefold()
+            and _NON_DISCLOSURE_PATTERN.search(text) is not None
+            for text in evidence_texts
+        )
+        if password_masking_atom:
+            masking_guidance.append(
+                f"- {scenario.id}: the authorized_evidence requires password "
+                "masking or non-disclosure as plain text; its expected_result "
+                "must state the visible, verifiable condition — for example "
+                "\"The entered password is not displayed as plain text on the "
+                "login form.\" Equivalent wording such as \"masked\" or "
+                "\"hidden\" is acceptable only when the expected_result still "
+                "establishes that authorized observable behavior. Do not invent "
+                "a specific masking symbol, character, or UI widget."
+            )
+        elif nondisclosure_atom:
+            masking_guidance.append(
+                f"- {scenario.id}: the authorized_evidence requires non-disclosure "
+                "as plain text; its expected_result must state the visible, "
+                "verifiable condition that the sensitive value is not rendered "
+                "in cleartext. Equivalent wording such as \"masked\" or "
+                "\"hidden\" is acceptable only when the expected_result still "
+                "establishes that authorized observable behavior. Do not invent "
+                "a specific masking symbol, character, or UI widget."
+            )
+    masking_instruction = "\n".join(masking_guidance)
     language_instruction = (
         "Write generated natural-language fields in Bahasa Indonesia."
         if output_language == "id"
@@ -224,6 +273,16 @@ SCENARIO AUTHORITY (hard semantic boundary):
 - Never write internal generation language: no "not assumed", "as stated", "described behavior", "as needed", "behavior is fulfilled", or similar meta/guardrail text in any field.
 - Do not invent product facts: no status codes, timeouts, retry counts, lockout thresholds, session durations, or exact error wording that is not in the scenario's authorized_evidence.
 - For security scenarios (category=security), assert only a concrete security behavior that appears in the authorized_evidence; never write generic "security behavior" checks.
+
+OBSERVABLE OUTCOME GUIDANCE (how to phrase expected_result):
+- expected_result must express the observable outcome that the scenario's own intent and authorized_evidence support, not merely repeat the action in the steps. The steps describe what the tester does; the expected_result states the single verifiable system result.
+- When the scenario intent or authorized_evidence states an outcome (for example accepts, rejects, prevents, allows, displays, remains), phrase expected_result as a verifiable result using an observable verb such as displayed, shown, appears, visible, accepted, rejected, prevented, allowed, denied, saved, stored, selected, submitted, redirected, remains, stays, masked, contains, equals, changed, or returned.
+- When the source specifies only presence or availability of an item, verify that the item is present, visible, or available. Do not invent a state transition, click, submission, or downstream result.
+- When the source specifies only an action and no system outcome, do not invent a success state, error, message, navigation result, or any other postcondition. State only the observable fact the intent supports.
+- Use only the current scenario's declared intent and authorized_evidence. Do not borrow literals, controls, entities, field names, messages, or capabilities from other scenarios or other requirements in this batch, even when they appear elsewhere in the prompt.
+- Never invent a form-submission result, validation message, error text, Dashboard or other page transition, authentication state, or other product behavior merely to make the test appear complete.
+- Do not expose or repeat an actual password value. Express a masking assertion only when the scenario's own authorized_evidence states the masking behavior.
+- SENSITIVE-VALUE NON-DISCLOSURE GUIDANCE (only when supported by the scenario's own authorized_evidence): when evidence explicitly requires that a sensitive value not be rendered in cleartext, expected_result must state the observable non-disclosure condition for the exact value and surface described in the evidence. Do not invent masking symbols, replacement characters, fields, controls, or UI behavior.
 {language_instruction}
 
 {requirements_heading}
@@ -231,4 +290,6 @@ SCENARIO AUTHORITY (hard semantic boundary):
 
 Planned scenarios for this batch:
 {json.dumps(scenario_payload, ensure_ascii=False, indent=2)}
+
+{masking_instruction}
 """.strip()

@@ -1,6 +1,6 @@
 """Phase 3 generation orchestration with strict completeness enforcement."""
 
-from dataclasses import replace
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from typing import Any
 
@@ -13,7 +13,7 @@ from config import Settings
 from coverage_auditor import audit_coverage
 from coverage_planner import plan_coverage
 from generation_utils import is_truncated
-from llm_adapter import create_adapter
+from llm_adapter import LLMError, create_adapter
 from models.coverage_model import CoveragePlan, EvidenceAtom, GenerationResult, ScenarioIntent
 from models.input_model import ParsedInput
 from models.llm_result import LLMResult
@@ -95,8 +95,9 @@ def generate_test_suite(
 
     requirement_by_id = {requirement.id: requirement for requirement in requirements}
     merged_cases: list[TestCase] = []
+    initial_wave_provider_unavailable = True
     for batch in batches:
-        batch_cases = _generate_batch(
+        outcome = _generate_batch(
             adapter,
             [requirement_by_id[requirement_id] for requirement_id in batch.requirement_ids],
             batch.scenarios,
@@ -106,7 +107,9 @@ def generate_test_suite(
             llm_results,
             evidence_atoms=plan.evidence_atoms,
         )
-        merged_cases.extend(batch_cases)
+        merged_cases.extend(outcome.test_cases)
+        if not outcome.provider_unavailable:
+            initial_wave_provider_unavailable = False
 
     initial_audit = audit_coverage(plan, merged_cases)
     initial_generated_count = len(merged_cases)
@@ -119,30 +122,39 @@ def generate_test_suite(
         for requirement_plan in plan.requirements
         for scenario in requirement_plan.scenarios
     }
-    for attempt in range(MAX_BACKFILL_ATTEMPTS):
-        if not current_audit.missing_scenario_ids:
-            break
-        missing_scenarios = [
-            planned_by_id[scenario_id]
-            for scenario_id in current_audit.missing_scenario_ids
-        ]
-        backfill_batches = plan_backfill_batches(
-            requirements,
-            missing_scenarios,
+    # Persistent provider unavailability cannot be recovered by retrying
+    # the same batches in this run; skip backfill entirely and keep the
+    # planned references visible as missing.
+    if initial_wave_provider_unavailable and batches:
+        diagnostics.append(
+            "backfill skipped: every initial batch failed with provider "
+            "unavailability"
         )
-        for backfill_batch in backfill_batches:
-            target_scenarios = backfill_batch.scenarios
-            target_requirements = [
-                requirement_by_id[requirement_id]
-                for requirement_id in backfill_batch.requirement_ids
+    else:
+        for attempt in range(MAX_BACKFILL_ATTEMPTS):
+            if not current_audit.missing_scenario_ids:
+                break
+            missing_scenarios = [
+                planned_by_id[scenario_id]
+                for scenario_id in current_audit.missing_scenario_ids
             ]
-            diagnostics.append(
-                f"backfill round {attempt + 1} {backfill_batch.id} targeting "
-                + ", ".join(scenario.id for scenario in target_scenarios)
+            backfill_batches = plan_backfill_batches(
+                requirements,
+                missing_scenarios,
             )
-            backfill_count += 1
-            merged_cases.extend(
-                _generate_batch(
+            round_provider_unavailable = True
+            for backfill_batch in backfill_batches:
+                target_scenarios = backfill_batch.scenarios
+                target_requirements = [
+                    requirement_by_id[requirement_id]
+                    for requirement_id in backfill_batch.requirement_ids
+                ]
+                diagnostics.append(
+                    f"backfill round {attempt + 1} {backfill_batch.id} targeting "
+                    + ", ".join(scenario.id for scenario in target_scenarios)
+                )
+                backfill_count += 1
+                outcome = _generate_batch(
                     adapter,
                     target_requirements,
                     target_scenarios,
@@ -152,12 +164,20 @@ def generate_test_suite(
                     llm_results,
                     evidence_atoms=plan.evidence_atoms,
                 )
-            )
-            current_audit = audit_coverage(plan, merged_cases)
+                merged_cases.extend(outcome.test_cases)
+                if not outcome.provider_unavailable:
+                    round_provider_unavailable = False
+                current_audit = audit_coverage(plan, merged_cases)
+                if not current_audit.missing_scenario_ids:
+                    break
             if not current_audit.missing_scenario_ids:
                 break
-        if not current_audit.missing_scenario_ids:
-            break
+            if round_provider_unavailable and backfill_batches:
+                diagnostics.append(
+                    f"backfill stopped after round {attempt + 1}: every batch "
+                    "failed with provider unavailability"
+                )
+                break
 
     final_audit = audit_coverage(plan, merged_cases)
     ordered_cases = _order_cases(merged_cases, final_audit.planned_scenario_ids)
@@ -206,6 +226,15 @@ def generate_test_suite(
     )
 
 
+@dataclass(frozen=True)
+class BatchOutcome:
+    """Result of one batch attempt, including provider-failure classification."""
+
+    test_cases: list[TestCase] = field(default_factory=list)
+    provider_unavailable: bool = False
+    provider_error: bool = False
+
+
 def _generate_batch(
     adapter: Any,
     requirements: list[Requirement],
@@ -215,7 +244,7 @@ def _generate_batch(
     diagnostics: list[str],
     llm_results: list[LLMResult],
     evidence_atoms: list[EvidenceAtom] | None = None,
-) -> list[TestCase]:
+) -> BatchOutcome:
     """Generate one strict batch; failures return no cases and remain auditable."""
 
     try:
@@ -245,10 +274,22 @@ def _generate_batch(
         )
         diagnostics.extend(f"batch item rejected: {error}" for error in parsed.item_errors)
         validate_batch_traceability(parsed.test_cases, scenarios)
-        return parsed.test_cases
+        return BatchOutcome(test_cases=parsed.test_cases)
+    except LLMError as exc:
+        provider_unavailable = bool(exc.provider_unavailable)
+        detail = (
+            "provider unavailable"
+            if provider_unavailable
+            else str(exc)
+        )
+        diagnostics.append(f"batch generation failed: {detail}")
+        return BatchOutcome(
+            provider_unavailable=provider_unavailable,
+            provider_error=True,
+        )
     except Exception as exc:
         diagnostics.append(f"batch generation failed: {exc}")
-        return []
+        return BatchOutcome()
 
 
 def _coerce_result(value: Any) -> LLMResult:

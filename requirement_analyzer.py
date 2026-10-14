@@ -287,9 +287,9 @@ def _analyze_legacy_requirements(text: str) -> list[Requirement]:
     """Run the legacy line-oriented analyzer for unstructured input."""
 
     lines = [line for line in text.splitlines() if line.strip()]
-    candidates: list[tuple[str, str]] = []
+    candidates: list[tuple[str, str, int]] = []
     current_section = ""
-    for raw_line in lines:
+    for line_index, raw_line in enumerate(lines):
         stripped_line = raw_line.strip()
         if stripped_line.startswith("#"):
             current_section = re.sub(r"^#{1,6}\s*", "", stripped_line).strip()
@@ -297,19 +297,32 @@ def _analyze_legacy_requirements(text: str) -> list[Requirement]:
 
         statement = _strip_requirement_marker(stripped_line)
         if _is_requirement_candidate(stripped_line) and len(statement) >= 10:
-            candidates.append((statement, current_section))
+            candidates.append((statement, current_section, line_index))
 
     if not candidates:
         fallback = " ".join(_strip_requirement_marker(line.strip()) for line in lines).strip()
         if len(fallback) >= 10:
-            candidates = [(fallback, current_section)]
+            candidates = [(fallback, current_section, 0)]
         else:
             raise RequirementAnalysisError("No valid requirements found in parsed input.")
 
     requirements: list[Requirement] = []
-    for index, (statement, section) in enumerate(candidates, start=1):
-        criteria = _criteria_for_candidate(lines, statement)
-        constraints = _constraints_for_statement(statement, lines)
+    for index, (statement, section, source_line_index) in enumerate(candidates, start=1):
+        cleaned_statement = statement.strip()
+        statement_index = source_line_index
+        next_candidate_index = min(
+            (
+                line_index
+                for line_index in range(statement_index + 1, len(lines))
+                if _is_requirement_candidate(lines[line_index].strip())
+            ),
+            default=len(lines),
+        )
+        criteria = _criteria_for_candidate(lines, statement_index)
+        constraints = _constraints_for_statement(
+            statement, lines, region_end=next_candidate_index,
+            source_line_index=statement_index,
+        )
         requirements.append(
             Requirement(
                 id=f"REQ-{index:03d}",
@@ -354,17 +367,18 @@ def _strip_requirement_marker(line: str) -> str:
     return _REQUIREMENT_PREFIX.sub(r"\1", without_marker, count=1).strip()
 
 
-def _criteria_for_candidate(lines: list[str], statement: str) -> list[str]:
-    """Collect acceptance-criteria lines relevant to a legacy requirement."""
+def _criteria_for_candidate(lines: list[str], source_line_index: int) -> list[str]:
+    """Collect acceptance-criteria lines relevant to a legacy requirement.
 
-    statement_index = next(
-        (index for index, line in enumerate(lines) if statement in _clean_markup(line)),
-        0,
-    )
+    Uses the tracked source line index to avoid substring-based line anchoring
+    that could misattribute criteria from a different requirement.
+    """
+
+    statement_index = source_line_index
     criteria: list[str] = []
     for line in lines[statement_index + 1 :]:
         cleaned = _clean_markup(line)
-        if _is_requirement_candidate(cleaned) and cleaned != statement:
+        if _is_requirement_candidate(cleaned):
             break
         if _CRITERIA_PREFIX.match(cleaned) or re.match(
             r"^(?:-\s*)?(?:given|when|then)\b", cleaned, re.IGNORECASE
@@ -373,19 +387,39 @@ def _criteria_for_candidate(lines: list[str], statement: str) -> list[str]:
     return criteria
 
 
-def _constraints_for_statement(statement: str, lines: list[str]) -> list[str]:
-    """Collect nearby lines that explicitly describe legacy constraints or limits."""
+def _constraints_for_statement(
+    statement: str,
+    lines: list[str],
+    *,
+    source_line_index: int,
+    region_end: int | None = None,
+) -> list[str]:
+    """Collect constraint lines inside the statement's own region.
 
+    The region spans the statement line through the line immediately
+    before the next requirement candidate (or region_end). Constraint
+    extraction never scans beyond the region, so a constraint that
+    belongs to a later requirement cannot attach to an earlier one.
+
+    ``source_line_index`` is the verified line index of the statement,
+    avoiding substring-based re-search that can anchor to the wrong line.
+    """
+    if not 0 <= source_line_index < len(lines):
+        raise IndexError(
+            f"source_line_index={source_line_index} out of range "
+            f"for {len(lines)} lines"
+        )
+
+    statement_index = source_line_index
+    boundary = len(lines) if region_end is None else min(region_end, len(lines))
     constraints: list[str] = []
-    for line in lines:
+    for line in lines[statement_index:boundary]:
         cleaned = _clean_markup(line)
         if re.search(
             r"\b(?:constraint|limit|maximum|minimum|only|must not|cannot|within)\b",
             cleaned,
             re.IGNORECASE,
         ):
-            if cleaned not in constraints and (
-                cleaned == statement or statement in cleaned or not constraints
-            ):
+            if cleaned not in constraints:
                 constraints.append(cleaned)
     return constraints

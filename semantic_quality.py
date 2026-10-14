@@ -414,15 +414,11 @@ def build_authorities(
         support = tuple(
             [scenario.intent, *authorized_evidence_texts(scenario, atoms)]
         )
-        own = tuple(
-            [scenario.intent, *(
-                atom.text for atom in atoms
-                if atom.requirement_ref == scenario.requirement_ref
-            )]
-        )
+        own = tuple([scenario.intent, *authorized_evidence_texts(scenario, atoms)])
         foreign = tuple(
             atom.text for atom in atoms
             if atom.requirement_ref != scenario.requirement_ref
+            or atom.id not in scenario.evidence_refs
         )
         authorities[scenario.id] = ScenarioAuthority(
             scenario=scenario,
@@ -619,7 +615,16 @@ def _check_foreign_leakage(content: str, authority: ScenarioAuthority) -> str | 
             )
     for literal in _extract_literals([content]):
         literal_folded = literal.casefold()
-        if literal_folded in own_folded:
+        # A literal is locally authorized only when the same quoted
+        # literal exists in the scenario's own declared evidence.
+        # A bare-word substring match must not authorize a quoted UI
+        # literal: an ordinary occurrence of the word "login" in own
+        # evidence does not make the foreign "Login" button literal local.
+        own_literals = {
+            extracted.casefold()
+            for extracted in _extract_literals(authority.own_texts)
+        }
+        if literal_folded in own_literals:
             continue
         for foreign in authority.foreign_texts:
             if literal_folded and literal_folded in foreign.casefold():
