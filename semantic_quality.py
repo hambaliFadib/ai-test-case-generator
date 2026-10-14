@@ -181,6 +181,58 @@ _OBSERVABLE = re.compile(
     re.IGNORECASE,
 )
 
+
+_ACTION_STEP_FOR_ECHO = re.compile(
+    r"^(?:please\s+)?(?P<verb>select|choose|click|press|enter|type|fill|open|submit)\s+"
+    r"(?P<target>.+?)[.!?]*$",
+    re.IGNORECASE,
+)
+_ACTION_RESULT_ECHO = re.compile(
+    r"^(?:the\s+)?(?P<target>.+?)\s+(?:is|was|has\s+been)\s+"
+    r"(?P<verb>selected|chosen|clicked|pressed|entered|typed|filled|opened|submitted)[.!?]*$",
+    re.IGNORECASE,
+)
+_STEP_TO_RESULT_VERB = {
+    "select": "selected",
+    "choose": "chosen",
+    "click": "clicked",
+    "press": "pressed",
+    "enter": "entered",
+    "type": "typed",
+    "fill": "filled",
+    "open": "opened",
+    "submit": "submitted",
+}
+_ECHO_TARGET_IGNORED = {"the", "a", "an", "field", "button", "control", "element", "item", "value", "option"}
+
+
+def _normalize_echo_target(value: str) -> tuple[str, ...]:
+    words = re.sub(r"[^a-z0-9]+", " ", value.casefold()).split()
+    return tuple(word for word in words if word not in _ECHO_TARGET_IGNORED)
+
+
+def _action_echo_error(steps: list[str], expected_result: str) -> str | None:
+    """Reject expected results that merely restate the tester's own action."""
+    expected = _ACTION_RESULT_ECHO.fullmatch(expected_result.strip())
+    if expected is None:
+        return None
+    result_target = _normalize_echo_target(expected.group("target"))
+    if not result_target:
+        return None
+    for index, step in enumerate(steps, start=1):
+        action = _ACTION_STEP_FOR_ECHO.fullmatch(step.strip())
+        if action is None:
+            continue
+        if _STEP_TO_RESULT_VERB.get(action.group("verb").casefold()) != expected.group("verb").casefold():
+            continue
+        step_target = _normalize_echo_target(action.group("target"))
+        if step_target and step_target == result_target:
+            return (
+                f"expected_result repeats the tester action from step {index} "
+                "instead of stating a separate observable outcome"
+            )
+    return None
+
 _HEDGE = re.compile(r"\batau\b|\band\s*/\s*or\b|\bdan\s*/\s*atau\b|\bor\b", re.IGNORECASE)
 
 
@@ -469,6 +521,10 @@ def validate_content(
 
     if not _OBSERVABLE.search(expected_result) and not _LITERAL_QUOTE_DOUBLE.search(expected_result):
         return "expected_result does not state an observable outcome"
+
+    action_echo = _action_echo_error(steps, expected_result)
+    if action_echo is not None:
+        return action_echo
 
     content_all = " ".join([title, " ".join(preconditions), " ".join(steps), expected_result])
 

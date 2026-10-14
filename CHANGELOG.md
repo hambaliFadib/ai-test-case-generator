@@ -6,6 +6,16 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## [Unreleased]
 
+### Changed
+
+- Coverage planner now distinguishes explicit actor actions from presence-only "provides" statements, preserving evidence refs while producing the appropriate behavior or visibility intent.
+- Generated test cases with identical requirement-local preconditions, steps, and expected outcomes are rejected as duplicate content so the affected planned scenario remains eligible for bounded backfill.
+- Semantic quality validation rejects an expected result that merely repeats a supported tester action instead of stating a separate observable outcome.
+
+### Tests
+
+- Added regression tests for "The user selects a period", "The system provides Logout", repeated action-only expected results, and requirement-local duplicate operational content.
+
 ## [1.3.2] - 2026-10-14
 
 ### Added

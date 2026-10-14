@@ -1218,3 +1218,50 @@ def test_sibling_literal_not_in_own_texts() -> None:
         expected_result='The "Cancel" button is visible.',
     )
     assert check(accepted, scn_cancel, [save_atom, cancel_atom]) is None
+
+
+
+def test_expected_result_that_only_repeats_select_action_is_rejected() -> None:
+    scn = scenario(
+        "V133-ACTION-001",
+        intent="Verify the user selects a period.",
+        refs=("V133-ACTION-001-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ACTION-001",
+            1,
+            "The user selects a period.",
+            kind="explicit_behavior",
+        )
+    ]
+
+    repeated_action = item(
+        steps=["Select a period."],
+        expected_result="The period is selected.",
+    )
+    error = check(repeated_action, scn, atoms)
+    assert error is not None
+    assert "repeats the tester action" in error
+
+
+def test_observable_expected_result_is_accepted_when_it_differs_from_action() -> None:
+    scn = scenario(
+        "V133-ACTION-002",
+        intent="Verify the user selects a period and the selected period is displayed.",
+        refs=("V133-ACTION-002-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ACTION-002",
+            1,
+            "The user selects a period and the selected period is displayed.",
+            kind="explicit_behavior",
+        )
+    ]
+
+    distinct_outcome = item(
+        steps=["Select a period."],
+        expected_result="The selected period is displayed.",
+    )
+    assert check(distinct_outcome, scn, atoms) is None

@@ -768,3 +768,42 @@ def test_masking_evidence_exclusive_to_req013() -> None:
             assert eid not in masking_atoms, (
                 f"{s.id} leaked masking atom {eid}"
             )
+
+
+
+def test_user_selects_period_is_planned_as_explicit_behavior() -> None:
+    plan = plan_coverage(
+        [requirement("V133-ACTION-001", "The user selects a period.")],
+        profile="minimal",
+    )
+
+    scenarios = plan.requirements[0].scenarios
+    assert len(scenarios) == 1
+    assert scenarios[0].objective_kind == "behavior"
+    assert "user selects a period" in scenarios[0].intent.lower()
+    assert scenarios[0].evidence_refs
+    assert any(
+        atom.id in scenarios[0].evidence_refs
+        and atom.kind == "explicit_behavior"
+        for atom in plan.evidence_atoms
+    )
+
+
+def test_system_provides_logout_is_planned_as_presence_not_behavior() -> None:
+    plan = plan_coverage(
+        [requirement("V133-PRESENCE-001", "The system provides Logout.")],
+        profile="minimal",
+    )
+
+    scenarios = plan.requirements[0].scenarios
+    assert len(scenarios) == 1
+    assert scenarios[0].objective_kind == "presence"
+    assert "logout" in scenarios[0].intent.lower()
+    assert "visible and available" in scenarios[0].intent.lower()
+    assert "provides the behavior described" not in scenarios[0].intent.lower()
+    assert scenarios[0].evidence_refs
+    assert any(
+        atom.id in scenarios[0].evidence_refs
+        and atom.kind == "presence"
+        for atom in plan.evidence_atoms
+    )

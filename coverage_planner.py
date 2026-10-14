@@ -85,6 +85,25 @@ _BEHAVIOR_PHRASE = re.compile(
 )
 
 
+_USER_ACTION_PHRASE = re.compile(
+    r"\b(?:the\s+|a\s+|an\s+)?(?:user|users|customer|operator|administrator|agent|tester)\s+"
+    r"(?:can\s+)?(?:selects?|chooses?|clicks?|presses?|enters?|types?|fills?|inputs?|"
+    r"opens?|navigates?|submits?|cancels?|confirms?|uploads?|downloads?|searches?|"
+    r"filters?|saves?|deletes?|adds?|removes?|sets?|views?|logs?\s+(?:in|out))\b",
+    re.IGNORECASE,
+)
+_PRESENCE_STATEMENT = re.compile(
+    r"(?!(?:the\s+|a\s+|an\s+)?(?:user|users|customer|operator|administrator|agent|tester)\b)"
+    r"(?:the\s+)?[A-Za-z][\w -]{0,40}\s+provides?\s+[^.!?]+[.!?]?",
+    re.IGNORECASE,
+)
+_PRESENCE_STATE_STATEMENT = re.compile(
+    r"(?:the\s+)?[A-Za-z][\w -]{0,40}\s+(?:is|are)\s+"
+    r"(?:available|visible|present|supported)[.!]?",
+    re.IGNORECASE,
+)
+
+
 @dataclass(frozen=True)
 class _AtomicBehavior:
     """One explicit behavior retained inside a Requirement block."""
@@ -185,6 +204,8 @@ def render_intent(
         primary = objective_data.get("primary_ref")
         if primary and primary in atoms_by_id:
             text = atoms_by_id[primary].text.rstrip(".").strip()
+            if _USER_ACTION_PHRASE.search(text):
+                return _render_behavior_intent_from_atom(text)
             return f"Verify that {text}."
         return f"Verify {subject} displays the explicitly defined behavior."
 
@@ -264,13 +285,13 @@ def render_intent(
         if len(labels) > 1:
             return f"Verify the explicitly listed items for {subject}: {'; '.join(labels)}."
         primary_text = _clean_atomic_text(labels[0]).rstrip(".")
-        # Behavior-scenario rendering: extract the observable action from the atom.
-        if _looks_like_behavior(primary_text):
-            return _render_behavior_intent_from_atom(primary_text)
-        # Presence-only rendering: control/element visibility check.
+        # Presence-only rendering takes precedence over broad lexical action cues.
         if _looks_like_presence(primary_text):
             label = _presence_label(primary_text)
             return f"Verify the explicitly described {label} is visible and available."
+        # Behavior-scenario rendering: extract the observable action from the atom.
+        if _looks_like_behavior(primary_text):
+            return _render_behavior_intent_from_atom(primary_text)
         return f"Verify the explicitly listed items for {subject}: {primary_text}."
 
     if objective_kind == "no_results":
@@ -302,34 +323,38 @@ def _presence_label(atom_text: str) -> str:
 
 
 def _looks_like_behavior(text: str) -> bool:
-    """Return True when *text* describes an observable system action.
+    """Return True when *text* supports an executable user/system action.
 
-    A behaviour atom starts with a subject (system/page/feature) and uses an
-    active predicate — accept, display, show, allow, reject, return — rather
-    than stating that something exists or listing items.
+    Presence statements (for example, "The system provides Logout.") are not
+    behavior scenarios unless the source also states an explicit action.
     """
     t = text.strip().lower()
-    if re.search(r"^(the system|after\s+|if\s+)", t):
+    if _looks_like_presence(text):
+        return False
+    if re.search(r"^(?:after\s+|if\s+)", t):
         return True
-    if re.search(
-        r"\b(?:accepts?|displays?|shows?|allows?|rejects?|returns?|"
-        r"(?:is|are)\s+(?:available|visible|supported))\b",
-        t,
-    ):
+    if _USER_ACTION_PHRASE.search(t):
         return True
-    return False
+    return bool(
+        re.search(
+            r"\b(?:accepts?|displays?|shows?|allows?|rejects?|returns?|"
+            r"filters?|saves?|submits?|prevents?|applies?|opens?|closes?)\b",
+            t,
+        )
+    )
 
 
 def _looks_like_presence(text: str) -> bool:
-    """Return True when *text* asserts presence without specifying a transition.
+    """Return True for source wording that only asserts presence or visibility.
 
-    Pattern: "Dashboard provides Logout" — control element present on page.
-    Excludes behaviour atoms caught by _looks_like_behavior.
+    A "provides" sentence describes a capability/control being present; it
+    does not by itself authorize an execution or state-transition scenario.
     """
-    if _looks_like_behavior(text):
-        return False
-    t = text.strip().lower()
-    return bool(re.search(r"\bprovides?\b", t))
+    t = text.strip()
+    return bool(
+        _PRESENCE_STATEMENT.fullmatch(t)
+        or _PRESENCE_STATE_STATEMENT.fullmatch(t)
+    )
 
 
 def _render_behavior_intent_from_atom(atom_text: str) -> str:
@@ -1296,6 +1321,8 @@ def _classify_evidence(value: str, mode: str | None, source_name: str) -> str | 
         return "file_boundary"
     if _is_sample_text(value):
         return "sample_value"
+    if _looks_like_presence(value):
+        return "presence"
     if (
         "opens a modal" in lowered
         or _is_confirmation_behavior(value)
@@ -1541,6 +1568,8 @@ def _classify_atomic_behavior(
     lowered = value.lower()
     if _is_guardrail_text(value):
         return None
+    if _looks_like_presence(value):
+        return "control"
     if _MAXIMUM.search(value) or _MINIMUM.search(value) or _LIMIT_AFTER_VALUE.search(value):
         return "limit"
     if "only pdf" in lowered or "pdf only" in lowered:
@@ -1590,7 +1619,8 @@ def _is_action_label(value: str) -> bool:
 
 def _is_functional_evidence(value: str) -> bool:
     return bool(
-        re.search(
+        _USER_ACTION_PHRASE.search(value)
+        or re.search(
             r"(?:\buser(?:s)?\s+can\b|\bis\s+used\s+to\b|\bcontrols?\s+\w|\bfilters?\s+(?:displayed|rows|results?)\b|\bdisplayed\s+(?:rows?|results?)\b.{0,50}\bfollow(?:s)?\b|\bresult\s+follows?\b|\breturns?\s+(?:the\s+)?(?:displayed\s+)?results?\b|\bapplies?\s+(?:the\s+)?(?:selected\s+|applied\s+)?criterion\b|\bmust\s+be\s+accessible\b|\bis\s+accessible\b|\bno\s+matching\b|\bno\s+results?\b|\bempty\s+(?:result|state)\b|\bclear\s+data\b.{0,80}\b(?:entered|selected|values?)\b|\bclears?\s+(?:entered|selected|values?)\b)",
             value,
             re.IGNORECASE,

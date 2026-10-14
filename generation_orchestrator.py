@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
+import re
+import unicodedata
 from typing import Any
 
 from backfill_generator import (
@@ -29,6 +31,54 @@ from validator import (
     validate_traceability,
     validate_test_cases,
 )
+
+
+def _normalize_case_content(value: str) -> str:
+    """Normalize text for conservative duplicate-output detection."""
+    normalized = unicodedata.normalize("NFKC", value).casefold()
+    return re.sub(r"[\W_]+", " ", normalized, flags=re.UNICODE).strip()
+
+
+def _case_content_fingerprint(test_case: TestCase) -> tuple:
+    """Identify duplicate operational content within one requirement.
+
+    Titles and trace IDs are excluded so cosmetic title rewrites or different
+    planned scenario refs do not disguise cases with identical execution content.
+    """
+    return (
+        test_case.requirement_ref.strip().casefold(),
+        tuple(_normalize_case_content(value) for value in test_case.preconditions),
+        tuple(_normalize_case_content(value) for value in test_case.steps),
+        _normalize_case_content(test_case.expected_result),
+    )
+
+
+def _retain_unique_content(
+    candidates: list[TestCase],
+    existing: list[TestCase],
+    diagnostics: list[str],
+) -> list[TestCase]:
+    """Reject duplicate execution content so its planned scenario can be backfilled."""
+    seen = {
+        _case_content_fingerprint(case)
+        for case in existing
+        if case.scenario_ref.strip()
+    }
+    retained: list[TestCase] = []
+    for case in candidates:
+        if not case.scenario_ref.strip():
+            retained.append(case)
+            continue
+        fingerprint = _case_content_fingerprint(case)
+        if fingerprint in seen:
+            diagnostics.append(
+                f"duplicate generated content rejected for {case.scenario_ref}; "
+                "an equivalent requirement-local test case already exists"
+            )
+            continue
+        seen.add(fingerprint)
+        retained.append(case)
+    return retained
 
 
 def generate_test_suite(
@@ -107,7 +157,9 @@ def generate_test_suite(
             llm_results,
             evidence_atoms=plan.evidence_atoms,
         )
-        merged_cases.extend(outcome.test_cases)
+        merged_cases.extend(
+            _retain_unique_content(outcome.test_cases, merged_cases, diagnostics)
+        )
         if not outcome.provider_unavailable:
             initial_wave_provider_unavailable = False
 
@@ -164,7 +216,9 @@ def generate_test_suite(
                     llm_results,
                     evidence_atoms=plan.evidence_atoms,
                 )
-                merged_cases.extend(outcome.test_cases)
+                merged_cases.extend(
+                    _retain_unique_content(outcome.test_cases, merged_cases, diagnostics)
+                )
                 if not outcome.provider_unavailable:
                     round_provider_unavailable = False
                 current_audit = audit_coverage(plan, merged_cases)
