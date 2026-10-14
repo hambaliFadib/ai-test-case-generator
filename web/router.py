@@ -11,6 +11,7 @@ from fastapi import APIRouter, File, Form, UploadFile
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
+from app_version import APP_VERSION
 from config import SUPPORTED_PROVIDERS, load_settings
 from csv_exporter import export_to_csv, export_traceable_to_csv
 from generation_orchestrator import generate_test_suite
@@ -46,7 +47,7 @@ class ExportRequest(BaseModel):
 def health() -> dict[str, str]:
     """Return the web API health status and version."""
 
-    return {"status": "ok", "version": "1.3.0"}
+    return {"status": "ok", "version": APP_VERSION}
 
 
 @router.get("/config", response_model=None)

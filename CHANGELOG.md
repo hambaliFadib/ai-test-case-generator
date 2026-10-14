@@ -29,6 +29,25 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 - CLI `--profile` and the Web API now accept the canonical profiles and legacy aliases; unknown profiles fail with a message listing `minimal, comprehensive, extra`
 - Serialized generation results expose the resolved canonical profile and the additive `unresolved_baseline` field; failed results carry an empty list
 - Baseline dimensions are QA policy only: lockout thresholds, session timeouts, status codes, MFA prompts, and other concrete product semantics are never invented without explicit source evidence or product policy
+- Evidence-first QA workbench redesign: navy accent (`#1E3A8A`), neutral surfaces with thin borders instead of shadows, simplified panel hierarchy, consistent radius and spacing. The navbar brand mark is temporarily removed while the project owner decides on the visual identity.
+- Version synchronization: single source of truth in `app_version.py` (`APP_VERSION = "1.3.2"`); the FastAPI app metadata, `/api/health` response, and the Web UI version badge all read from it. The UI badge fetches the runtime version from `/api/health` instead of a hardcoded constant, and degrades gracefully if the request fails.
+- Textual coverage feedback: the coverage indicator now states `Full coverage`, `Partial — N scenarios missing`, or `No coverage` alongside the bar, with planned/missing/shown counts and a button that opens the Evidence & diagnostics panel and jumps to the missing-scenarios list
+- Workbench-level error region (`role="alert"`) so failed-with-cases generation reasons are visible after the compose panel collapses; CSV export success and failure messages are announced via `aria-live`
+- Keyboard and touch accessibility: interactive targets raised to at least 44px, focus ring strengthened to meet 3:1 contrast in both themes, and motion timings standardized (hover/focus 140ms, content 180–200ms, drawer 200–240ms) with `prefers-reduced-motion` support
+
+### Fixed
+
+- Decorative priority glyphs and the "AI"-styled brand mark removed; status is never conveyed by color alone
+- Failed-with-cases error text was written to the compose error region after compose had collapsed, hiding the failure reason from the workbench
+- Version badge was hardcoded to `v1.3.1` in JavaScript while the backend reported `1.3.0`, so displayed and API versions drifted
+- Light-theme focus border (`#9BA8F8`) had only 2.25:1 contrast against white; now `#1E40AF` (≥3:1)
+
+### Known issues (deferred to v1.3.3)
+
+Non-blocking; deferred by owner decision for the v1.3.2 release:
+
+- Coverage planner classification: `_looks_like_behavior()` can classify wording such as "The user selects a period." as observational/static evidence rather than an executable behavior scenario, and wording such as "The system provides Logout." can be classified as behavior rather than presence/visibility evidence.
+- Test-case output quality: some invalid-credential cases may have duplicative content; some password-masking cases may have duplicative content; some expected results may repeat an action rather than clearly state the expected observable outcome.
 
 ## [1.3.1] - 2026-09-30
 

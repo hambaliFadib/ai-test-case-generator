@@ -1,4 +1,4 @@
-/* AI Test Case Generator — Workbench UI logic (v1.3.1)
+/* AI Test Case Generator — Workbench UI logic (v1.3.2)
    Vanilla JS. No frameworks. Truthful generation states only. */
 (() => {
   "use strict";
@@ -46,6 +46,7 @@
   const generatingTimer = $("#generating-timer");
   const composePanel = $("#compose");
   const composeError = $("#compose-error");
+  const workbenchError = $("#workbench-error");
   const composeSummary = $("#compose-summary");
   const summarySource = $("#summary-source");
   const summaryProfile = $("#summary-profile");
@@ -55,7 +56,10 @@
   const statusChip = $("#status-chip");
   const metricsEl = $("#metrics");
   const coveragePct = $("#coverage-pct");
+  const coverageLevelEl = $("#coverage-level");
   const coverageFill = $("#coverage-fill");
+  const coverageDetail = $("#coverage-detail");
+  const coverageGapButton = $("#coverage-gap-button");
   const secondaryMetrics = $("#secondary-metrics");
   const evidenceDetails = $("#evidence-details");
   const evidenceMissing = $("#evidence-missing");
@@ -111,6 +115,30 @@
     applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark", true);
   });
 
+  /* ── Profile contextual help ───────────────────────────── */
+  const PROFILE_HELP = {
+    minimal: "Fewer scenarios focused on core happy-path coverage.",
+    comprehensive: "Deeper scenario coverage including edge and negative cases.",
+    extra: "Adds exploratory combination coverage beyond Comprehensive.",
+  };
+  profileSelect.addEventListener("change", () => {
+    const help = $("#profile-help");
+    if (help) help.textContent = PROFILE_HELP[profileSelect.value] || PROFILE_HELP.comprehensive;
+  });
+
+  /* ── Version badge (runtime source: /api/health) ────── */
+  function setVersionBadge(version) {
+    if (!versionEl) return;
+    versionEl.textContent = version ? `v${version}` : "v—";
+  }
+
+  fetch("/api/health")
+    .then((response) => (response.ok ? response.json() : null))
+    .then((health) => {
+      if (health && typeof health.version === "string") setVersionBadge(health.version);
+    })
+    .catch(() => {}); // silent: badge keeps placeholder; generation is unaffected
+
   /* ── Compose mode (text / file) ──────────────────────────────── */
   function setMode(mode) {
     state.mode = mode;
@@ -161,12 +189,15 @@
     composeError.hidden = !message;
   }
 
+  function showWorkbenchError(message) {
+    workbenchError.textContent = message;
+    workbenchError.hidden = !message;
+  }
+
   function showCsvMessage(kind, message) {
     csvMessage.textContent = message;
     csvMessage.className = `message ${kind}`;
     csvMessage.hidden = !message;
-    if (message && kind === "error") csvMessage.setAttribute("role", "alert");
-    else csvMessage.removeAttribute("role");
   }
 
   /* ── Runtime config (read-only display) ──────────────────────── */
@@ -223,6 +254,7 @@
 
   async function generate() {
     showComposeError("");
+    showWorkbenchError("");
     showCsvMessage("", "");
 
     // Client validation (distinct from server errors)
@@ -407,6 +439,32 @@
     // Color is not the only indicator: level text accompanies the bar.
     coverageFill.setAttribute("aria-hidden", "true");
 
+    // Textual coverage feedback (never color alone)
+    const level = coverageLevel(pct);
+    const levelText = level === "full"
+      ? "Full coverage"
+      : level === "some"
+        ? `Partial — ${missing.length} scenario${missing.length === 1 ? "" : "s"} missing`
+        : "No coverage";
+    coverageLevelEl.textContent = levelText;
+    coverageLevelEl.dataset.level = level;
+    coverageDetail.textContent = [
+      `${payload.scenario_count ?? 0} scenarios planned`,
+      `${missing.length} missing`,
+      `${cases.length} case${cases.length === 1 ? "" : "s"} shown`,
+    ].join(" · ");
+    if (missing.length) {
+      coverageGapButton.hidden = false;
+      coverageGapButton.textContent = `Show ${missing.length} missing scenario${missing.length === 1 ? "" : "s"}`;
+      coverageGapButton.onclick = () => {
+        evidenceDetails.open = true;
+        evidenceMissing.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
+      };
+    } else {
+      coverageGapButton.hidden = true;
+      coverageGapButton.onclick = null;
+    }
+
     secondaryMetrics.textContent = [
       `${payload.requirement_count ?? 0} requirements parsed`,
       `${payload.testable_requirement_count ?? 0} testable`,
@@ -427,9 +485,10 @@
     // Filters
     populateFilters(cases);
 
-    // Forced error banner in workbench for failed-with-cases payloads
+    // Forced error banner in workbench for failed-with-cases payloads.
+    // Rendered inside the workbench (not compose, which is collapsed).
     if (options.forcedError) {
-      showComposeError(options.forcedError);
+      showWorkbenchError(options.forcedError);
     }
 
     // Table + inspector
@@ -883,7 +942,7 @@
   });
 
   /* ── Init ────────────────────────────────────────────────────── */
-  if (versionEl) versionEl.textContent = "v1.3.1";
+  // Version badge is filled from /api/health above; init must not block on it.
   setMode("text");
   renderInspector(null);
 })();
