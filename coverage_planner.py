@@ -100,11 +100,6 @@ _SYSTEM_ACTION_STATEMENT = re.compile(
     r"authorizes?|enables?|disables?|resets?|refresh(?:es)?|clears?|masks?|encrypts?)\b",
     re.IGNORECASE,
 )
-_GENERIC_SYSTEM_ACTION_STATEMENT = re.compile(
-    r"^\s*(?:the\s+)?(?:system|application|service|server|backend|platform|process)\s+"
-    r"[a-z][a-z-]*\b",
-    re.IGNORECASE,
-)
 _PROVIDES_VERB = re.compile(r"\bprovides?\b", re.IGNORECASE)
 
 
@@ -235,7 +230,10 @@ def render_intent(
         primary = objective_data.get("primary_ref")
         if primary and primary in atoms_by_id:
             text = atoms_by_id[primary].text.rstrip(".").strip()
-            if _USER_ACTION_PHRASE.search(text):
+            if (
+                _USER_ACTION_PHRASE.search(text)
+                or _SYSTEM_ACTION_STATEMENT.search(text)
+            ):
                 return _render_behavior_intent_from_atom(text)
             return f"Verify that {text}."
         return f"Verify {subject} displays the explicitly defined behavior."
@@ -380,6 +378,9 @@ def _looks_like_behavior(text: str) -> bool:
         return True
     if _PROVIDES_VERB.search(t) and _PRESENCE_OPERATIONAL_CLAUSE.search(t):
         return True
+    # A lone action label such as "Calculate" is a listed item, not a behavior.
+    if _SYSTEM_ACTION_VERB.fullmatch(t):
+        return False
     return bool(_SYSTEM_ACTION_VERB.search(t))
 
 
@@ -1685,7 +1686,6 @@ def _is_functional_evidence(value: str) -> bool:
     return bool(
         _USER_ACTION_PHRASE.search(value)
         or _SYSTEM_ACTION_STATEMENT.search(value)
-        or _GENERIC_SYSTEM_ACTION_STATEMENT.search(value)
         or (
             _PROVIDES_VERB.search(value)
             and _PRESENCE_OPERATIONAL_CLAUSE.search(value)
