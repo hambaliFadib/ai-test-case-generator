@@ -183,7 +183,7 @@ _OBSERVABLE = re.compile(
 
 
 _ACTION_STEP_FOR_ECHO = re.compile(
-    r"^(?:(?:\d+[.)]\s*|[-*•]\s*)*)(?:please\s+)?(?P<verb>select|choose|click|press|enter|type|fill|open|close|create|buat|membuat|submit|save|simpan|menyimpan|tutup|menutup|"
+    r"^(?:(?:\d+[.)]\s*|[-*•]\s*)*)(?:please\s+)?(?P<verb>select|choose|click|press|enter|type|fill|open|close|create|remove|hapus|menghapus|buat|membuat|submit|save|simpan|menyimpan|tutup|menutup|"
     r"pilih|memilih|klik|mengklik|tekan|menekan|masukkan|memasukkan|input|menginput|"
     r"ketik|mengetik|isi|mengisi|buka|membuka|kirim|kirimkan|mengirim|mengirimkan|submitkan)\s+"
     r"(?P<target>.+?)[.!?]*$",
@@ -192,7 +192,7 @@ _ACTION_STEP_FOR_ECHO = re.compile(
 _ACTION_RESULT_ECHO = re.compile(
     r"^(?:the\s+)?(?P<target>.+?)\s+"
     r"(?:(?:is|are|was|were|has\s+been|have\s+been|had\s+been)\s+)?"
-    r"(?P<verb>selected|chosen|clicked|pressed|entered|typed|filled|opened|closed|created|dibuat|terbuat|submitted|saved|disimpan|tersimpan|ditutup|tertutup|"
+    r"(?P<verb>selected|chosen|clicked|pressed|entered|typed|filled|opened|closed|created|removed|dihapus|terhapus|dibuat|terbuat|submitted|saved|disimpan|tersimpan|ditutup|tertutup|"
     r"dipilih|terpilih|diklik|ditekan|dimasukkan|dimasukan|diinput|diketik|diisi|terisi|"
     r"dibuka|terbuka|dikirim|terkirim|disubmit|disubmitkan|diajukan)[.!?]*$",
     re.IGNORECASE,
@@ -209,6 +209,7 @@ _STEP_TO_ACTION = {
     "open": "open", "buka": "open", "membuka": "open",
     "close": "close", "tutup": "close", "menutup": "close",
     "create": "create", "buat": "create", "membuat": "create",
+    "remove": "remove", "hapus": "remove", "menghapus": "remove",
     "submit": "submit", "submitkan": "submit", "kirim": "submit",
     "kirimkan": "submit", "mengirim": "submit", "mengirimkan": "submit",
     "save": "save", "simpan": "save", "menyimpan": "save",
@@ -224,6 +225,7 @@ _RESULT_TO_ACTION = {
     "opened": "open", "dibuka": "open", "terbuka": "open",
     "closed": "close", "ditutup": "close", "tertutup": "close",
     "created": "create", "dibuat": "create", "terbuat": "create",
+    "removed": "remove", "dihapus": "remove", "terhapus": "remove",
     "submitted": "submit", "dikirim": "submit", "terkirim": "submit",
     "disubmit": "submit", "disubmitkan": "submit", "diajukan": "submit",
     "saved": "save", "disimpan": "save", "tersimpan": "save",
