@@ -100,6 +100,19 @@ _SYSTEM_ACTION_STATEMENT = re.compile(
     r"authorizes?|enables?|disables?|resets?|refresh(?:es)?|clears?|masks?|encrypts?)\b",
     re.IGNORECASE,
 )
+# Open-ended fallback for ordinary system predicates not enumerated above.
+# Presence-only "provides" statements are deliberately excluded.
+_SYSTEM_ACTION_FALLBACK = re.compile(
+    r"^\s*(?:the\s+)?(?:system|application|service|server|backend|platform|process)\s+"
+    r"(?P<verb>[a-z][a-z-]*)\s+(?P<object>[^.!?]+)[.!?]?\s*$",
+    re.IGNORECASE,
+)
+_NON_ACTION_PREDICATES = {
+    "am", "are", "be", "been", "being", "can", "could", "did", "do", "does",
+    "had", "has", "have", "is", "may", "might", "must", "should", "was",
+    "were", "will", "would", "provide", "provides",
+}
+
 _PROVIDES_VERB = re.compile(r"\bprovides?\b", re.IGNORECASE)
 
 
@@ -233,6 +246,7 @@ def render_intent(
             if (
                 _USER_ACTION_PHRASE.search(text)
                 or _SYSTEM_ACTION_STATEMENT.search(text)
+                or _is_generic_system_action_statement(text)
             ):
                 return _render_behavior_intent_from_atom(text)
             return f"Verify that {text}."
@@ -377,6 +391,8 @@ def _looks_like_behavior(text: str) -> bool:
     if _USER_ACTION_PHRASE.search(t):
         return True
     if _PROVIDES_VERB.search(t) and _PRESENCE_OPERATIONAL_CLAUSE.search(t):
+        return True
+    if _is_generic_system_action_statement(text):
         return True
     # A lone action label such as "Calculate" is a listed item, not a behavior.
     if _SYSTEM_ACTION_VERB.fullmatch(t):
@@ -1682,10 +1698,21 @@ def _is_action_label(value: str) -> bool:
     )
 
 
+def _is_generic_system_action_statement(value: str) -> bool:
+    """Recognize a system-subject action even when its verb is not enumerated."""
+    match = _SYSTEM_ACTION_FALLBACK.fullmatch(value.strip())
+    return bool(
+        match
+        and match.group("verb").casefold() not in _NON_ACTION_PREDICATES
+        and match.group("object").strip()
+    )
+
+
 def _is_functional_evidence(value: str) -> bool:
     return bool(
         _USER_ACTION_PHRASE.search(value)
         or _SYSTEM_ACTION_STATEMENT.search(value)
+        or _is_generic_system_action_statement(value)
         or (
             _PROVIDES_VERB.search(value)
             and _PRESENCE_OPERATIONAL_CLAUSE.search(value)
