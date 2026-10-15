@@ -1431,6 +1431,8 @@ def test_action_echo_detects_common_mutation_actions() -> None:
         error = check(repeated_action, scn, atoms)
         assert error is not None, (step, expected_result)
         assert "repeats the tester action" in error
+
+
 def test_action_echo_detects_remove_actions_in_english_and_indonesian() -> None:
     scn = scenario(
         "V133-ECHO-REMOVE",
