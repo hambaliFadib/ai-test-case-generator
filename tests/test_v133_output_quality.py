@@ -1,6 +1,6 @@
 """Regression tests for v1.3.3 generated-output quality."""
 
-from models.test_case_model import TestCase
+from models.test_case_model import TestCase as GeneratedTestCase
 from generation_orchestrator import _retain_unique_content
 
 
@@ -12,8 +12,8 @@ def _case(
     preconditions: list[str] | None = None,
     steps: list[str] | None = None,
     expected_result: str = "The invalid credentials are rejected.",
-) -> TestCase:
-    return TestCase(
+) -> GeneratedTestCase:
+    return GeneratedTestCase(
         id=f"TC-20261014-{int(scenario_ref[-1:]):04d}",
         title=title,
         category="negative",
