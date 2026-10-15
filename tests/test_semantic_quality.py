@@ -1339,6 +1339,31 @@ def test_action_echo_detects_indonesian_selected_option() -> None:
     assert "repeats the tester action" in error
 
 
+def test_action_echo_detects_numbered_and_bulleted_steps() -> None:
+    scn = scenario(
+        "V133-ECHO-ID-LIST-PREFIX",
+        intent="Verifikasi pengguna memilih opsi A.",
+        refs=("V133-ECHO-ID-LIST-PREFIX-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-ID-LIST-PREFIX",
+            1,
+            "Pengguna memilih opsi A.",
+            kind="explicit_behavior",
+        )
+    ]
+
+    for step in ("1. Pilih opsi A.", "- Pilih opsi A."):
+        repeated_action = item(
+            steps=[step],
+            expected_result="Opsi A dipilih.",
+        )
+        error = check(repeated_action, scn, atoms)
+        assert error is not None, step
+        assert "repeats the tester action" in error
+
+
 def test_indonesian_distinct_outcome_is_not_treated_as_action_echo() -> None:
     scn = scenario(
         "V133-ECHO-ID-DISTINCT",
