@@ -183,7 +183,7 @@ _OBSERVABLE = re.compile(
 
 
 _ACTION_STEP_FOR_ECHO = re.compile(
-    r"^(?:please\s+)?(?P<verb>select|choose|click|press|enter|type|fill|open|submit|"
+    r"^(?:(?:\d+[.)]\s*|[-*•]\s*)*)(?:please\s+)?(?P<verb>select|choose|click|press|enter|type|fill|open|submit|"
     r"pilih|memilih|klik|mengklik|tekan|menekan|masukkan|memasukkan|input|menginput|"
     r"ketik|mengetik|isi|mengisi|buka|membuka|kirim|kirimkan|mengirim|mengirimkan|submitkan)\s+"
     r"(?P<target>.+?)[.!?]*$",
