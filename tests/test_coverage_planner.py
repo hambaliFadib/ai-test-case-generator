@@ -675,8 +675,9 @@ def test_negated_provides_statement_checks_control_absence() -> None:
     assert scenarios
     intent = " ".join(scenario.intent.lower() for scenario in scenarios)
     assert "delete button" in intent
-    assert "not visible or available" in intent
+    assert "is absent" in intent
     assert "visible and available" not in intent
+    assert "not visible or available" not in intent
 
 
 def test_possessive_ui_subject_remains_presence_only() -> None:
