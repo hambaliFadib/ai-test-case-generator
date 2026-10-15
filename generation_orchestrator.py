@@ -81,15 +81,6 @@ def _retain_unique_content(
     return retained
 
 
-def _extend_unique_cases(
-    merged_cases: list[TestCase],
-    candidates: list[TestCase],
-    diagnostics: list[str],
-) -> None:
-    """Keep content deduplication separate from batch generation orchestration."""
-    merged_cases.extend(_retain_unique_content(candidates, merged_cases, diagnostics))
-
-
 def generate_test_suite(
     parsed_input: ParsedInput,
     settings: Settings | None,
@@ -165,8 +156,9 @@ def generate_test_suite(
             diagnostics,
             llm_results,
             evidence_atoms=plan.evidence_atoms,
+            existing_cases=merged_cases,
         )
-        _extend_unique_cases(merged_cases, outcome.test_cases, diagnostics)
+        merged_cases.extend(outcome.test_cases)
         if not outcome.provider_unavailable:
             initial_wave_provider_unavailable = False
 
@@ -222,8 +214,9 @@ def generate_test_suite(
                     diagnostics,
                     llm_results,
                     evidence_atoms=plan.evidence_atoms,
+                    existing_cases=merged_cases,
                 )
-                _extend_unique_cases(merged_cases, outcome.test_cases, diagnostics)
+                merged_cases.extend(outcome.test_cases)
                 if not outcome.provider_unavailable:
                     round_provider_unavailable = False
                 current_audit = audit_coverage(plan, merged_cases)
@@ -303,6 +296,7 @@ def _generate_batch(
     diagnostics: list[str],
     llm_results: list[LLMResult],
     evidence_atoms: list[EvidenceAtom] | None = None,
+    existing_cases: list[TestCase] | None = None,
 ) -> BatchOutcome:
     """Generate one strict batch; failures return no cases and remain auditable."""
 
@@ -333,7 +327,12 @@ def _generate_batch(
         )
         diagnostics.extend(f"batch item rejected: {error}" for error in parsed.item_errors)
         validate_batch_traceability(parsed.test_cases, scenarios)
-        return BatchOutcome(test_cases=parsed.test_cases)
+        unique_cases = _retain_unique_content(
+            parsed.test_cases,
+            existing_cases or [],
+            diagnostics,
+        )
+        return BatchOutcome(test_cases=unique_cases)
     except LLMError as exc:
         provider_unavailable = bool(exc.provider_unavailable)
         detail = (
