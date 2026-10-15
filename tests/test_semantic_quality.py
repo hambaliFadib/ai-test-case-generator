@@ -1364,6 +1364,35 @@ def test_action_echo_detects_numbered_and_bulleted_steps() -> None:
         assert "repeats the tester action" in error
 
 
+def test_action_echo_detects_close_actions_in_english_and_indonesian() -> None:
+    scn = scenario(
+        "V133-ECHO-CLOSE",
+        intent="Verify the user closes the dialog.",
+        refs=("V133-ECHO-CLOSE-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-CLOSE",
+            1,
+            "The user closes the dialog.",
+            kind="explicit_behavior",
+        )
+    ]
+
+    cases = [
+        ("Close the dialog.", "The dialog is closed."),
+        ("Tutup dialog.", "Dialog ditutup."),
+    ]
+    for step, expected_result in cases:
+        repeated_action = item(
+            steps=[step],
+            expected_result=expected_result,
+        )
+        error = check(repeated_action, scn, atoms)
+        assert error is not None, (step, expected_result)
+        assert "repeats the tester action" in error
+
+
 def test_action_echo_detects_save_actions_in_english_and_indonesian() -> None:
     scn = scenario(
         "V133-ECHO-SAVE",
