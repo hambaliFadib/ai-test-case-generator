@@ -104,7 +104,7 @@ _SYSTEM_ACTION_STATEMENT = re.compile(
 # Presence-only "provides" statements are deliberately excluded.
 _SYSTEM_ACTION_FALLBACK = re.compile(
     r"^\s*(?:the\s+)?(?:system|application|service|server|backend|platform|process)\s+"
-    r"(?P<verb>[a-z][a-z-]*)\s+(?P<object>[^.!?]+)[.!?]?\s*$",
+    r"(?P<verb>[a-z][a-z-]*)\s+(?P<object>.+?)\s*[.!?]?\s*$",
     re.IGNORECASE,
 )
 _NON_ACTION_PREDICATES = {
