@@ -242,7 +242,7 @@ def render_intent(
             atom_text = atoms_by_id[primary].text
             label = _presence_label(atom_text)
             if _NEGATED_PROVIDES_STATEMENT.fullmatch(atom_text.strip()):
-                return f"Verify the explicitly described {label} is not visible or available."
+                return f"Verify the explicitly described {label} is absent."
             return f"Verify the explicitly described {label} is visible and available."
         refs = objective_data.get("refs") or ()
         labels = []
