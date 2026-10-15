@@ -183,25 +183,44 @@ _OBSERVABLE = re.compile(
 
 
 _ACTION_STEP_FOR_ECHO = re.compile(
-    r"^(?:please\s+)?(?P<verb>select|choose|click|press|enter|type|fill|open|submit)\s+"
+    r"^(?:please\s+)?(?P<verb>select|choose|click|press|enter|type|fill|open|submit|"
+    r"pilih|memilih|klik|mengklik|tekan|menekan|masukkan|memasukkan|input|menginput|"
+    r"ketik|mengetik|isi|mengisi|buka|membuka|kirim|kirimkan|mengirim|mengirimkan|submitkan)\s+"
     r"(?P<target>.+?)[.!?]*$",
     re.IGNORECASE,
 )
 _ACTION_RESULT_ECHO = re.compile(
-    r"^(?:the\s+)?(?P<target>.+?)\s+(?:is|are|was|were|has\s+been|have\s+been|had\s+been)\s+"
-    r"(?P<verb>selected|chosen|clicked|pressed|entered|typed|filled|opened|submitted)[.!?]*$",
+    r"^(?:the\s+)?(?P<target>.+?)\s+"
+    r"(?:(?:is|are|was|were|has\s+been|have\s+been|had\s+been)\s+)?"
+    r"(?P<verb>selected|chosen|clicked|pressed|entered|typed|filled|opened|submitted|"
+    r"dipilih|terpilih|diklik|ditekan|dimasukkan|dimasukan|diinput|diketik|diisi|terisi|"
+    r"dibuka|terbuka|dikirim|terkirim|disubmit|disubmitkan|diajukan)[.!?]*$",
     re.IGNORECASE,
 )
-_STEP_TO_RESULT_VERB = {
-    "select": "selected",
-    "choose": "chosen",
-    "click": "clicked",
-    "press": "pressed",
-    "enter": "entered",
-    "type": "typed",
-    "fill": "filled",
-    "open": "opened",
-    "submit": "submitted",
+_STEP_TO_ACTION = {
+    "select": "select", "pilih": "select", "memilih": "select",
+    "choose": "choose",
+    "click": "click", "klik": "click", "mengklik": "click",
+    "press": "press", "tekan": "press", "menekan": "press",
+    "enter": "enter", "masukkan": "enter", "memasukkan": "enter",
+    "input": "enter", "menginput": "enter",
+    "type": "type", "ketik": "type", "mengetik": "type",
+    "fill": "fill", "isi": "fill", "mengisi": "fill",
+    "open": "open", "buka": "open", "membuka": "open",
+    "submit": "submit", "submitkan": "submit", "kirim": "submit",
+    "kirimkan": "submit", "mengirim": "submit", "mengirimkan": "submit",
+}
+_RESULT_TO_ACTION = {
+    "selected": "select", "dipilih": "select", "terpilih": "select",
+    "chosen": "choose",
+    "clicked": "click", "diklik": "click",
+    "pressed": "press", "ditekan": "press",
+    "entered": "enter", "dimasukkan": "enter", "dimasukan": "enter", "diinput": "enter",
+    "typed": "type", "diketik": "type",
+    "filled": "fill", "diisi": "fill", "terisi": "fill",
+    "opened": "open", "dibuka": "open", "terbuka": "open",
+    "submitted": "submit", "dikirim": "submit", "terkirim": "submit",
+    "disubmit": "submit", "disubmitkan": "submit", "diajukan": "submit",
 }
 _ECHO_TARGET_IGNORED = {"field", "button", "control", "element", "item", "value", "option"}
 
@@ -228,7 +247,9 @@ def _action_echo_error(steps: list[str], expected_result: str) -> str | None:
         action = _ACTION_STEP_FOR_ECHO.fullmatch(step.strip())
         if action is None:
             continue
-        if _STEP_TO_RESULT_VERB.get(action.group("verb").casefold()) != expected.group("verb").casefold():
+        step_action = _STEP_TO_ACTION.get(action.group("verb").casefold())
+        result_action = _RESULT_TO_ACTION.get(expected.group("verb").casefold())
+        if step_action is None or step_action != result_action:
             continue
         step_target = _normalize_echo_target(action.group("target"))
         if step_target and step_target == result_target:
