@@ -1364,6 +1364,35 @@ def test_action_echo_detects_numbered_and_bulleted_steps() -> None:
         assert "repeats the tester action" in error
 
 
+def test_action_echo_detects_save_actions_in_english_and_indonesian() -> None:
+    scn = scenario(
+        "V133-ECHO-SAVE",
+        intent="Verify the user saves the form.",
+        refs=("V133-ECHO-SAVE-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-SAVE",
+            1,
+            "The user saves the form.",
+            kind="explicit_behavior",
+        )
+    ]
+
+    cases = [
+        ("Save the form.", "The form is saved."),
+        ("Simpan formulir.", "Formulir disimpan."),
+    ]
+    for step, expected_result in cases:
+        repeated_action = item(
+            steps=[step],
+            expected_result=expected_result,
+        )
+        error = check(repeated_action, scn, atoms)
+        assert error is not None, (step, expected_result)
+        assert "repeats the tester action" in error
+
+
 def test_indonesian_distinct_outcome_is_not_treated_as_action_echo() -> None:
     scn = scenario(
         "V133-ECHO-ID-DISTINCT",
