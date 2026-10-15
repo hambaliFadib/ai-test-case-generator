@@ -747,6 +747,7 @@ def _scenarios_for_requirement(
             atom for atom in non_guardrail
             if atom.kind in {"presence", "observed_value"}
             and _ACTION.search(atom.text)
+            and _looks_like_presence(atom.text)
         ]
         if len(action_atoms) == 1:
             atom = action_atoms[0]
