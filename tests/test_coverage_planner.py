@@ -622,6 +622,24 @@ def test_system_action_verbs_are_rendered_as_behavior() -> None:
         assert "explicitly listed items" not in intent
 
 
+def test_unlisted_system_predicates_are_rendered_as_behavior() -> None:
+    statements = [
+        "The system processes a payment.",
+        "The system publishes an update.",
+        "The system synchronizes records.",
+    ]
+    for index, statement in enumerate(statements, start=1):
+        plan = plan_coverage(
+            [requirement(f"SYS-FALLBACK-{index:03d}", statement)],
+            profile="minimal",
+        )
+        scenarios = plan.requirements[0].scenarios
+        assert scenarios
+        intent = " ".join(scenario.intent for scenario in scenarios).lower()
+        assert statement.rstrip(".").lower() in intent
+        assert "explicitly listed items" not in intent
+
+
 def test_conditional_provides_sentence_keeps_behavior_intent() -> None:
     plan = plan_coverage(
         [
