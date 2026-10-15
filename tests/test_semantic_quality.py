@@ -1313,3 +1313,49 @@ def test_action_echo_detects_plural_were_selected_wording() -> None:
     error = check(repeated_action, scn, atoms)
     assert error is not None
     assert "repeats the tester action" in error
+
+
+def test_action_echo_detects_indonesian_selected_option() -> None:
+    scn = scenario(
+        "V133-ECHO-ID-OPTION-A",
+        intent="Verifikasi pengguna memilih opsi A.",
+        refs=("V133-ECHO-ID-OPTION-A-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-ID-OPTION-A",
+            1,
+            "Pengguna memilih opsi A.",
+            kind="explicit_behavior",
+        )
+    ]
+    repeated_action = item(
+        steps=["Pilih opsi A."],
+        expected_result="Opsi A dipilih.",
+    )
+
+    error = check(repeated_action, scn, atoms)
+    assert error is not None
+    assert "repeats the tester action" in error
+
+
+def test_indonesian_distinct_outcome_is_not_treated_as_action_echo() -> None:
+    scn = scenario(
+        "V133-ECHO-ID-DISTINCT",
+        intent="Verifikasi hasil pencarian ditampilkan.",
+        refs=("V133-ECHO-ID-DISTINCT-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-ID-DISTINCT",
+            1,
+            "Pengguna memilih opsi A.",
+            kind="explicit_behavior",
+        )
+    ]
+    distinct_outcome = item(
+        steps=["Pilih opsi A."],
+        expected_result="Daftar hasil ditampilkan.",
+    )
+
+    assert check(distinct_outcome, scn, atoms) is None
