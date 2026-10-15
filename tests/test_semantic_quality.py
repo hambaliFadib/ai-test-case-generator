@@ -1364,6 +1364,35 @@ def test_action_echo_detects_numbered_and_bulleted_steps() -> None:
         assert "repeats the tester action" in error
 
 
+def test_action_echo_detects_remove_actions_in_english_and_indonesian() -> None:
+    scn = scenario(
+        "V133-ECHO-REMOVE",
+        intent="Verify the user removes a record.",
+        refs=("V133-ECHO-REMOVE-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-REMOVE",
+            1,
+            "The user removes a record.",
+            kind="explicit_behavior",
+        )
+    ]
+
+    cases = [
+        ("Remove the record.", "The record is removed."),
+        ("Hapus catatan.", "Catatan dihapus."),
+    ]
+    for step, expected_result in cases:
+        repeated_action = item(
+            steps=[step],
+            expected_result=expected_result,
+        )
+        error = check(repeated_action, scn, atoms)
+        assert error is not None, (step, expected_result)
+        assert "repeats the tester action" in error
+
+
 def test_action_echo_detects_create_actions_in_english_and_indonesian() -> None:
     scn = scenario(
         "V133-ECHO-CREATE",
