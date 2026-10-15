@@ -169,12 +169,12 @@ _STEP_ANCHOR = re.compile(
 _OBSERVABLE = re.compile(
     r"ditampilkan|menampilkan|tampil|muncul|terlihat|tersembunyi|"
     r"disembunyikan|sembunyi|diterima|ditolak|dicegah|diizinkan|dibenarkan|"
-    r"tersedia|tidak\s+tersedia|dikirim|dikirimkan|disimpan|dibuat|dihapus|"
+    r"tersedia|tidak\s+tersedia|dikirim|dikirimkan|disimpan|dibuat|dihapus|diunggah|terunggah|diunduh|terunduh|"
     r"diubah|dipilih|dimasukkan|dikosongkan|diperbarui|ditambahkan|"
     r"berhasil|gagal|pesan|error|galat|"
     r"displayed|display|shown|show|appears?|appear|visible|hidden|masked|"
     r"accepted|rejected|prevented|allowed|denied|available|unavailable|"
-    r"saved|stored|created|removed|updated|selected|submitted|redirected|"
+    r"saved|stored|created|removed|deleted|added|cleared|uploaded|downloaded|updated|selected|submitted|redirected|"
     r"navigated|remains?|stays?|logged\s+in|message|error|success|fail(?:ed|ure)?|"
     r"match(?:es|ed)?|differs?|changed|unchanged|open(?:ed)?|closed|"
     r"contains?|includes?|equals?|count|jumlah|total|nilai|value|return\w*",
@@ -183,7 +183,7 @@ _OBSERVABLE = re.compile(
 
 
 _ACTION_STEP_FOR_ECHO = re.compile(
-    r"^(?:(?:\d+[.)]\s*|[-*•]\s*)*)(?:please\s+)?(?P<verb>select|choose|click|press|enter|type|fill|open|close|create|remove|hapus|menghapus|buat|membuat|submit|save|simpan|menyimpan|tutup|menutup|"
+    r"^(?:(?:\d+[.)]\s*|[-*•]\s*)*)(?:please\s+)?(?P<verb>select|choose|click|press|enter|type|fill|open|close|create|remove|delete|add|clear|upload|download|update|hapus|menghapus|buat|membuat|tambahkan|menambahkan|kosongkan|mengosongkan|unggah|mengunggah|unduh|mengunduh|ubah|mengubah|perbarui|memperbarui|submit|save|simpan|menyimpan|tutup|menutup|"
     r"pilih|memilih|klik|mengklik|tekan|menekan|masukkan|memasukkan|input|menginput|"
     r"ketik|mengetik|isi|mengisi|buka|membuka|kirim|kirimkan|mengirim|mengirimkan|submitkan)\s+"
     r"(?P<target>.+?)[.!?]*$",
@@ -192,7 +192,7 @@ _ACTION_STEP_FOR_ECHO = re.compile(
 _ACTION_RESULT_ECHO = re.compile(
     r"^(?:the\s+)?(?P<target>.+?)\s+"
     r"(?:(?:is|are|was|were|has\s+been|have\s+been|had\s+been)\s+)?"
-    r"(?P<verb>selected|chosen|clicked|pressed|entered|typed|filled|opened|closed|created|removed|dihapus|terhapus|dibuat|terbuat|submitted|saved|disimpan|tersimpan|ditutup|tertutup|"
+    r"(?P<verb>selected|chosen|clicked|pressed|entered|typed|filled|opened|closed|created|removed|deleted|added|cleared|uploaded|downloaded|updated|dihapus|terhapus|dibuat|terbuat|ditambahkan|dikosongkan|diunggah|terunggah|diunduh|terunduh|diperbarui|diubah|submitted|saved|disimpan|tersimpan|ditutup|tertutup|"
     r"dipilih|terpilih|diklik|ditekan|dimasukkan|dimasukan|diinput|diketik|diisi|terisi|"
     r"dibuka|terbuka|dikirim|terkirim|disubmit|disubmitkan|diajukan)[.!?]*$",
     re.IGNORECASE,
@@ -209,7 +209,12 @@ _STEP_TO_ACTION = {
     "open": "open", "buka": "open", "membuka": "open",
     "close": "close", "tutup": "close", "menutup": "close",
     "create": "create", "buat": "create", "membuat": "create",
-    "remove": "remove", "hapus": "remove", "menghapus": "remove",
+    "remove": "remove", "delete": "remove", "hapus": "remove", "menghapus": "remove",
+    "add": "add", "tambahkan": "add", "menambahkan": "add",
+    "clear": "clear", "kosongkan": "clear", "mengosongkan": "clear",
+    "upload": "upload", "unggah": "upload", "mengunggah": "upload",
+    "download": "download", "unduh": "download", "mengunduh": "download",
+    "update": "update", "ubah": "update", "mengubah": "update", "perbarui": "update", "memperbarui": "update",
     "submit": "submit", "submitkan": "submit", "kirim": "submit",
     "kirimkan": "submit", "mengirim": "submit", "mengirimkan": "submit",
     "save": "save", "simpan": "save", "menyimpan": "save",
@@ -225,7 +230,12 @@ _RESULT_TO_ACTION = {
     "opened": "open", "dibuka": "open", "terbuka": "open",
     "closed": "close", "ditutup": "close", "tertutup": "close",
     "created": "create", "dibuat": "create", "terbuat": "create",
-    "removed": "remove", "dihapus": "remove", "terhapus": "remove",
+    "removed": "remove", "deleted": "remove", "dihapus": "remove", "terhapus": "remove",
+    "added": "add", "ditambahkan": "add",
+    "cleared": "clear", "dikosongkan": "clear",
+    "uploaded": "upload", "diunggah": "upload", "terunggah": "upload",
+    "downloaded": "download", "diunduh": "download", "terunduh": "download",
+    "updated": "update", "diperbarui": "update", "diubah": "update",
     "submitted": "submit", "dikirim": "submit", "terkirim": "submit",
     "disubmit": "submit", "disubmitkan": "submit", "diajukan": "submit",
     "saved": "save", "disimpan": "save", "tersimpan": "save",
