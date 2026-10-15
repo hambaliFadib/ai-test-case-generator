@@ -640,6 +640,25 @@ def test_unlisted_system_predicates_are_rendered_as_behavior() -> None:
         assert "explicitly listed items" not in intent
 
 
+def test_modal_system_predicates_are_rendered_as_behavior() -> None:
+    statements = [
+        "The system must process a payment.",
+        "The system should publish an update.",
+        "The system can synchronize records.",
+        "The system does not process an invalid payment.",
+    ]
+    for index, statement in enumerate(statements, start=1):
+        plan = plan_coverage(
+            [requirement(f"SYS-MODAL-{index:03d}", statement)],
+            profile="minimal",
+        )
+        scenarios = plan.requirements[0].scenarios
+        assert scenarios
+        intent = " ".join(scenario.intent for scenario in scenarios).lower()
+        assert statement.rstrip(".").lower() in intent
+        assert "explicitly listed items" not in intent
+
+
 def test_unlisted_system_predicate_allows_punctuation_in_object() -> None:
     statement = "The system processes a payment of $12.50."
     plan = plan_coverage(
