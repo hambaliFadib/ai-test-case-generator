@@ -603,6 +603,59 @@ def test_req003_valid_login_preserves_outcome_without_dashboard() -> None:
     assert "button" not in intent
 
 
+def test_system_action_verbs_are_rendered_as_behavior() -> None:
+    statements = [
+        "The system validates the email address.",
+        "The system creates a record.",
+        "The system updates the record.",
+        "The system sends a notification.",
+    ]
+    for index, statement in enumerate(statements, start=1):
+        plan = plan_coverage(
+            [requirement(f"SYS-ACTION-{index:03d}", statement)],
+            profile="minimal",
+        )
+        intent = " ".join(
+            scenario.intent for scenario in plan.requirements[0].scenarios
+        ).lower()
+        assert statement.rstrip(".").lower() in intent
+        assert "explicitly listed items" not in intent
+
+
+def test_conditional_provides_sentence_keeps_behavior_intent() -> None:
+    plan = plan_coverage(
+        [
+            requirement(
+                "PROVIDES-BEHAVIOR-001",
+                "The system provides search results after the user submits a query.",
+            )
+        ],
+        profile="minimal",
+    )
+    scenarios = plan.requirements[0].scenarios
+    assert scenarios
+    intent = " ".join(scenario.intent for scenario in scenarios).lower()
+    assert "after the user submits a query" in intent
+    assert "visible and available" not in intent
+
+
+def test_provides_sentence_with_numeric_limit_keeps_boundary_coverage() -> None:
+    plan = plan_coverage(
+        [
+            requirement(
+                "PROVIDES-LIMIT-001",
+                "The form provides a maximum of 10 characters.",
+            )
+        ],
+        profile="minimal",
+    )
+    scenarios = plan.requirements[0].scenarios
+    intents = " ".join(scenario.intent.lower() for scenario in scenarios)
+    assert len(scenarios) == 3
+    assert all(scenario.category == "boundary" for scenario in scenarios)
+    assert all(value in intents for value in ("9 characters", "10 characters", "11 characters"))
+
+
 def test_req009_dashboard_visibility_no_form_steps() -> None:
     """REQ-009 verifies Dashboard visibility without inventing form submission."""
     plan = plan_coverage(
