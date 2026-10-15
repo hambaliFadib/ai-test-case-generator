@@ -640,6 +640,19 @@ def test_unlisted_system_predicates_are_rendered_as_behavior() -> None:
         assert "explicitly listed items" not in intent
 
 
+def test_unlisted_system_predicate_allows_punctuation_in_object() -> None:
+    statement = "The system processes a payment of $12.50."
+    plan = plan_coverage(
+        [requirement("SYS-FALLBACK-CURRENCY-001", statement)],
+        profile="minimal",
+    )
+    scenarios = plan.requirements[0].scenarios
+    assert scenarios
+    intent = " ".join(scenario.intent for scenario in scenarios).lower()
+    assert "processes a payment of $12.50" in intent
+    assert "explicitly listed items" not in intent
+
+
 def test_conditional_provides_sentence_keeps_behavior_intent() -> None:
     plan = plan_coverage(
         [
