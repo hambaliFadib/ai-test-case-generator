@@ -646,6 +646,8 @@ def test_modal_system_predicates_are_rendered_as_behavior() -> None:
         "The system should publish an update.",
         "The system can synchronize records.",
         "The system does not process an invalid payment.",
+        "The system can be configured to use single sign-on.",
+        "The system must be able to process payments.",
     ]
     for index, statement in enumerate(statements, start=1):
         plan = plan_coverage(
@@ -657,6 +659,42 @@ def test_modal_system_predicates_are_rendered_as_behavior() -> None:
         intent = " ".join(scenario.intent for scenario in scenarios).lower()
         assert statement.rstrip(".").lower() in intent
         assert "explicitly listed items" not in intent
+
+
+def test_negated_provides_statement_checks_control_absence() -> None:
+    plan = plan_coverage(
+        [
+            requirement(
+                "NEG-PROVIDES-001",
+                "The system does not provide a Delete button.",
+            )
+        ],
+        profile="minimal",
+    )
+    scenarios = plan.requirements[0].scenarios
+    assert scenarios
+    intent = " ".join(scenario.intent.lower() for scenario in scenarios)
+    assert "delete button" in intent
+    assert "not visible or available" in intent
+    assert "visible and available" not in intent
+
+
+def test_possessive_ui_subject_remains_presence_only() -> None:
+    plan = plan_coverage(
+        [
+            requirement(
+                "POSSESSIVE-PRESENCE-001",
+                "The user's dashboard provides Logout.",
+            )
+        ],
+        profile="minimal",
+    )
+    scenarios = plan.requirements[0].scenarios
+    assert scenarios
+    intent = " ".join(scenario.intent.lower() for scenario in scenarios)
+    assert "logout" in intent
+    assert "visible and available" in intent
+    assert "explicitly listed items" not in intent
 
 
 def test_unlisted_system_predicate_allows_punctuation_in_object() -> None:
