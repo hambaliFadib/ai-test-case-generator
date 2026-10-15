@@ -8,16 +8,16 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ### Changed
 
-- Coverage planner preserves conditional "provides" behavior, represents negated control-provision requirements as absence checks, and gives explicit numeric boundaries precedence over presence classification.
+- Coverage planner preserves conditional "provides" behavior, renders negated control-provision requirements as explicit absence checks, and gives explicit numeric boundaries precedence over presence classification.
 - Explicit system actions, including modal/passive predicates and predicates not enumerated in advance, are recognized as behavior without converting presence-only "provides" statements into actions; possessive UI subjects retain presence classification.
-- Expected-result echo detection recognizes single-letter option targets, plural passive wording, Indonesian action/result pairs, numbered or bulleted action steps, and save/close/create/remove-action echoes.
+- Expected-result echo detection recognizes single-letter option targets, plural passive wording, Indonesian action/result pairs, numbered or bulleted action steps, and save/close/create/remove plus common mutation-action echoes.
 - Coverage planner now distinguishes explicit actor actions from presence-only "provides" statements, preserving evidence refs while producing the appropriate behavior or visibility intent.
 - Generated test cases with identical requirement-local preconditions, steps, and expected outcomes are rejected as duplicate content so the affected planned scenario remains eligible for bounded backfill.
 - Semantic quality validation rejects an expected result that merely repeats a supported tester action instead of stating a separate observable outcome.
 
 ### Tests
 
-- Added regression tests for negated and possessive "provides" requirements, modal/passive and unlisted system action predicates, Indonesian action echoes with list prefixes, save/close/create/remove-action echoes, repeated action-only expected results, and requirement-local duplicate operational content.
+- Added regression tests for negated and possessive "provides" requirements, modal/passive and unlisted system action predicates, Indonesian action echoes with list prefixes, save/close/create/remove and common mutation-action echoes, repeated action-only expected results, and requirement-local duplicate operational content.
 
 ## [1.3.2] - 2026-10-14
 
