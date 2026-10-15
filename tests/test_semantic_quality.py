@@ -1364,6 +1364,41 @@ def test_action_echo_detects_numbered_and_bulleted_steps() -> None:
         assert "repeats the tester action" in error
 
 
+def test_action_echo_detects_common_mutation_actions() -> None:
+    scn = scenario(
+        "V133-ECHO-MUTATIONS",
+        intent="Verify the user updates a record.",
+        refs=("V133-ECHO-MUTATIONS-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-MUTATIONS",
+            1,
+            "The user updates a record.",
+            kind="explicit_behavior",
+        )
+    ]
+
+    cases = [
+        ("Delete the record.", "The record is deleted."),
+        ("Add a role.", "The role is added."),
+        ("Clear the cache.", "The cache is cleared."),
+        ("Upload the file.", "The file is uploaded."),
+        ("Download the report.", "The report is downloaded."),
+        ("Update the record.", "The record is updated."),
+        ("Tambahkan anggota.", "Anggota ditambahkan."),
+        ("Kosongkan daftar.", "Daftar dikosongkan."),
+    ]
+    for step, expected_result in cases:
+        repeated_action = item(
+            steps=[step],
+            expected_result=expected_result,
+        )
+        error = check(repeated_action, scn, atoms)
+        assert error is not None, (step, expected_result)
+        assert "repeats the tester action" in error
+
+
 def test_action_echo_detects_remove_actions_in_english_and_indonesian() -> None:
     scn = scenario(
         "V133-ECHO-REMOVE",
