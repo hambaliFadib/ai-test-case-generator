@@ -9,15 +9,15 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 ### Changed
 
 - Coverage planner preserves conditional "provides" behavior and gives explicit numeric boundaries precedence over presence classification.
-- Explicit system actions, including predicates not enumerated in advance, are recognized as behavior without converting presence-only "provides" statements into actions.
-- Expected-result echo detection recognizes single-letter option targets, plural passive wording, and Indonesian action/result pairs.
+- Explicit system actions, including predicates not enumerated in advance and objects with internal punctuation, are recognized as behavior without converting presence-only "provides" statements into actions.
+- Expected-result echo detection recognizes single-letter option targets, plural passive wording, Indonesian action/result pairs, and numbered or bulleted action steps.
 - Coverage planner now distinguishes explicit actor actions from presence-only "provides" statements, preserving evidence refs while producing the appropriate behavior or visibility intent.
 - Generated test cases with identical requirement-local preconditions, steps, and expected outcomes are rejected as duplicate content so the affected planned scenario remains eligible for bounded backfill.
 - Semantic quality validation rejects an expected result that merely repeats a supported tester action instead of stating a separate observable outcome.
 
 ### Tests
 
-- Added regression tests for "The user selects a period", presence-only "The system provides Logout", unlisted system action predicates, Indonesian action echoes, repeated action-only expected results, and requirement-local duplicate operational content.
+- Added regression tests for "The user selects a period", presence-only "The system provides Logout", unlisted system action predicates with internal punctuation, Indonesian action echoes with list prefixes, repeated action-only expected results, and requirement-local duplicate operational content.
 
 ## [1.3.2] - 2026-10-14
 
