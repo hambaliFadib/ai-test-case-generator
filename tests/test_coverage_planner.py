@@ -603,6 +603,148 @@ def test_req003_valid_login_preserves_outcome_without_dashboard() -> None:
     assert "button" not in intent
 
 
+def test_system_action_verbs_are_rendered_as_behavior() -> None:
+    statements = [
+        "The system validates the email address.",
+        "The system creates a record.",
+        "The system updates the record.",
+        "The system sends a notification.",
+    ]
+    for index, statement in enumerate(statements, start=1):
+        plan = plan_coverage(
+            [requirement(f"SYS-ACTION-{index:03d}", statement)],
+            profile="minimal",
+        )
+        intent = " ".join(
+            scenario.intent for scenario in plan.requirements[0].scenarios
+        ).lower()
+        assert statement.rstrip(".").lower() in intent
+        assert "explicitly listed items" not in intent
+
+
+def test_unlisted_system_predicates_are_rendered_as_behavior() -> None:
+    statements = [
+        "The system processes a payment.",
+        "The system publishes an update.",
+        "The system synchronizes records.",
+    ]
+    for index, statement in enumerate(statements, start=1):
+        plan = plan_coverage(
+            [requirement(f"SYS-FALLBACK-{index:03d}", statement)],
+            profile="minimal",
+        )
+        scenarios = plan.requirements[0].scenarios
+        assert scenarios
+        intent = " ".join(scenario.intent for scenario in scenarios).lower()
+        assert statement.rstrip(".").lower() in intent
+        assert "explicitly listed items" not in intent
+
+
+def test_modal_system_predicates_are_rendered_as_behavior() -> None:
+    statements = [
+        "The system must process a payment.",
+        "The system should publish an update.",
+        "The system can synchronize records.",
+        "The system does not process an invalid payment.",
+        "The system can be configured to use single sign-on.",
+        "The system must be able to process payments.",
+    ]
+    for index, statement in enumerate(statements, start=1):
+        plan = plan_coverage(
+            [requirement(f"SYS-MODAL-{index:03d}", statement)],
+            profile="minimal",
+        )
+        scenarios = plan.requirements[0].scenarios
+        assert scenarios
+        intent = " ".join(scenario.intent for scenario in scenarios).lower()
+        assert statement.rstrip(".").lower() in intent
+        assert "explicitly listed items" not in intent
+
+
+def test_negated_provides_statement_checks_control_absence() -> None:
+    plan = plan_coverage(
+        [
+            requirement(
+                "NEG-PROVIDES-001",
+                "The system does not provide a Delete button.",
+            )
+        ],
+        profile="minimal",
+    )
+    scenarios = plan.requirements[0].scenarios
+    assert scenarios
+    intent = " ".join(scenario.intent.lower() for scenario in scenarios)
+    assert "delete button" in intent
+    assert "is absent" in intent
+    assert "visible and available" not in intent
+    assert "not visible or available" not in intent
+
+
+def test_possessive_ui_subject_remains_presence_only() -> None:
+    plan = plan_coverage(
+        [
+            requirement(
+                "POSSESSIVE-PRESENCE-001",
+                "The user's dashboard provides Logout.",
+            )
+        ],
+        profile="minimal",
+    )
+    scenarios = plan.requirements[0].scenarios
+    assert scenarios
+    intent = " ".join(scenario.intent.lower() for scenario in scenarios)
+    assert "logout" in intent
+    assert "visible and available" in intent
+    assert "explicitly listed items" not in intent
+
+
+def test_unlisted_system_predicate_allows_punctuation_in_object() -> None:
+    statement = "The system processes a payment of $12.50."
+    plan = plan_coverage(
+        [requirement("SYS-FALLBACK-CURRENCY-001", statement)],
+        profile="minimal",
+    )
+    scenarios = plan.requirements[0].scenarios
+    assert scenarios
+    intent = " ".join(scenario.intent for scenario in scenarios).lower()
+    assert "processes a payment of $12.50" in intent
+    assert "explicitly listed items" not in intent
+
+
+def test_conditional_provides_sentence_keeps_behavior_intent() -> None:
+    plan = plan_coverage(
+        [
+            requirement(
+                "PROVIDES-BEHAVIOR-001",
+                "The system provides search results after the user submits a query.",
+            )
+        ],
+        profile="minimal",
+    )
+    scenarios = plan.requirements[0].scenarios
+    assert scenarios
+    intent = " ".join(scenario.intent for scenario in scenarios).lower()
+    assert "after the user submits a query" in intent
+    assert "visible and available" not in intent
+
+
+def test_provides_sentence_with_numeric_limit_keeps_boundary_coverage() -> None:
+    plan = plan_coverage(
+        [
+            requirement(
+                "PROVIDES-LIMIT-001",
+                "The form provides a maximum of 10 characters.",
+            )
+        ],
+        profile="minimal",
+    )
+    scenarios = plan.requirements[0].scenarios
+    intents = " ".join(scenario.intent.lower() for scenario in scenarios)
+    assert len(scenarios) == 3
+    assert all(scenario.category == "boundary" for scenario in scenarios)
+    assert all(value in intents for value in ("9 characters", "10 characters", "11 characters"))
+
+
 def test_req009_dashboard_visibility_no_form_steps() -> None:
     """REQ-009 verifies Dashboard visibility without inventing form submission."""
     plan = plan_coverage(
@@ -768,3 +910,101 @@ def test_masking_evidence_exclusive_to_req013() -> None:
             assert eid not in masking_atoms, (
                 f"{s.id} leaked masking atom {eid}"
             )
+
+
+
+def test_user_selects_period_is_planned_as_explicit_behavior() -> None:
+    plan = plan_coverage(
+        [requirement("V133-ACTION-001", "The user selects a period.")],
+        profile="minimal",
+    )
+
+    scenarios = plan.requirements[0].scenarios
+    assert len(scenarios) == 1
+    assert scenarios[0].objective_kind == "behavior"
+    assert "user selects a period" in scenarios[0].intent.lower()
+    assert scenarios[0].evidence_refs
+    assert any(
+        atom.id in scenarios[0].evidence_refs
+        and atom.kind == "explicit_behavior"
+        for atom in plan.evidence_atoms
+    )
+
+
+def test_system_provides_logout_is_planned_as_presence_not_behavior() -> None:
+    plan = plan_coverage(
+        [requirement("V133-PRESENCE-001", "The system provides Logout.")],
+        profile="minimal",
+    )
+
+    scenarios = plan.requirements[0].scenarios
+    assert len(scenarios) == 1
+    assert scenarios[0].objective_kind == "presence"
+    assert "logout" in scenarios[0].intent.lower()
+    assert "visible and available" in scenarios[0].intent.lower()
+    assert "provides the behavior described" not in scenarios[0].intent.lower()
+    assert scenarios[0].evidence_refs
+    assert any(
+        atom.id in scenarios[0].evidence_refs
+        and atom.kind == "presence"
+        for atom in plan.evidence_atoms
+    )
+
+
+def test_conditional_provides_results_is_planned_as_behavior_not_presence() -> None:
+    req = requirement(
+        "V133-CONDITIONAL-PROVIDES",
+        "The system provides search results after the user submits a query.",
+        title="Search",
+    )
+    plan = plan_coverage([req], profile="minimal")
+    scenarios = plan.requirements[0].scenarios
+
+    assert any(s.objective_kind == "behavior" for s in scenarios)
+    assert not any(
+        s.objective_kind == "presence"
+        and "visible and available" in s.intent.lower()
+        for s in scenarios
+    )
+    assert any(
+        atom.kind == "explicit_behavior"
+        and atom.id in scenarios[0].evidence_refs
+        for atom in plan.evidence_atoms
+    )
+
+
+def test_provides_sentence_with_numeric_limit_keeps_boundary_coverage() -> None:
+    req = requirement(
+        "V133-PROVIDES-LIMIT",
+        "The page provides a Search field with a maximum of 10 characters.",
+        title="Search",
+    )
+    plan = plan_coverage([req], profile="minimal")
+    scenarios = plan.requirements[0].scenarios
+
+    assert len(scenarios) == 3
+    assert all(s.category == "boundary" and s.technique == "BVA" for s in scenarios)
+    assert not any(s.objective_kind == "presence" for s in scenarios)
+
+
+def test_common_system_verbs_are_planned_as_behavior() -> None:
+    examples = (
+        ("V133-VERB-VALIDATES", "The system validates the email address."),
+        ("V133-VERB-CREATES", "The system creates a report."),
+        ("V133-VERB-UPDATES", "The system updates a record."),
+        ("V133-VERB-SENDS", "The system sends the notification."),
+    )
+    for req_id, statement in examples:
+        plan = plan_coverage(
+            [requirement(req_id, statement, title="System action")],
+            profile="minimal",
+        )
+        scenarios = plan.requirements[0].scenarios
+        assert any(s.objective_kind == "behavior" for s in scenarios), (
+            f"Expected behavior scenario for {statement!r}; got "
+            f"{[(s.objective_kind, s.intent) for s in scenarios]}"
+        )
+        assert not any(
+            s.objective_kind == "static_list"
+            for s in scenarios
+        ), f"System action should not fall back to static_list: {statement!r}"

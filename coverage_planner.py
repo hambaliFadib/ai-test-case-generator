@@ -84,6 +84,75 @@ _BEHAVIOR_PHRASE = re.compile(
     re.IGNORECASE,
 )
 
+# Common system actions need to remain executable behavior, not static presence.
+_SYSTEM_ACTION_VERB = re.compile(
+    r"\b(?:accepts?|displays?|shows?|allows?|rejects?|returns?|filters?|saves?|submits?|prevents?|applies?|opens?|closes?|"
+    r"validates?|creates?|updates?|sends?|deletes?|calculates?|generates?|checks?|verifies?|stores?|loads?|retrieves?|"
+    r"fetch(?:es)?|converts?|computes?|exports?|imports?|sorts?|matches?|compares?|assigns?|renders?|authenticates?|"
+    r"authorizes?|enables?|disables?|resets?|refresh(?:es)?|clears?|masks?|encrypts?)\b",
+    re.IGNORECASE,
+)
+_SYSTEM_ACTION_STATEMENT = re.compile(
+    r"^\s*(?:the\s+)?(?:system|application|service|server|backend|platform|process)\s+"
+    r"(?:accepts?|displays?|shows?|allows?|rejects?|returns?|filters?|saves?|submits?|prevents?|applies?|opens?|closes?|"
+    r"validates?|creates?|updates?|sends?|deletes?|calculates?|generates?|checks?|verifies?|stores?|loads?|retrieves?|"
+    r"fetch(?:es)?|converts?|computes?|exports?|imports?|sorts?|matches?|compares?|assigns?|renders?|authenticates?|"
+    r"authorizes?|enables?|disables?|resets?|refresh(?:es)?|clears?|masks?|encrypts?)\b",
+    re.IGNORECASE,
+)
+# Open-ended fallback for ordinary system predicates not enumerated above.
+# Presence-only "provides" statements are deliberately excluded.
+_SYSTEM_ACTION_FALLBACK = re.compile(
+    r"^\s*(?:the\s+)?(?:system|application|service|server|backend|platform|process)\s+"
+    r"(?:(?:can|could|may|might|must|shall|should|will|would|do|does|did|has|have|had|"
+    r"is|are|was|were|needs?)\s+"
+    r"(?:(?:not|never)\s+)?(?:(?:be|been|being)\s+)?"
+    r"(?:(?:able|configured|allowed|permitted|required|expected|designed|enabled|used)\s+to\s+)?)?"
+    r"(?:not\s+)?(?P<verb>[a-z][a-z-]*)\s+(?P<object>.+?)\s*[.!?]?\s*$",
+    re.IGNORECASE,
+)
+_NON_ACTION_PREDICATES = {
+    "am", "are", "be", "been", "being", "can", "could", "did", "do", "does",
+    "had", "has", "have", "is", "may", "might", "must", "should", "was",
+    "were", "will", "would", "provide", "provides",
+}
+
+_PROVIDES_VERB = re.compile(r"\bprovides?\b", re.IGNORECASE)
+
+
+
+_USER_ACTION_PHRASE = re.compile(
+    r"\b(?:the\s+|a\s+|an\s+)?(?:user|users|customer|operator|administrator|agent|tester)\s+"
+    r"(?:can\s+)?(?:selects?|chooses?|clicks?|presses?|enters?|types?|fills?|inputs?|"
+    r"opens?|navigates?|submits?|cancels?|confirms?|uploads?|downloads?|searches?|"
+    r"filters?|saves?|deletes?|adds?|removes?|sets?|views?|logs?\s+(?:in|out))\b",
+    re.IGNORECASE,
+)
+_NEGATED_PROVIDES_STATEMENT = re.compile(
+    r"^\s*(?:the\s+)?[A-Za-z][\w'’ -]{0,40}\s+"
+    r"(?:(?:does|do|did|must|shall|should|will|can|could|may|might)\s+not|"
+    r"doesn['’]t|don['’]t|didn['’]t|mustn['’]t|can['’]t|cannot)\s+"
+    r"provides?\s+(?P<label>.+?)[.!?]?\s*$",
+    re.IGNORECASE,
+)
+_PRESENCE_STATEMENT = re.compile(
+    r"(?!(?:the\s+|a\s+|an\s+)?(?:users?|customer|operator|administrator|agent|tester)\s+)"
+    r"(?:the\s+)?[A-Za-z][\w'’ -]{0,40}\s+provides?\s+[^.!?]+[.!?]?",
+    re.IGNORECASE,
+)
+_PRESENCE_STATE_STATEMENT = re.compile(
+    r"(?:the\s+)?[A-Za-z][\w -]{0,40}\s+(?:is|are)\s+"
+    r"(?:available|visible|present|supported)[.!]?",
+    re.IGNORECASE,
+)
+# These clauses indicate that "provides" describes an operation or condition,
+# not merely the existence of a control or page element.
+_PRESENCE_OPERATIONAL_CLAUSE = re.compile(
+    r"\b(?:after|before|when|whenever|if|unless|once|while|until|upon|"
+    r"as\s+soon\s+as|based\s+on|depending\s+on|in\s+response\s+to|according\s+to)\b",
+    re.IGNORECASE,
+)
+
 
 @dataclass(frozen=True)
 class _AtomicBehavior:
@@ -170,7 +239,10 @@ def render_intent(
     if objective_kind == "presence":
         primary = objective_data.get("primary_ref")
         if primary and primary in atoms_by_id:
-            label = _presence_label(atoms_by_id[primary].text)
+            atom_text = atoms_by_id[primary].text
+            label = _presence_label(atom_text)
+            if _NEGATED_PROVIDES_STATEMENT.fullmatch(atom_text.strip()):
+                return f"Verify the explicitly described {label} is absent."
             return f"Verify the explicitly described {label} is visible and available."
         refs = objective_data.get("refs") or ()
         labels = []
@@ -185,6 +257,12 @@ def render_intent(
         primary = objective_data.get("primary_ref")
         if primary and primary in atoms_by_id:
             text = atoms_by_id[primary].text.rstrip(".").strip()
+            if (
+                _USER_ACTION_PHRASE.search(text)
+                or _SYSTEM_ACTION_STATEMENT.search(text)
+                or _is_generic_system_action_statement(text)
+            ):
+                return _render_behavior_intent_from_atom(text)
             return f"Verify that {text}."
         return f"Verify {subject} displays the explicitly defined behavior."
 
@@ -264,13 +342,13 @@ def render_intent(
         if len(labels) > 1:
             return f"Verify the explicitly listed items for {subject}: {'; '.join(labels)}."
         primary_text = _clean_atomic_text(labels[0]).rstrip(".")
-        # Behavior-scenario rendering: extract the observable action from the atom.
-        if _looks_like_behavior(primary_text):
-            return _render_behavior_intent_from_atom(primary_text)
-        # Presence-only rendering: control/element visibility check.
+        # Presence-only rendering takes precedence over broad lexical action cues.
         if _looks_like_presence(primary_text):
             label = _presence_label(primary_text)
             return f"Verify the explicitly described {label} is visible and available."
+        # Behavior-scenario rendering: extract the observable action from the atom.
+        if _looks_like_behavior(primary_text):
+            return _render_behavior_intent_from_atom(primary_text)
         return f"Verify the explicitly listed items for {subject}: {primary_text}."
 
     if objective_kind == "no_results":
@@ -291,45 +369,81 @@ def render_intent(
 def _presence_label(atom_text: str) -> str:
     """Extract a short noun label from presence-only text."""
     text = atom_text.strip().rstrip(".")
+    negated = _NEGATED_PROVIDES_STATEMENT.fullmatch(text)
+    if negated:
+        label = negated.group("label").strip().strip('"')
+        return re.sub(r"^(?:a|an|the)\s+", "", label, flags=re.IGNORECASE)
     match = re.match(r"^the page provides\s+(.+)$", text, re.IGNORECASE)
     if match:
         return match.group(1).strip().strip('"')
     # "Dashboard provides Logout" → strip subject prefix for the label.
-    match = re.match(r"^[\w ]+\s+provides?\s+(.+)$", text, re.IGNORECASE)
+    match = re.match(r"^[\w'’ ]+\s+provides?\s+(.+)$", text, re.IGNORECASE)
     if match:
         return match.group(1).strip()
     return atom_text.strip()
 
 
 def _looks_like_behavior(text: str) -> bool:
-    """Return True when *text* describes an observable system action.
+    """Return True when *text* supports an executable user/system action.
 
-    A behaviour atom starts with a subject (system/page/feature) and uses an
-    active predicate — accept, display, show, allow, reject, return — rather
-    than stating that something exists or listing items.
+    Presence statements (for example, "The system provides Logout.") are not
+    behavior scenarios unless the source also states an explicit action.
     """
     t = text.strip().lower()
-    if re.search(r"^(the system|after\s+|if\s+)", t):
-        return True
-    if re.search(
-        r"\b(?:accepts?|displays?|shows?|allows?|rejects?|returns?|"
-        r"(?:is|are)\s+(?:available|visible|supported))\b",
-        t,
+    # Conditional and operational "provides" statements describe behavior.
+    if (
+        _PROVIDES_VERB.search(t)
+        and (
+            _PRESENCE_OPERATIONAL_CLAUSE.search(t)
+            or _MAXIMUM.search(t)
+            or _MINIMUM.search(t)
+            or _LIMIT_AFTER_VALUE.search(t)
+            or _USER_ACTION_PHRASE.search(t)
+        )
     ):
         return True
-    return False
+    if _looks_like_presence(text):
+        return False
+    if re.search(r"^(?:after\s+|if\s+)", t):
+        return True
+    if _USER_ACTION_PHRASE.search(t):
+        return True
+    if _PROVIDES_VERB.search(t) and _PRESENCE_OPERATIONAL_CLAUSE.search(t):
+        return True
+    if _is_generic_system_action_statement(text):
+        return True
+    # A lone action label such as "Calculate" is a listed item, not a behavior.
+    if _SYSTEM_ACTION_VERB.fullmatch(t):
+        return False
+    return bool(_SYSTEM_ACTION_VERB.search(t))
 
 
 def _looks_like_presence(text: str) -> bool:
-    """Return True when *text* asserts presence without specifying a transition.
+    """Return True for source wording that only asserts presence or visibility.
 
-    Pattern: "Dashboard provides Logout" — control element present on page.
-    Excludes behaviour atoms caught by _looks_like_behavior.
+    A "provides" sentence describes a capability/control being present; it
+    does not by itself authorize an execution or state-transition scenario.
     """
-    if _looks_like_behavior(text):
+    t = text.strip()
+    matches_presence_shape = (
+        _NEGATED_PROVIDES_STATEMENT.fullmatch(t)
+        or _PRESENCE_STATEMENT.fullmatch(t)
+        or _PRESENCE_STATE_STATEMENT.fullmatch(t)
+    )
+    if not matches_presence_shape:
         return False
-    t = text.strip().lower()
-    return bool(re.search(r"\bprovides?\b", t))
+    # A presence-shaped sentence can still contain a functional condition,
+    # actor action, or explicit numeric limit. Do not let the broad "provides"
+    # pattern swallow that more specific evidence.
+    if (
+        _USER_ACTION_PHRASE.search(t)
+        or _PRESENCE_OPERATIONAL_CLAUSE.search(t)
+        or _MAXIMUM.search(t)
+        or _MINIMUM.search(t)
+        or _LIMIT_AFTER_VALUE.search(t)
+    ):
+        return False
+    return True
 
 
 def _render_behavior_intent_from_atom(atom_text: str) -> str:
@@ -722,6 +836,7 @@ def _scenarios_for_requirement(
             atom for atom in non_guardrail
             if atom.kind in {"presence", "observed_value"}
             and _ACTION.search(atom.text)
+            and _looks_like_presence(atom.text)
         ]
         if len(action_atoms) == 1:
             atom = action_atoms[0]
@@ -1296,6 +1411,8 @@ def _classify_evidence(value: str, mode: str | None, source_name: str) -> str | 
         return "file_boundary"
     if _is_sample_text(value):
         return "sample_value"
+    if _looks_like_presence(value):
+        return "presence"
     if (
         "opens a modal" in lowered
         or _is_confirmation_behavior(value)
@@ -1405,7 +1522,9 @@ def _extract_atomic_behaviors(requirement: Requirement) -> list[_AtomicBehavior]
     value = _clean_atomic_text(requirement.statement)
     if value and not _is_atomic_parent(value) and not _is_guardrail_text(value):
         kind = _classify_atomic_behavior(value, _context_mode(value), "statement")
-        if kind in {"behavior", "confirmation_behavior", "file_type"}:
+        if kind in {"behavior", "confirmation_behavior", "file_type"} or (
+            kind in {"control", "action", "tab"} and _looks_like_presence(value)
+        ):
             key = _normalize_behavior(value, kind)
             if key not in seen:
                 seen.add(key)
@@ -1543,6 +1662,16 @@ def _classify_atomic_behavior(
         return None
     if _MAXIMUM.search(value) or _MINIMUM.search(value) or _LIMIT_AFTER_VALUE.search(value):
         return "limit"
+    if (
+        _PROVIDES_VERB.search(value)
+        and (
+            _PRESENCE_OPERATIONAL_CLAUSE.search(value)
+            or _USER_ACTION_PHRASE.search(value)
+        )
+    ):
+        return "behavior"
+    if _looks_like_presence(value):
+        return "control"
     if "only pdf" in lowered or "pdf only" in lowered:
         return "file_type"
     if _is_confirmation_behavior(value):
@@ -1588,9 +1717,26 @@ def _is_action_label(value: str) -> bool:
     )
 
 
+def _is_generic_system_action_statement(value: str) -> bool:
+    """Recognize a system-subject action even when its verb is not enumerated."""
+    match = _SYSTEM_ACTION_FALLBACK.fullmatch(value.strip())
+    return bool(
+        match
+        and match.group("verb").casefold() not in _NON_ACTION_PREDICATES
+        and match.group("object").strip()
+    )
+
+
 def _is_functional_evidence(value: str) -> bool:
     return bool(
-        re.search(
+        _USER_ACTION_PHRASE.search(value)
+        or _SYSTEM_ACTION_STATEMENT.search(value)
+        or _is_generic_system_action_statement(value)
+        or (
+            _PROVIDES_VERB.search(value)
+            and _PRESENCE_OPERATIONAL_CLAUSE.search(value)
+        )
+        or re.search(
             r"(?:\buser(?:s)?\s+can\b|\bis\s+used\s+to\b|\bcontrols?\s+\w|\bfilters?\s+(?:displayed|rows|results?)\b|\bdisplayed\s+(?:rows?|results?)\b.{0,50}\bfollow(?:s)?\b|\bresult\s+follows?\b|\breturns?\s+(?:the\s+)?(?:displayed\s+)?results?\b|\bapplies?\s+(?:the\s+)?(?:selected\s+|applied\s+)?criterion\b|\bmust\s+be\s+accessible\b|\bis\s+accessible\b|\bno\s+matching\b|\bno\s+results?\b|\bempty\s+(?:result|state)\b|\bclear\s+data\b.{0,80}\b(?:entered|selected|values?)\b|\bclears?\s+(?:entered|selected|values?)\b)",
             value,
             re.IGNORECASE,

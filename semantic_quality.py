@@ -169,17 +169,113 @@ _STEP_ANCHOR = re.compile(
 _OBSERVABLE = re.compile(
     r"ditampilkan|menampilkan|tampil|muncul|terlihat|tersembunyi|"
     r"disembunyikan|sembunyi|diterima|ditolak|dicegah|diizinkan|dibenarkan|"
-    r"tersedia|tidak\s+tersedia|dikirim|dikirimkan|disimpan|dibuat|dihapus|"
+    r"tersedia|tidak\s+tersedia|dikirim|dikirimkan|disimpan|dibuat|dihapus|diunggah|terunggah|diunduh|terunduh|"
     r"diubah|dipilih|dimasukkan|dikosongkan|diperbarui|ditambahkan|"
     r"berhasil|gagal|pesan|error|galat|"
     r"displayed|display|shown|show|appears?|appear|visible|hidden|masked|"
     r"accepted|rejected|prevented|allowed|denied|available|unavailable|"
-    r"saved|stored|created|removed|updated|selected|submitted|redirected|"
+    r"saved|stored|created|removed|deleted|added|cleared|uploaded|downloaded|updated|selected|submitted|redirected|"
     r"navigated|remains?|stays?|logged\s+in|message|error|success|fail(?:ed|ure)?|"
     r"match(?:es|ed)?|differs?|changed|unchanged|open(?:ed)?|closed|"
     r"contains?|includes?|equals?|count|jumlah|total|nilai|value|return\w*",
     re.IGNORECASE,
 )
+
+
+_ACTION_STEP_FOR_ECHO = re.compile(
+    r"^(?:(?:\d+[.)]\s*|[-*•]\s*)*)(?:please\s+)?(?P<verb>select|choose|click|press|enter|type|fill|open|close|create|remove|delete|add|clear|upload|download|update|hapus|menghapus|buat|membuat|tambahkan|menambahkan|kosongkan|mengosongkan|unggah|mengunggah|unduh|mengunduh|ubah|mengubah|perbarui|memperbarui|submit|save|simpan|menyimpan|tutup|menutup|"
+    r"pilih|memilih|klik|mengklik|tekan|menekan|masukkan|memasukkan|input|menginput|"
+    r"ketik|mengetik|isi|mengisi|buka|membuka|kirim|kirimkan|mengirim|mengirimkan|submitkan)\s+"
+    r"(?P<target>.+?)[.!?]*$",
+    re.IGNORECASE,
+)
+_ACTION_RESULT_ECHO = re.compile(
+    r"^(?:the\s+)?(?P<target>.+?)\s+"
+    r"(?:(?:is|are|was|were|has\s+been|have\s+been|had\s+been)\s+)?"
+    r"(?P<verb>selected|chosen|clicked|pressed|entered|typed|filled|opened|closed|created|removed|deleted|added|cleared|uploaded|downloaded|updated|dihapus|terhapus|dibuat|terbuat|ditambahkan|dikosongkan|diunggah|terunggah|diunduh|terunduh|diperbarui|diubah|submitted|saved|disimpan|tersimpan|ditutup|tertutup|"
+    r"dipilih|terpilih|diklik|ditekan|dimasukkan|dimasukan|diinput|diketik|diisi|terisi|"
+    r"dibuka|terbuka|dikirim|terkirim|disubmit|disubmitkan|diajukan)[.!?]*$",
+    re.IGNORECASE,
+)
+_STEP_TO_ACTION = {
+    "select": "select", "pilih": "select", "memilih": "select",
+    "choose": "choose",
+    "click": "click", "klik": "click", "mengklik": "click",
+    "press": "press", "tekan": "press", "menekan": "press",
+    "enter": "enter", "masukkan": "enter", "memasukkan": "enter",
+    "input": "enter", "menginput": "enter",
+    "type": "type", "ketik": "type", "mengetik": "type",
+    "fill": "fill", "isi": "fill", "mengisi": "fill",
+    "open": "open", "buka": "open", "membuka": "open",
+    "close": "close", "tutup": "close", "menutup": "close",
+    "create": "create", "buat": "create", "membuat": "create",
+    "remove": "remove", "delete": "remove", "hapus": "remove", "menghapus": "remove",
+    "add": "add", "tambahkan": "add", "menambahkan": "add",
+    "clear": "clear", "kosongkan": "clear", "mengosongkan": "clear",
+    "upload": "upload", "unggah": "upload", "mengunggah": "upload",
+    "download": "download", "unduh": "download", "mengunduh": "download",
+    "update": "update", "ubah": "update", "mengubah": "update", "perbarui": "update", "memperbarui": "update",
+    "submit": "submit", "submitkan": "submit", "kirim": "submit",
+    "kirimkan": "submit", "mengirim": "submit", "mengirimkan": "submit",
+    "save": "save", "simpan": "save", "menyimpan": "save",
+}
+_RESULT_TO_ACTION = {
+    "selected": "select", "dipilih": "select", "terpilih": "select",
+    "chosen": "choose",
+    "clicked": "click", "diklik": "click",
+    "pressed": "press", "ditekan": "press",
+    "entered": "enter", "dimasukkan": "enter", "dimasukan": "enter", "diinput": "enter",
+    "typed": "type", "diketik": "type",
+    "filled": "fill", "diisi": "fill", "terisi": "fill",
+    "opened": "open", "dibuka": "open", "terbuka": "open",
+    "closed": "close", "ditutup": "close", "tertutup": "close",
+    "created": "create", "dibuat": "create", "terbuat": "create",
+    "removed": "remove", "deleted": "remove", "dihapus": "remove", "terhapus": "remove",
+    "added": "add", "ditambahkan": "add",
+    "cleared": "clear", "dikosongkan": "clear",
+    "uploaded": "upload", "diunggah": "upload", "terunggah": "upload",
+    "downloaded": "download", "diunduh": "download", "terunduh": "download",
+    "updated": "update", "diperbarui": "update", "diubah": "update",
+    "submitted": "submit", "dikirim": "submit", "terkirim": "submit",
+    "disubmit": "submit", "disubmitkan": "submit", "diajukan": "submit",
+    "saved": "save", "disimpan": "save", "tersimpan": "save",
+}
+_ECHO_TARGET_IGNORED = {"field", "button", "control", "element", "item", "value", "option"}
+
+
+def _normalize_echo_target(value: str) -> tuple[str, ...]:
+    words = re.sub(r"[^a-z0-9]+", " ", value.casefold()).split()
+    # "A" can be a literal option identifier, not an indefinite article.
+    if words == ["a"]:
+        return ("a",)
+    if words and words[0] in {"the", "a", "an"}:
+        words = words[1:]
+    return tuple(word for word in words if word not in _ECHO_TARGET_IGNORED)
+
+
+def _action_echo_error(steps: list[str], expected_result: str) -> str | None:
+    """Reject expected results that merely restate the tester's own action."""
+    expected = _ACTION_RESULT_ECHO.fullmatch(expected_result.strip())
+    if expected is None:
+        return None
+    result_target = _normalize_echo_target(expected.group("target"))
+    if not result_target:
+        return None
+    for index, step in enumerate(steps, start=1):
+        action = _ACTION_STEP_FOR_ECHO.fullmatch(step.strip())
+        if action is None:
+            continue
+        step_action = _STEP_TO_ACTION.get(action.group("verb").casefold())
+        result_action = _RESULT_TO_ACTION.get(expected.group("verb").casefold())
+        if step_action is None or step_action != result_action:
+            continue
+        step_target = _normalize_echo_target(action.group("target"))
+        if step_target and step_target == result_target:
+            return (
+                f"expected_result repeats the tester action from step {index} "
+                "instead of stating a separate observable outcome"
+            )
+    return None
 
 _HEDGE = re.compile(r"\batau\b|\band\s*/\s*or\b|\bdan\s*/\s*atau\b|\bor\b", re.IGNORECASE)
 
@@ -453,6 +549,10 @@ def validate_content(
                     f"{field_name} contains internal/meta wording "
                     f"({label}); guardrail language must not reach testers"
                 )
+
+    action_echo = _action_echo_error(steps, expected_result)
+    if action_echo is not None:
+        return action_echo
 
     for position, step in enumerate(steps, start=1):
         stripped = step.strip()

@@ -1218,3 +1218,354 @@ def test_sibling_literal_not_in_own_texts() -> None:
         expected_result='The "Cancel" button is visible.',
     )
     assert check(accepted, scn_cancel, [save_atom, cancel_atom]) is None
+
+
+
+def test_expected_result_that_only_repeats_select_action_is_rejected() -> None:
+    scn = scenario(
+        "V133-ACTION-001",
+        intent="Verify the user selects a period.",
+        refs=("V133-ACTION-001-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ACTION-001",
+            1,
+            "The user selects a period.",
+            kind="explicit_behavior",
+        )
+    ]
+
+    repeated_action = item(
+        steps=["Select a period."],
+        expected_result="The period is selected.",
+    )
+    error = check(repeated_action, scn, atoms)
+    assert error is not None
+    assert "repeats the tester action" in error
+
+
+def test_observable_expected_result_is_accepted_when_it_differs_from_action() -> None:
+    scn = scenario(
+        "V133-ACTION-002",
+        intent="Verify the user selects a period and the selected period is displayed.",
+        refs=("V133-ACTION-002-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ACTION-002",
+            1,
+            "The user selects a period and the selected period is displayed.",
+            kind="explicit_behavior",
+        )
+    ]
+
+    distinct_outcome = item(
+        steps=["Select a period."],
+        expected_result="The selected period is displayed.",
+    )
+    assert check(distinct_outcome, scn, atoms) is None
+
+
+def test_action_echo_detects_single_letter_option_targets() -> None:
+    scn = scenario(
+        "V133-ECHO-OPTION-A",
+        intent="Verify the user selects option A.",
+        refs=("V133-ECHO-OPTION-A-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-OPTION-A",
+            1,
+            "The user selects option A.",
+            kind="explicit_behavior",
+        )
+    ]
+    repeated_action = item(
+        steps=["Select option A."],
+        expected_result="Option A is selected.",
+    )
+
+    error = check(repeated_action, scn, atoms)
+    assert error is not None
+    assert "repeats the tester action" in error
+
+
+def test_action_echo_detects_plural_were_selected_wording() -> None:
+    scn = scenario(
+        "V133-ECHO-PLURAL",
+        intent="Verify the user selects the records.",
+        refs=("V133-ECHO-PLURAL-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-PLURAL",
+            1,
+            "The user selects the records.",
+            kind="explicit_behavior",
+        )
+    ]
+    repeated_action = item(
+        steps=["Select the records."],
+        expected_result="The records were selected.",
+    )
+
+    error = check(repeated_action, scn, atoms)
+    assert error is not None
+    assert "repeats the tester action" in error
+
+
+def test_action_echo_detects_indonesian_selected_option() -> None:
+    scn = scenario(
+        "V133-ECHO-ID-OPTION-A",
+        intent="Verifikasi pengguna memilih opsi A.",
+        refs=("V133-ECHO-ID-OPTION-A-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-ID-OPTION-A",
+            1,
+            "Pengguna memilih opsi A.",
+            kind="explicit_behavior",
+        )
+    ]
+    repeated_action = item(
+        steps=["Pilih opsi A."],
+        expected_result="Opsi A dipilih.",
+    )
+
+    error = check(repeated_action, scn, atoms)
+    assert error is not None
+    assert "repeats the tester action" in error
+
+
+def test_action_echo_detects_numbered_and_bulleted_steps() -> None:
+    scn = scenario(
+        "V133-ECHO-ID-LIST-PREFIX",
+        intent="Verifikasi pengguna memilih opsi A.",
+        refs=("V133-ECHO-ID-LIST-PREFIX-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-ID-LIST-PREFIX",
+            1,
+            "Pengguna memilih opsi A.",
+            kind="explicit_behavior",
+        )
+    ]
+
+    for step in ("1. Pilih opsi A.", "- Pilih opsi A."):
+        repeated_action = item(
+            steps=[step],
+            expected_result="Opsi A dipilih.",
+        )
+        error = check(repeated_action, scn, atoms)
+        assert error is not None, step
+        assert "repeats the tester action" in error
+
+
+def test_action_echo_detects_common_mutation_actions() -> None:
+    cases = [
+        (
+            "V133-ECHO-DELETE",
+            "The user deletes the record.",
+            "Delete the record.",
+            "The record is deleted.",
+        ),
+        (
+            "V133-ECHO-ADD",
+            "The user adds a role.",
+            "Add a role.",
+            "The role is added.",
+        ),
+        (
+            "V133-ECHO-CLEAR",
+            "The user clears the cache.",
+            "Clear the cache.",
+            "The cache is cleared.",
+        ),
+        (
+            "V133-ECHO-UPLOAD",
+            "The user uploads the file.",
+            "Upload the file.",
+            "The file is uploaded.",
+        ),
+        (
+            "V133-ECHO-DOWNLOAD",
+            "The user downloads the report.",
+            "Download the report.",
+            "The report is downloaded.",
+        ),
+        (
+            "V133-ECHO-UPDATE",
+            "The user updates the record.",
+            "Update the record.",
+            "The record is updated.",
+        ),
+        (
+            "V133-ECHO-ID-ADD",
+            "Pengguna menambahkan anggota.",
+            "Tambahkan anggota.",
+            "Anggota ditambahkan.",
+        ),
+        (
+            "V133-ECHO-ID-CLEAR",
+            "Pengguna mengosongkan daftar.",
+            "Kosongkan daftar.",
+            "Daftar dikosongkan.",
+        ),
+    ]
+
+    for req_id, evidence, step, expected_result in cases:
+        scn = scenario(
+            req_id,
+            intent=evidence,
+            refs=(f"{req_id}-E01",),
+        )
+        atoms = [atom(req_id, 1, evidence, kind="explicit_behavior")]
+        repeated_action = item(
+            steps=[step],
+            expected_result=expected_result,
+        )
+
+        error = check(repeated_action, scn, atoms)
+        assert error is not None, (step, expected_result)
+        assert "repeats the tester action" in error
+
+
+def test_action_echo_detects_remove_actions_in_english_and_indonesian() -> None:
+    scn = scenario(
+        "V133-ECHO-REMOVE",
+        intent="Verify the user removes a record.",
+        refs=("V133-ECHO-REMOVE-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-REMOVE",
+            1,
+            "The user removes a record.",
+            kind="explicit_behavior",
+        )
+    ]
+
+    cases = [
+        ("Remove the record.", "The record is removed."),
+        ("Hapus catatan.", "Catatan dihapus."),
+    ]
+    for step, expected_result in cases:
+        repeated_action = item(
+            steps=[step],
+            expected_result=expected_result,
+        )
+        error = check(repeated_action, scn, atoms)
+        assert error is not None, (step, expected_result)
+        assert "repeats the tester action" in error
+
+
+def test_action_echo_detects_create_actions_in_english_and_indonesian() -> None:
+    scn = scenario(
+        "V133-ECHO-CREATE",
+        intent="Verify the user creates a record.",
+        refs=("V133-ECHO-CREATE-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-CREATE",
+            1,
+            "The user creates a record.",
+            kind="explicit_behavior",
+        )
+    ]
+
+    cases = [
+        ("Create a record.", "The record is created."),
+        ("Buat catatan.", "Catatan dibuat."),
+    ]
+    for step, expected_result in cases:
+        repeated_action = item(
+            steps=[step],
+            expected_result=expected_result,
+        )
+        error = check(repeated_action, scn, atoms)
+        assert error is not None, (step, expected_result)
+        assert "repeats the tester action" in error
+
+
+def test_action_echo_detects_close_actions_in_english_and_indonesian() -> None:
+    scn = scenario(
+        "V133-ECHO-CLOSE",
+        intent="Verify the user closes the dialog.",
+        refs=("V133-ECHO-CLOSE-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-CLOSE",
+            1,
+            "The user closes the dialog.",
+            kind="explicit_behavior",
+        )
+    ]
+
+    cases = [
+        ("Close the dialog.", "The dialog is closed."),
+        ("Tutup dialog.", "Dialog ditutup."),
+    ]
+    for step, expected_result in cases:
+        repeated_action = item(
+            steps=[step],
+            expected_result=expected_result,
+        )
+        error = check(repeated_action, scn, atoms)
+        assert error is not None, (step, expected_result)
+        assert "repeats the tester action" in error
+
+
+def test_action_echo_detects_save_actions_in_english_and_indonesian() -> None:
+    scn = scenario(
+        "V133-ECHO-SAVE",
+        intent="Verify the user saves the form.",
+        refs=("V133-ECHO-SAVE-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-SAVE",
+            1,
+            "The user saves the form.",
+            kind="explicit_behavior",
+        )
+    ]
+
+    cases = [
+        ("Save the form.", "The form is saved."),
+        ("Simpan formulir.", "Formulir disimpan."),
+    ]
+    for step, expected_result in cases:
+        repeated_action = item(
+            steps=[step],
+            expected_result=expected_result,
+        )
+        error = check(repeated_action, scn, atoms)
+        assert error is not None, (step, expected_result)
+        assert "repeats the tester action" in error
+
+
+def test_indonesian_distinct_outcome_is_not_treated_as_action_echo() -> None:
+    scn = scenario(
+        "V133-ECHO-ID-DISTINCT",
+        intent="Verifikasi hasil pencarian ditampilkan.",
+        refs=("V133-ECHO-ID-DISTINCT-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-ID-DISTINCT",
+            1,
+            "Pengguna memilih opsi A.",
+            kind="explicit_behavior",
+        )
+    ]
+    distinct_outcome = item(
+        steps=["Pilih opsi A."],
+        expected_result="Daftar hasil ditampilkan.",
+    )
+
+    assert check(distinct_outcome, scn, atoms) is None
