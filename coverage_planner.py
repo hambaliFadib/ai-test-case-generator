@@ -100,6 +100,11 @@ _SYSTEM_ACTION_STATEMENT = re.compile(
     r"authorizes?|enables?|disables?|resets?|refresh(?:es)?|clears?|masks?|encrypts?)\b",
     re.IGNORECASE,
 )
+_GENERIC_SYSTEM_ACTION_STATEMENT = re.compile(
+    r"^\s*(?:the\s+)?(?:system|application|service|server|backend|platform|process)\s+"
+    r"[a-z][a-z-]*\b",
+    re.IGNORECASE,
+)
 _PROVIDES_VERB = re.compile(r"\bprovides?\b", re.IGNORECASE)
 
 
@@ -355,6 +360,18 @@ def _looks_like_behavior(text: str) -> bool:
     behavior scenarios unless the source also states an explicit action.
     """
     t = text.strip().lower()
+    # Conditional and operational "provides" statements describe behavior.
+    if (
+        _PROVIDES_VERB.search(t)
+        and (
+            _PRESENCE_OPERATIONAL_CLAUSE.search(t)
+            or _MAXIMUM.search(t)
+            or _MINIMUM.search(t)
+            or _LIMIT_AFTER_VALUE.search(t)
+            or _USER_ACTION_PHRASE.search(t)
+        )
+    ):
+        return True
     if _looks_like_presence(text):
         return False
     if re.search(r"^(?:after\s+|if\s+)", t):
@@ -1609,6 +1626,14 @@ def _classify_atomic_behavior(
         return None
     if _MAXIMUM.search(value) or _MINIMUM.search(value) or _LIMIT_AFTER_VALUE.search(value):
         return "limit"
+    if (
+        _PROVIDES_VERB.search(value)
+        and (
+            _PRESENCE_OPERATIONAL_CLAUSE.search(value)
+            or _USER_ACTION_PHRASE.search(value)
+        )
+    ):
+        return "behavior"
     if _looks_like_presence(value):
         return "control"
     if "only pdf" in lowered or "pdf only" in lowered:
@@ -1660,6 +1685,7 @@ def _is_functional_evidence(value: str) -> bool:
     return bool(
         _USER_ACTION_PHRASE.search(value)
         or _SYSTEM_ACTION_STATEMENT.search(value)
+        or _GENERIC_SYSTEM_ACTION_STATEMENT.search(value)
         or (
             _PROVIDES_VERB.search(value)
             and _PRESENCE_OPERATIONAL_CLAUSE.search(value)
