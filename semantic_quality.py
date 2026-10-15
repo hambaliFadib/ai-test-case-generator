@@ -188,7 +188,7 @@ _ACTION_STEP_FOR_ECHO = re.compile(
     re.IGNORECASE,
 )
 _ACTION_RESULT_ECHO = re.compile(
-    r"^(?:the\s+)?(?P<target>.+?)\s+(?:is|was|has\s+been)\s+"
+    r"^(?:the\s+)?(?P<target>.+?)\s+(?:is|are|was|were|has\s+been|have\s+been|had\s+been)\s+"
     r"(?P<verb>selected|chosen|clicked|pressed|entered|typed|filled|opened|submitted)[.!?]*$",
     re.IGNORECASE,
 )
@@ -203,11 +203,16 @@ _STEP_TO_RESULT_VERB = {
     "open": "opened",
     "submit": "submitted",
 }
-_ECHO_TARGET_IGNORED = {"the", "a", "an", "field", "button", "control", "element", "item", "value", "option"}
+_ECHO_TARGET_IGNORED = {"field", "button", "control", "element", "item", "value", "option"}
 
 
 def _normalize_echo_target(value: str) -> tuple[str, ...]:
     words = re.sub(r"[^a-z0-9]+", " ", value.casefold()).split()
+    # "A" can be a literal option identifier, not an indefinite article.
+    if words == ["a"]:
+        return ("a",)
+    if words and words[0] in {"the", "a", "an"}:
+        words = words[1:]
     return tuple(word for word in words if word not in _ECHO_TARGET_IGNORED)
 
 

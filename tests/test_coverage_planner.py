@@ -807,3 +807,62 @@ def test_system_provides_logout_is_planned_as_presence_not_behavior() -> None:
         and atom.kind == "presence"
         for atom in plan.evidence_atoms
     )
+
+
+def test_conditional_provides_results_is_planned_as_behavior_not_presence() -> None:
+    req = requirement(
+        "V133-CONDITIONAL-PROVIDES",
+        "The system provides search results after the user submits a query.",
+        title="Search",
+    )
+    plan = plan_coverage([req], profile="minimal")
+    scenarios = plan.requirements[0].scenarios
+
+    assert any(s.objective_kind == "behavior" for s in scenarios)
+    assert not any(
+        s.objective_kind == "presence"
+        and "visible and available" in s.intent.lower()
+        for s in scenarios
+    )
+    assert any(
+        atom.kind == "explicit_behavior"
+        and atom.id in scenarios[0].evidence_refs
+        for atom in plan.evidence_atoms
+    )
+
+
+def test_provides_sentence_with_numeric_limit_keeps_boundary_coverage() -> None:
+    req = requirement(
+        "V133-PROVIDES-LIMIT",
+        "The page provides a Search field with a maximum of 10 characters.",
+        title="Search",
+    )
+    plan = plan_coverage([req], profile="minimal")
+    scenarios = plan.requirements[0].scenarios
+
+    assert len(scenarios) == 3
+    assert all(s.category == "boundary" and s.technique == "BVA" for s in scenarios)
+    assert not any(s.objective_kind == "presence" for s in scenarios)
+
+
+def test_common_system_verbs_are_planned_as_behavior() -> None:
+    examples = (
+        ("V133-VERB-VALIDATES", "The system validates the email address."),
+        ("V133-VERB-CREATES", "The system creates a report."),
+        ("V133-VERB-UPDATES", "The system updates a record."),
+        ("V133-VERB-SENDS", "The system sends the notification."),
+    )
+    for req_id, statement in examples:
+        plan = plan_coverage(
+            [requirement(req_id, statement, title="System action")],
+            profile="minimal",
+        )
+        scenarios = plan.requirements[0].scenarios
+        assert any(s.objective_kind == "behavior" for s in scenarios), (
+            f"Expected behavior scenario for {statement!r}; got "
+            f"{[(s.objective_kind, s.intent) for s in scenarios]}"
+        )
+        assert not any(
+            s.objective_kind == "static_list"
+            for s in scenarios
+        ), f"System action should not fall back to static_list: {statement!r}"

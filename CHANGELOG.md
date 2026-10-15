@@ -8,6 +8,9 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ### Changed
 
+- Coverage planner preserves conditional "provides" behavior and gives explicit numeric boundaries precedence over presence classification.
+- Common system actions such as validating, creating, updating, and sending are recognized as behavior instead of static presence.
+- Expected-result echo detection recognizes single-letter option targets and plural passive wording.
 - Coverage planner now distinguishes explicit actor actions from presence-only "provides" statements, preserving evidence refs while producing the appropriate behavior or visibility intent.
 - Generated test cases with identical requirement-local preconditions, steps, and expected outcomes are rejected as duplicate content so the affected planned scenario remains eligible for bounded backfill.
 - Semantic quality validation rejects an expected result that merely repeats a supported tester action instead of stating a separate observable outcome.

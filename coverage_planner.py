@@ -84,6 +84,17 @@ _BEHAVIOR_PHRASE = re.compile(
     re.IGNORECASE,
 )
 
+# Common system actions need to remain executable behavior, not static presence.
+_SYSTEM_ACTION_VERB = re.compile(
+    r"\b(?:accepts?|displays?|shows?|allows?|rejects?|returns?|filters?|saves?|submits?|prevents?|applies?|opens?|closes?|"
+    r"validates?|creates?|updates?|sends?|deletes?|calculates?|generates?|checks?|verifies?|stores?|loads?|retrieves?|"
+    r"fetch(?:es)?|converts?|computes?|exports?|imports?|sorts?|matches?|compares?|assigns?|renders?|authenticates?|"
+    r"authorizes?|enables?|disables?|resets?|refresh(?:es)?|clears?|masks?|encrypts?)\b",
+    re.IGNORECASE,
+)
+_PROVIDES_VERB = re.compile(r"\bprovides?\b", re.IGNORECASE)
+
+
 
 _USER_ACTION_PHRASE = re.compile(
     r"\b(?:the\s+|a\s+|an\s+)?(?:user|users|customer|operator|administrator|agent|tester)\s+"
@@ -100,6 +111,13 @@ _PRESENCE_STATEMENT = re.compile(
 _PRESENCE_STATE_STATEMENT = re.compile(
     r"(?:the\s+)?[A-Za-z][\w -]{0,40}\s+(?:is|are)\s+"
     r"(?:available|visible|present|supported)[.!]?",
+    re.IGNORECASE,
+)
+# These clauses indicate that "provides" describes an operation or condition,
+# not merely the existence of a control or page element.
+_PRESENCE_OPERATIONAL_CLAUSE = re.compile(
+    r"\b(?:after|before|when|whenever|if|unless|once|while|until|upon|"
+    r"as\s+soon\s+as|based\s+on|depending\s+on|in\s+response\s+to|according\s+to)\b",
     re.IGNORECASE,
 )
 
@@ -335,13 +353,9 @@ def _looks_like_behavior(text: str) -> bool:
         return True
     if _USER_ACTION_PHRASE.search(t):
         return True
-    return bool(
-        re.search(
-            r"\b(?:accepts?|displays?|shows?|allows?|rejects?|returns?|"
-            r"filters?|saves?|submits?|prevents?|applies?|opens?|closes?)\b",
-            t,
-        )
-    )
+    if _PROVIDES_VERB.search(t) and _PRESENCE_OPERATIONAL_CLAUSE.search(t):
+        return True
+    return bool(_SYSTEM_ACTION_VERB.search(t))
 
 
 def _looks_like_presence(text: str) -> bool:
@@ -351,10 +365,24 @@ def _looks_like_presence(text: str) -> bool:
     does not by itself authorize an execution or state-transition scenario.
     """
     t = text.strip()
-    return bool(
+    matches_presence_shape = (
         _PRESENCE_STATEMENT.fullmatch(t)
         or _PRESENCE_STATE_STATEMENT.fullmatch(t)
     )
+    if not matches_presence_shape:
+        return False
+    # A presence-shaped sentence can still contain a functional condition,
+    # actor action, or explicit numeric limit. Do not let the broad "provides"
+    # pattern swallow that more specific evidence.
+    if (
+        _USER_ACTION_PHRASE.search(t)
+        or _PRESENCE_OPERATIONAL_CLAUSE.search(t)
+        or _MAXIMUM.search(t)
+        or _MINIMUM.search(t)
+        or _LIMIT_AFTER_VALUE.search(t)
+    ):
+        return False
+    return True
 
 
 def _render_behavior_intent_from_atom(atom_text: str) -> str:
@@ -1571,10 +1599,10 @@ def _classify_atomic_behavior(
     lowered = value.lower()
     if _is_guardrail_text(value):
         return None
-    if _looks_like_presence(value):
-        return "control"
     if _MAXIMUM.search(value) or _MINIMUM.search(value) or _LIMIT_AFTER_VALUE.search(value):
         return "limit"
+    if _looks_like_presence(value):
+        return "control"
     if "only pdf" in lowered or "pdf only" in lowered:
         return "file_type"
     if _is_confirmation_behavior(value):
@@ -1623,6 +1651,11 @@ def _is_action_label(value: str) -> bool:
 def _is_functional_evidence(value: str) -> bool:
     return bool(
         _USER_ACTION_PHRASE.search(value)
+        or _SYSTEM_ACTION_VERB.search(value)
+        or (
+            _PROVIDES_VERB.search(value)
+            and _PRESENCE_OPERATIONAL_CLAUSE.search(value)
+        )
         or re.search(
             r"(?:\buser(?:s)?\s+can\b|\bis\s+used\s+to\b|\bcontrols?\s+\w|\bfilters?\s+(?:displayed|rows|results?)\b|\bdisplayed\s+(?:rows?|results?)\b.{0,50}\bfollow(?:s)?\b|\bresult\s+follows?\b|\breturns?\s+(?:the\s+)?(?:displayed\s+)?results?\b|\bapplies?\s+(?:the\s+)?(?:selected\s+|applied\s+)?criterion\b|\bmust\s+be\s+accessible\b|\bis\s+accessible\b|\bno\s+matching\b|\bno\s+results?\b|\bempty\s+(?:result|state)\b|\bclear\s+data\b.{0,80}\b(?:entered|selected|values?)\b|\bclears?\s+(?:entered|selected|values?)\b)",
             value,

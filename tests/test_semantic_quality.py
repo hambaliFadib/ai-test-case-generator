@@ -1265,3 +1265,51 @@ def test_observable_expected_result_is_accepted_when_it_differs_from_action() ->
         expected_result="The selected period is displayed.",
     )
     assert check(distinct_outcome, scn, atoms) is None
+
+
+def test_action_echo_detects_single_letter_option_targets() -> None:
+    scn = scenario(
+        "V133-ECHO-OPTION-A",
+        intent="Verify the user selects option A.",
+        refs=("V133-ECHO-OPTION-A-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-OPTION-A",
+            1,
+            "The user selects option A.",
+            kind="explicit_behavior",
+        )
+    ]
+    repeated_action = item(
+        steps=["Select option A."],
+        expected_result="Option A is selected.",
+    )
+
+    error = check(repeated_action, scn, atoms)
+    assert error is not None
+    assert "repeats the tester action" in error
+
+
+def test_action_echo_detects_plural_were_selected_wording() -> None:
+    scn = scenario(
+        "V133-ECHO-PLURAL",
+        intent="Verify the user selects the records.",
+        refs=("V133-ECHO-PLURAL-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-PLURAL",
+            1,
+            "The user selects the records.",
+            kind="explicit_behavior",
+        )
+    ]
+    repeated_action = item(
+        steps=["Select the records."],
+        expected_result="The records were selected.",
+    )
+
+    error = check(repeated_action, scn, atoms)
+    assert error is not None
+    assert "repeats the tester action" in error
