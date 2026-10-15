@@ -92,6 +92,14 @@ _SYSTEM_ACTION_VERB = re.compile(
     r"authorizes?|enables?|disables?|resets?|refresh(?:es)?|clears?|masks?|encrypts?)\b",
     re.IGNORECASE,
 )
+_SYSTEM_ACTION_STATEMENT = re.compile(
+    r"^\s*(?:the\s+)?(?:system|application|service|server|backend|platform|process)\s+"
+    r"(?:accepts?|displays?|shows?|allows?|rejects?|returns?|filters?|saves?|submits?|prevents?|applies?|opens?|closes?|"
+    r"validates?|creates?|updates?|sends?|deletes?|calculates?|generates?|checks?|verifies?|stores?|loads?|retrieves?|"
+    r"fetch(?:es)?|converts?|computes?|exports?|imports?|sorts?|matches?|compares?|assigns?|renders?|authenticates?|"
+    r"authorizes?|enables?|disables?|resets?|refresh(?:es)?|clears?|masks?|encrypts?)\b",
+    re.IGNORECASE,
+)
 _PROVIDES_VERB = re.compile(r"\bprovides?\b", re.IGNORECASE)
 
 
@@ -1651,7 +1659,7 @@ def _is_action_label(value: str) -> bool:
 def _is_functional_evidence(value: str) -> bool:
     return bool(
         _USER_ACTION_PHRASE.search(value)
-        or _SYSTEM_ACTION_VERB.search(value)
+        or _SYSTEM_ACTION_STATEMENT.search(value)
         or (
             _PROVIDES_VERB.search(value)
             and _PRESENCE_OPERATIONAL_CLAUSE.search(value)
