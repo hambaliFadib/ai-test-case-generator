@@ -1365,40 +1365,72 @@ def test_action_echo_detects_numbered_and_bulleted_steps() -> None:
 
 
 def test_action_echo_detects_common_mutation_actions() -> None:
-    scn = scenario(
-        "V133-ECHO-MUTATIONS",
-        intent="Verify the user updates a record.",
-        refs=("V133-ECHO-MUTATIONS-E01",),
-    )
-    atoms = [
-        atom(
-            "V133-ECHO-MUTATIONS",
-            1,
-            "The user updates a record.",
-            kind="explicit_behavior",
-        )
+    cases = [
+        (
+            "V133-ECHO-DELETE",
+            "The user deletes the record.",
+            "Delete the record.",
+            "The record is deleted.",
+        ),
+        (
+            "V133-ECHO-ADD",
+            "The user adds a role.",
+            "Add a role.",
+            "The role is added.",
+        ),
+        (
+            "V133-ECHO-CLEAR",
+            "The user clears the cache.",
+            "Clear the cache.",
+            "The cache is cleared.",
+        ),
+        (
+            "V133-ECHO-UPLOAD",
+            "The user uploads the file.",
+            "Upload the file.",
+            "The file is uploaded.",
+        ),
+        (
+            "V133-ECHO-DOWNLOAD",
+            "The user downloads the report.",
+            "Download the report.",
+            "The report is downloaded.",
+        ),
+        (
+            "V133-ECHO-UPDATE",
+            "The user updates the record.",
+            "Update the record.",
+            "The record is updated.",
+        ),
+        (
+            "V133-ECHO-ID-ADD",
+            "Pengguna menambahkan anggota.",
+            "Tambahkan anggota.",
+            "Anggota ditambahkan.",
+        ),
+        (
+            "V133-ECHO-ID-CLEAR",
+            "Pengguna mengosongkan daftar.",
+            "Kosongkan daftar.",
+            "Daftar dikosongkan.",
+        ),
     ]
 
-    cases = [
-        ("Delete the record.", "The record is deleted."),
-        ("Add a role.", "The role is added."),
-        ("Clear the cache.", "The cache is cleared."),
-        ("Upload the file.", "The file is uploaded."),
-        ("Download the report.", "The report is downloaded."),
-        ("Update the record.", "The record is updated."),
-        ("Tambahkan anggota.", "Anggota ditambahkan."),
-        ("Kosongkan daftar.", "Daftar dikosongkan."),
-    ]
-    for step, expected_result in cases:
+    for req_id, evidence, step, expected_result in cases:
+        scn = scenario(
+            req_id,
+            intent=evidence,
+            refs=(f"{req_id}-E01",),
+        )
+        atoms = [atom(req_id, 1, evidence, kind="explicit_behavior")]
         repeated_action = item(
             steps=[step],
             expected_result=expected_result,
         )
+
         error = check(repeated_action, scn, atoms)
         assert error is not None, (step, expected_result)
         assert "repeats the tester action" in error
-
-
 def test_action_echo_detects_remove_actions_in_english_and_indonesian() -> None:
     scn = scenario(
         "V133-ECHO-REMOVE",
