@@ -105,7 +105,9 @@ _SYSTEM_ACTION_STATEMENT = re.compile(
 _SYSTEM_ACTION_FALLBACK = re.compile(
     r"^\s*(?:the\s+)?(?:system|application|service|server|backend|platform|process)\s+"
     r"(?:(?:can|could|may|might|must|shall|should|will|would|do|does|did|has|have|had|"
-    r"is|are|was|were|needs?)\s+(?:to\s+)?)?"
+    r"is|are|was|were|needs?)\s+"
+    r"(?:(?:not|never)\s+)?(?:(?:be|been|being)\s+)?"
+    r"(?:(?:able|configured|allowed|permitted|required|expected|designed|enabled|used)\s+to\s+)?)?"
     r"(?:not\s+)?(?P<verb>[a-z][a-z-]*)\s+(?P<object>.+?)\s*[.!?]?\s*$",
     re.IGNORECASE,
 )
@@ -126,9 +128,16 @@ _USER_ACTION_PHRASE = re.compile(
     r"filters?|saves?|deletes?|adds?|removes?|sets?|views?|logs?\s+(?:in|out))\b",
     re.IGNORECASE,
 )
+_NEGATED_PROVIDES_STATEMENT = re.compile(
+    r"^\s*(?:the\s+)?[A-Za-z][\w'’ -]{0,40}\s+"
+    r"(?:(?:does|do|did|must|shall|should|will|can|could|may|might)\s+not|"
+    r"doesn['’]t|don['’]t|didn['’]t|mustn['’]t|can['’]t|cannot)\s+"
+    r"provides?\s+(?P<label>.+?)[.!?]?\s*$",
+    re.IGNORECASE,
+)
 _PRESENCE_STATEMENT = re.compile(
-    r"(?!(?:the\s+|a\s+|an\s+)?(?:user|users|customer|operator|administrator|agent|tester)\b)"
-    r"(?:the\s+)?[A-Za-z][\w -]{0,40}\s+provides?\s+[^.!?]+[.!?]?",
+    r"(?!(?:the\s+|a\s+|an\s+)?(?:users?|customer|operator|administrator|agent|tester)\s+)"
+    r"(?:the\s+)?[A-Za-z][\w'’ -]{0,40}\s+provides?\s+[^.!?]+[.!?]?",
     re.IGNORECASE,
 )
 _PRESENCE_STATE_STATEMENT = re.compile(
@@ -230,7 +239,10 @@ def render_intent(
     if objective_kind == "presence":
         primary = objective_data.get("primary_ref")
         if primary and primary in atoms_by_id:
-            label = _presence_label(atoms_by_id[primary].text)
+            atom_text = atoms_by_id[primary].text
+            label = _presence_label(atom_text)
+            if _NEGATED_PROVIDES_STATEMENT.fullmatch(atom_text.strip()):
+                return f"Verify the explicitly described {label} is not visible or available."
             return f"Verify the explicitly described {label} is visible and available."
         refs = objective_data.get("refs") or ()
         labels = []
@@ -357,11 +369,15 @@ def render_intent(
 def _presence_label(atom_text: str) -> str:
     """Extract a short noun label from presence-only text."""
     text = atom_text.strip().rstrip(".")
+    negated = _NEGATED_PROVIDES_STATEMENT.fullmatch(text)
+    if negated:
+        label = negated.group("label").strip().strip('"')
+        return re.sub(r"^(?:a|an|the)\s+", "", label, flags=re.IGNORECASE)
     match = re.match(r"^the page provides\s+(.+)$", text, re.IGNORECASE)
     if match:
         return match.group(1).strip().strip('"')
     # "Dashboard provides Logout" → strip subject prefix for the label.
-    match = re.match(r"^[\w ]+\s+provides?\s+(.+)$", text, re.IGNORECASE)
+    match = re.match(r"^[\w'’ ]+\s+provides?\s+(.+)$", text, re.IGNORECASE)
     if match:
         return match.group(1).strip()
     return atom_text.strip()
@@ -410,7 +426,8 @@ def _looks_like_presence(text: str) -> bool:
     """
     t = text.strip()
     matches_presence_shape = (
-        _PRESENCE_STATEMENT.fullmatch(t)
+        _NEGATED_PROVIDES_STATEMENT.fullmatch(t)
+        or _PRESENCE_STATEMENT.fullmatch(t)
         or _PRESENCE_STATE_STATEMENT.fullmatch(t)
     )
     if not matches_presence_shape:
