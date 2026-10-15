@@ -511,6 +511,10 @@ def validate_content(
                     f"({label}); guardrail language must not reach testers"
                 )
 
+    action_echo = _action_echo_error(steps, expected_result)
+    if action_echo is not None:
+        return action_echo
+
     for position, step in enumerate(steps, start=1):
         stripped = step.strip()
         if not _STEP_OPENER.match(stripped):
@@ -526,10 +530,6 @@ def validate_content(
 
     if not _OBSERVABLE.search(expected_result) and not _LITERAL_QUOTE_DOUBLE.search(expected_result):
         return "expected_result does not state an observable outcome"
-
-    action_echo = _action_echo_error(steps, expected_result)
-    if action_echo is not None:
-        return action_echo
 
     content_all = " ".join([title, " ".join(preconditions), " ".join(steps), expected_result])
 
