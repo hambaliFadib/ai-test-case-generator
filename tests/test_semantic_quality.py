@@ -1788,3 +1788,51 @@ def test_action_echo_prefix_match_is_safe_for_trailing_prepositional_phrases() -
         expected_result="The view is saved.",
     )
     assert check(distinct, scn, atoms) is None
+
+
+def test_action_echo_does_not_match_resettled_as_reset_echo() -> None:
+    """Negative regression: 'resettled' is not a valid past-tense form of 'reset'.
+    An expected result using 'resettled' must not be classified as a reset-action echo."""
+    scn = scenario(
+        "V133-ECHO-RESETTLED-NEG",
+        intent="Verify the workspace is saved for the next test run.",
+        refs=("V133-ECHO-RESETTLED-NEG-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-RESETTLED-NEG",
+            1,
+            "The workspace is saved between test runs.",
+            kind="explicit_behavior",
+        )
+    ]
+    # 'resettled' is not recognized as any action verb; result still observable
+    not_echo = item(
+        steps=["Save the workspace."],
+        expected_result="The workspace is resettled and the error message is displayed.",
+    )
+    assert check(not_echo, scn, atoms) is None
+
+
+def test_action_echo_does_not_match_backed_as_back_echo() -> None:
+    """Negative regression: 'backed' does not represent the navigation-back action.
+    An expected result using 'backed' must not be classified as a back-action echo."""
+    scn = scenario(
+        "V133-ECHO-BACKED-NEG",
+        intent="Verify the view is saved after navigation.",
+        refs=("V133-ECHO-BACKED-NEG-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-BACKED-NEG",
+            1,
+            "The view is saved after navigation.",
+            kind="explicit_behavior",
+        )
+    ]
+    # 'backed' is not recognized as an action verb; result still observable
+    not_echo = item(
+        steps=["Save the view."],
+        expected_result="The view is backed by analytics and the title is displayed.",
+    )
+    assert check(not_echo, scn, atoms) is None

@@ -195,7 +195,7 @@ _ACTION_STEP_FOR_ECHO = re.compile(
 _ACTION_RESULT_ECHO = re.compile(
     r"^(?:the\s+)?(?P<target>.+?)\s+"
     r"(?:(?:is|are|was|were|has\s+been|have\s+been|had\s+been)\s+)?"
-    r"(?P<verb>selected|chosen|clicked|pressed|entered|typed|filled|opened|closed|created|removed|deleted|added|cleared|uploaded|downloaded|updated|logged\s+in|logged\s+out|navigated|filtered|sorted|searched|viewed|hovered|backed|refreshed|retried|reset|resettled|toggled|switched|dragged|dropped|scrolled|waited|attempted|tried|reviewed|inspected|confirmed|accessed|set|left|saved|submitted|dihapus|terhapus|dibuat|terbuat|ditambahkan|dikosongkan|diunggah|terunggah|diunduh|terunduh|diperbarui|diubah|disubmit|disubmitkan|diajukan|disimpan|tersimpan|ditutup|tertutup|dipilih|terpilih|diklik|ditekan|dimasukkan|dimasukan|diinput|diketik|diisi|terisi|dibuka|terbuka|dikirim|terkirim)(\s+to|\s+by\s+.+|\s+for\s+.+|\s+over\s+.+)?[.!?]*$",
+    r"(?P<verb>selected|chosen|clicked|pressed|entered|typed|filled|opened|closed|created|removed|deleted|added|cleared|uploaded|downloaded|updated|logged\s+in|logged\s+out|navigated|filtered|sorted|searched|viewed|hovered|refreshed|retried|reset|toggled|switched|dragged|dropped|scrolled|waited|attempted|tried|reviewed|inspected|confirmed|accessed|set|left|saved|submitted|dihapus|terhapus|dibuat|terbuat|ditambahkan|dikosongkan|diunggah|terunggah|diunduh|terunduh|diperbarui|diubah|disubmit|disubmitkan|diajukan|disimpan|tersimpan|ditutup|tertutup|dipilih|terpilih|diklik|ditekan|dimasukkan|dimasukan|diinput|diketik|diisi|terisi|dibuka|terbuka|dikirim|terkirim)(\s+to|\s+by\s+.+|\s+for\s+.+|\s+over\s+.+)?[.!?]*$",
     re.IGNORECASE,
 )
 _STEP_TO_ACTION = {
@@ -272,10 +272,8 @@ _RESULT_TO_ACTION = {
     "searched": "search",
     "viewed": "view",
     "hovered": "hover",
-    "backed": "back",
     "refreshed": "refresh",
     "retried": "retry",
-    "resettled": "reset",
     "toggled": "toggle",
     "switched": "switch",
     "dragged": "drag",
