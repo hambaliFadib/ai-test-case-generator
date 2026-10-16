@@ -293,6 +293,11 @@ _RESULT_TO_ACTION = {
 _ECHO_TARGET_IGNORED = {"field", "button", "control", "element", "item", "value", "option"}
 _LEADING_PREPOSITIONS = {"to", "for", "by", "over", "into", "on", "in", "at", "from"}
 _LEADING_SKIP = _LEADING_PREPOSITIONS | {"the", "a", "an"}
+# Prepositions treated as optional trailing qualifiers to strip (e.g. "by name",
+# "to the page"). `for` is deliberately excluded: a trailing `for <entity>`
+# (e.g. "report for administrators") is a meaningful target modifier, not a
+# filter, and stripping it would create false-positive action-echo matches.
+_TRAILING_QUALIFIERS = {"by", "to", "in", "on", "at", "from", "over", "into"}
 
 
 def _normalize_echo_target(value: str) -> tuple[str, ...]:
@@ -306,7 +311,7 @@ def _normalize_echo_target(value: str) -> tuple[str, ...]:
     # so that "table by name" normalizes to "table". Only strips when a
     # preposition is followed by at least one word; does not strip conjunctions
     # like "and" or "or" to avoid false matches (e.g. "view and table" ≠ "view").
-    while len(words) >= 2 and words[-2] in _LEADING_PREPOSITIONS:
+    while len(words) >= 2 and words[-2] in _TRAILING_QUALIFIERS:
         words = words[:-2]
     return tuple(word for word in words if word not in _ECHO_TARGET_IGNORED)
 

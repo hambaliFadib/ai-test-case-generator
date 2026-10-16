@@ -1872,6 +1872,18 @@ def test_normalize_echo_target_preserves_single_word_preposition() -> None:
     assert _normalize_echo_target("table by name") == ("table",)
 
 
+def test_action_echo_does_not_match_reset_with_meaningful_target_modifier() -> None:
+    """Semantic decision: a trailing `for <entity>` (e.g. 'report for administrators')
+    is a meaningful target modifier, not an optional filter. It must NOT be stripped,
+    so 'Save the report.' and 'The report for administrators is saved.' are distinct
+    targets and must not be classified as a save-action echo (which would be a
+    false positive). Known filters like 'by name' and 'to the page' are still stripped."""
+    from semantic_quality import _action_echo_error
+
+    distinct = ["Save the report."], "The report for administrators is saved."
+    assert _action_echo_error(*distinct) is None
+
+
 def test_action_echo_does_not_match_reset_with_different_target() -> None:
     """The reset echo requires matching step and result targets.
     Step 'Reset the form.' with result 'The page is reset.' targets mismatch
