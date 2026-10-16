@@ -288,6 +288,7 @@ _RESULT_TO_ACTION = {
     "accessed": "access",
     "set": "set",
     "left": "leave",
+    "reset": "reset",
 }
 _ECHO_TARGET_IGNORED = {"field", "button", "control", "element", "item", "value", "option"}
 _LEADING_PREPOSITIONS = {"to", "for", "by", "over", "into", "on", "in", "at", "from"}
@@ -299,7 +300,7 @@ def _normalize_echo_target(value: str) -> tuple[str, ...]:
     # "A" can be a literal option identifier, not an indefinite article.
     if words == ["a"]:
         return ("a",)
-    while words and words[0] in _LEADING_SKIP:
+    while len(words) > 1 and words[0] in _LEADING_SKIP:
         words = words[1:]
     # Strip trailing prepositional phrases (e.g. "by name", "to the page")
     # so that "table by name" normalizes to "table". Only strips when a

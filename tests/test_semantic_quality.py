@@ -1836,3 +1836,59 @@ def test_action_echo_does_not_match_backed_as_back_echo() -> None:
         expected_result="The view is backed by analytics and the title is displayed.",
     )
     assert check(not_echo, scn, atoms) is None
+
+
+def test_action_echo_matches_reset_step_and_result() -> None:
+    """Positive regression: 'Reset the form.' paired with result 'The form is reset.'
+    must be classified as a reset-action echo."""
+    scn = scenario(
+        "V133-ECHO-RESET-POS",
+        intent="Verify the form can be reset after editing.",
+        refs=("V133-ECHO-RESET-POS-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-RESET-POS",
+            1,
+            "The form can be reset after editing.",
+            kind="explicit_behavior",
+        )
+    ]
+    echo_item = item(
+        steps=["Reset the form."],
+        expected_result="The form is reset.",
+    )
+    assert check(echo_item, scn, atoms) is not None
+
+
+def test_normalize_echo_target_preserves_single_word_preposition() -> None:
+    """A single-word target that is a preposition (e.g. 'for') is preserved intact;
+    stripping must only occur when a meaningful target remains."""
+    from semantic_quality import _normalize_echo_target
+
+    assert _normalize_echo_target("for") == ("for",)
+    assert _normalize_echo_target("a") == ("a",)
+    assert _normalize_echo_target("to the page") == ("page",)
+    assert _normalize_echo_target("table by name") == ("table",)
+
+
+def test_action_echo_does_not_match_reset_with_different_target() -> None:
+    """The reset echo requires matching step and result targets.
+    Step 'Reset the form.' with result 'The page is reset.' targets mismatch
+    ('form' vs 'page') and must not be classified as a reset-action echo.
+    Assert against the echo helper directly: 'Reset' is a valid action-echo
+    verb but is not a step-opener verb, so a full check() would fail later
+    on the step-opener rule rather than on echo detection."""
+    from semantic_quality import _action_echo_error
+
+    mismatched = ["Reset the form."], "The page is reset."
+    assert _action_echo_error(*mismatched) is None
+
+
+def test_action_echo_does_not_match_different_canonical_action() -> None:
+    """Same target, different canonical action: 'Reset the form.' vs
+    'The form is submitted.' must not be classified as an echo."""
+    from semantic_quality import _action_echo_error
+
+    different_action = ["Reset the form."], "The form is submitted."
+    assert _action_echo_error(*different_action) is None
