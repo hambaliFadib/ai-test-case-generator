@@ -185,16 +185,17 @@ _OBSERVABLE = re.compile(
 _ACTION_STEP_FOR_ECHO = re.compile(
     r"^(?:(?:\d+[.)]\s*|[-*•]\s*)*)(?:please\s+)?(?P<verb>select|choose|click|press|enter|type|fill|open|close|create|remove|delete|add|clear|upload|download|update|hapus|menghapus|buat|membuat|tambahkan|menambahkan|kosongkan|mengosongkan|unggah|mengunggah|unduh|mengunduh|ubah|mengubah|perbarui|memperbarui|submit|save|simpan|menyimpan|tutup|menutup|"
     r"pilih|memilih|klik|mengklik|tekan|menekan|masukkan|memasukkan|input|menginput|"
-    r"ketik|mengetik|isi|mengisi|buka|membuka|kirim|kirimkan|mengirim|mengirimkan|submitkan)\s+"
+    r"ketik|mengetik|isi|mengisi|buka|membuka|kirim|kirimkan|mengirim|mengirimkan|submitkan|"
+    r"login|log\s+in|logout|log\s+out|navigate|navigate\s+to|filter|sort|search|view|hover|"
+    r"back|refresh|retry|reset|toggle|switch|drag|drop|scroll|wait|attempt|try|review|inspect|"
+    r"confirm|access|set|leave)\s+"
     r"(?P<target>.+?)[.!?]*$",
     re.IGNORECASE,
 )
 _ACTION_RESULT_ECHO = re.compile(
     r"^(?:the\s+)?(?P<target>.+?)\s+"
     r"(?:(?:is|are|was|were|has\s+been|have\s+been|had\s+been)\s+)?"
-    r"(?P<verb>selected|chosen|clicked|pressed|entered|typed|filled|opened|closed|created|removed|deleted|added|cleared|uploaded|downloaded|updated|dihapus|terhapus|dibuat|terbuat|ditambahkan|dikosongkan|diunggah|terunggah|diunduh|terunduh|diperbarui|diubah|submitted|saved|disimpan|tersimpan|ditutup|tertutup|"
-    r"dipilih|terpilih|diklik|ditekan|dimasukkan|dimasukan|diinput|diketik|diisi|terisi|"
-    r"dibuka|terbuka|dikirim|terkirim|disubmit|disubmitkan|diajukan)[.!?]*$",
+    r"(?P<verb>selected|chosen|clicked|pressed|entered|typed|filled|opened|closed|created|removed|deleted|added|cleared|uploaded|downloaded|updated|logged\s+in|logged\s+out|navigated|filtered|sorted|searched|viewed|hovered|backed|refreshed|retried|reset|resettled|toggled|switched|dragged|dropped|scrolled|waited|attempted|tried|reviewed|inspected|confirmed|accessed|set|left|saved|submitted|dihapus|terhapus|dibuat|terbuat|ditambahkan|dikosongkan|diunggah|terunggah|diunduh|terunduh|diperbarui|diubah|disubmit|disubmitkan|diajukan|disimpan|tersimpan|ditutup|tertutup|dipilih|terpilih|diklik|ditekan|dimasukkan|dimasukan|diinput|diketik|diisi|terisi|dibuka|terbuka|dikirim|terkirim)(\s+to|\s+by\s+.+|\s+for\s+.+|\s+over\s+.+)?[.!?]*$",
     re.IGNORECASE,
 )
 _STEP_TO_ACTION = {
@@ -218,6 +219,31 @@ _STEP_TO_ACTION = {
     "submit": "submit", "submitkan": "submit", "kirim": "submit",
     "kirimkan": "submit", "mengirim": "submit", "mengirimkan": "submit",
     "save": "save", "simpan": "save", "menyimpan": "save",
+    "login": "login", "log in": "login", "logout": "logout", "log out": "logout",
+    "navigate": "navigate", "navigate to": "navigate",
+    "filter": "filter",
+    "sort": "sort",
+    "search": "search",
+    "view": "view",
+    "hover": "hover",
+    "back": "back",
+    "refresh": "refresh",
+    "retry": "retry",
+    "reset": "reset",
+    "toggle": "toggle",
+    "switch": "switch",
+    "drag": "drag",
+    "drop": "drop",
+    "scroll": "scroll",
+    "wait": "wait",
+    "attempt": "attempt",
+    "try": "try",
+    "review": "review",
+    "inspect": "inspect",
+    "confirm": "confirm",
+    "access": "access",
+    "set": "set",
+    "leave": "leave",
 }
 _RESULT_TO_ACTION = {
     "selected": "select", "dipilih": "select", "terpilih": "select",
@@ -239,8 +265,35 @@ _RESULT_TO_ACTION = {
     "submitted": "submit", "dikirim": "submit", "terkirim": "submit",
     "disubmit": "submit", "disubmitkan": "submit", "diajukan": "submit",
     "saved": "save", "disimpan": "save", "tersimpan": "save",
+    "logged in": "login", "logged out": "logout",
+    "navigated": "navigate",
+    "filtered": "filter",
+    "sorted": "sort",
+    "searched": "search",
+    "viewed": "view",
+    "hovered": "hover",
+    "backed": "back",
+    "refreshed": "refresh",
+    "retried": "retry",
+    "resettled": "reset",
+    "toggled": "toggle",
+    "switched": "switch",
+    "dragged": "drag",
+    "dropped": "drop",
+    "scrolled": "scroll",
+    "waited": "wait",
+    "attempted": "attempt",
+    "tried": "try",
+    "reviewed": "review",
+    "inspected": "inspect",
+    "confirmed": "confirm",
+    "accessed": "access",
+    "set": "set",
+    "left": "leave",
 }
 _ECHO_TARGET_IGNORED = {"field", "button", "control", "element", "item", "value", "option"}
+_LEADING_PREPOSITIONS = {"to", "for", "by", "over", "into", "on", "in", "at", "from"}
+_LEADING_SKIP = _LEADING_PREPOSITIONS | {"the", "a", "an"}
 
 
 def _normalize_echo_target(value: str) -> tuple[str, ...]:
@@ -248,8 +301,14 @@ def _normalize_echo_target(value: str) -> tuple[str, ...]:
     # "A" can be a literal option identifier, not an indefinite article.
     if words == ["a"]:
         return ("a",)
-    if words and words[0] in {"the", "a", "an"}:
+    while words and words[0] in _LEADING_SKIP:
         words = words[1:]
+    # Strip trailing prepositional phrases (e.g. "by name", "to the page")
+    # so that "table by name" normalizes to "table". Only strips when a
+    # preposition is followed by at least one word; does not strip conjunctions
+    # like "and" or "or" to avoid false matches (e.g. "view and table" ≠ "view").
+    while len(words) >= 2 and words[-2] in _LEADING_PREPOSITIONS:
+        words = words[:-2]
     return tuple(word for word in words if word not in _ECHO_TARGET_IGNORED)
 
 
