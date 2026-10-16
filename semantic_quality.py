@@ -293,11 +293,14 @@ _RESULT_TO_ACTION = {
 _ECHO_TARGET_IGNORED = {"field", "button", "control", "element", "item", "value", "option"}
 _LEADING_PREPOSITIONS = {"to", "for", "by", "over", "into", "on", "in", "at", "from"}
 _LEADING_SKIP = _LEADING_PREPOSITIONS | {"the", "a", "an"}
-# Prepositions treated as optional trailing qualifiers to strip (e.g. "by name",
-# "to the page"). `for` is deliberately excluded: a trailing `for <entity>`
-# (e.g. "report for administrators") is a meaningful target modifier, not a
-# filter, and stripping it would create false-positive action-echo matches.
-_TRAILING_QUALIFIERS = {"by", "to", "in", "on", "at", "from", "over", "into"}
+# Prepositions treated as optional trailing qualifiers to strip (e.g. "by name").
+# Only `by` and `to` qualify: `by <qualifier>` disambiguates the entity
+# (e.g. "table by name"), and `to the page` is handled by leading-skip already.
+# All other trailing prepositions (`for`, `on`, `in`, `from`, etc.) introduce a
+# meaningful target modifier or context and must NOT be stripped — otherwise
+# "report on dashboard", "items in cart", and "report from billing" would each
+# collapse to their head noun, producing false-positive action-echo matches.
+_TRAILING_QUALIFIERS = {"by", "to"}
 
 
 def _normalize_echo_target(value: str) -> tuple[str, ...]:

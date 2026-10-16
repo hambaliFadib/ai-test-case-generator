@@ -1872,7 +1872,7 @@ def test_normalize_echo_target_preserves_single_word_preposition() -> None:
     assert _normalize_echo_target("table by name") == ("table",)
 
 
-def test_action_echo_does_not_match_reset_with_meaningful_target_modifier() -> None:
+def test_action_echo_does_not_match_save_with_meaningful_target_modifier_for() -> None:
     """Semantic decision: a trailing `for <entity>` (e.g. 'report for administrators')
     is a meaningful target modifier, not an optional filter. It must NOT be stripped,
     so 'Save the report.' and 'The report for administrators is saved.' are distinct
@@ -1882,6 +1882,23 @@ def test_action_echo_does_not_match_reset_with_meaningful_target_modifier() -> N
 
     distinct = ["Save the report."], "The report for administrators is saved."
     assert _action_echo_error(*distinct) is None
+
+
+def test_action_echo_does_not_match_with_on_in_from_modifiers() -> None:
+    """`on`, `in`, and `from` introduce meaningful target modifiers/contexts,
+    not optional filters: 'report on dashboard', 'items in cart', and
+    'report from billing' must each be preserved as distinct targets so the
+    corresponding echo checks return None (no false positive)."""
+    from semantic_quality import _normalize_echo_target, _action_echo_error as aee
+
+    # Normalization preserves the modifier tokens.
+    assert _normalize_echo_target("report on dashboard") == ("report", "on", "dashboard")
+    assert _normalize_echo_target("items in cart") == ("items", "in", "cart")
+    assert _normalize_echo_target("report from billing") == ("report", "from", "billing")
+    # Corresponding echo checks do not false-positive.
+    assert aee(["Save the report."], "The report on dashboard is saved.") is None
+    assert aee(["Select the items."], "The items in cart are selected.") is None
+    assert aee(["Save the report."], "The report from billing is saved.") is None
 
 
 def test_action_echo_does_not_match_reset_with_different_target() -> None:
