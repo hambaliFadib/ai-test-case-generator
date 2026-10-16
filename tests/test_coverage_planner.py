@@ -856,6 +856,29 @@ def test_static_list_evidence_order_preserved_not_alphabetized() -> None:
     )
 
 
+def test_non_credential_accepts_allows_does_not_invent_password() -> None:
+    """Pattern C 'accepts X and allows Y' must not invent credential type."""
+    from coverage_planner import render_intent
+
+    atom = EvidenceAtom(
+        id="REQ-NC-E01",
+        requirement_ref="REQ-NC",
+        kind="behavior",
+        text="The system accepts a valid email address and allows registration.",
+    )
+    intent = render_intent(
+        "REQ-NC", "static_list",
+        {"refs": ("REQ-NC-E01",)},
+        [atom],
+        "registration",
+    )
+    assert "a valid email address" in intent
+    assert "registration" in intent
+    # Must not invent credentials or password mention.
+    assert "username" not in intent.lower(), intent
+    assert "password" not in intent.lower(), intent
+
+
 def test_req002_no_invented_system_outcome() -> None:
     """REQ-002 identifies an action but defines no independent resulting behaviour."""
     req = requirement("REQ-002", 'The user submits by clicking "Login".')
