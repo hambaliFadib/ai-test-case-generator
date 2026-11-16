@@ -203,9 +203,18 @@ def test_unrelated_http_error_is_not_systemic() -> None:
     assert result.status == "failed"
     assert result.backfill_count > 0
     assert not any(
-        "backfill skipped" in diagnostic
+        "backfill skipped: every initial batch failed with provider unavailability"
+        in diagnostic
         for diagnostic in result.diagnostics
     )
+    attempted = [
+        record
+        for record in result.batch_diagnostics
+        if record.provider_status_code is not None
+    ]
+    assert attempted
+    assert {record.provider_status_code for record in attempted} == {401}
+    assert not any(record.provider_unavailable for record in attempted)
 
 
 def test_generic_runtime_error_is_not_systemic() -> None:
