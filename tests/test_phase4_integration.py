@@ -302,7 +302,7 @@ def test_web_serializes_safe_batch_diagnostics_without_changing_csv_contract() -
             "error_code": None,
             "error_type": None,
             "coverage_before_count": 1,
-            "coverage_after_count": 0,
+            "coverage_after_count": 1,
             "missing_before": ["REQ-001-S02"],
             "missing_after": ["REQ-001-S02"],
         }
