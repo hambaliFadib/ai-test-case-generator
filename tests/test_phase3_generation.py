@@ -617,8 +617,22 @@ def test_orchestrator_persistent_missing_is_partial_and_backfill_is_bounded() ->
 
     assert result.status == "partial"
     assert result.missing_scenarios == ["REQ-010-S01"]
-    assert result.backfill_count == 1
+    assert result.backfill_count == 2
     assert result.coverage_percentage == 90.0
+
+
+def test_orchestrator_skips_identical_backfill_prompt_without_progress() -> None:
+    def responder(prompt: str, _: int) -> LLMResult:
+        refs = prompt_scenario_refs(prompt)
+        scenarios = [scenario(ref.rsplit("-S", 1)[0], int(ref.rsplit("-S", 1)[1])) for ref in refs]
+        return LLMResult(response_for(scenarios[:-1]), "fake")
+
+    adapter = FakeAdapter(responder)
+    result = generate_test_suite(parsed_input(1), None, adapter=adapter)
+
+    assert result.status == "partial"
+    assert result.missing_scenarios == ["REQ-001-S01"]
+    assert result.backfill_count == 1
     assert len(adapter.prompts) == 2
     assert any(
         record.outcome == "skipped_no_progress"
