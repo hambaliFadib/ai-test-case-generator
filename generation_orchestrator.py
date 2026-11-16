@@ -184,6 +184,7 @@ def generate_test_suite(
     initial_missing = list(initial_audit.missing_scenario_ids)
     backfill_count = 0
     current_audit = initial_audit
+    attempted_backfill_prompts: dict[str, int] = {}
 
     planned_by_id = {
         scenario.id: scenario
@@ -211,19 +212,55 @@ def generate_test_suite(
                 missing_scenarios,
             )
             round_provider_unavailable = True
+            round_skipped_no_progress = False
             for backfill_batch in backfill_batches:
                 target_scenarios = backfill_batch.scenarios
                 target_requirements = [
                     requirement_by_id[requirement_id]
                     for requirement_id in backfill_batch.requirement_ids
                 ]
+                before = audit_coverage(plan, merged_cases)
+                prompt = build_batch_prompt(
+                    target_requirements,
+                    target_scenarios,
+                    language_target=language_target,
+                    output_language=output_language,
+                    evidence_atoms=plan.evidence_atoms,
+                )
+                prompt_hash = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
+                previous_coverage = attempted_backfill_prompts.get(prompt_hash)
+                if previous_coverage is not None and len(before.generated_scenario_ids) <= previous_coverage:
+                    round_skipped_no_progress = True
+                    diagnostics.append(
+                        f"backfill skipped: repeated prompt without coverage progress "
+                        f"(round {attempt + 1}, {backfill_batch.id})"
+                    )
+                    batch_diagnostics.append(BatchDiagnostic(
+                        call_index=call_index + 1,
+                        phase="backfill",
+                        round_number=attempt + 1,
+                        batch_id=backfill_batch.id,
+                        target_scenario_ids=[scenario.id for scenario in target_scenarios],
+                        rejected_scenarios=[
+                            ScenarioRejection(scenario.id, "backfill_gate", "repeated_prompt_no_progress")
+                            for scenario in target_scenarios
+                        ],
+                        outcome="skipped_no_progress",
+                        prompt_sha256=prompt_hash,
+                        error_code="repeated_prompt_no_progress",
+                        coverage_before_count=len(before.generated_scenario_ids),
+                        coverage_after_count=len(before.generated_scenario_ids),
+                        missing_before=list(before.missing_scenario_ids),
+                        missing_after=list(before.missing_scenario_ids),
+                    ))
+                    continue
+                attempted_backfill_prompts[prompt_hash] = len(before.generated_scenario_ids)
                 diagnostics.append(
                     f"backfill round {attempt + 1} {backfill_batch.id} targeting "
                     + ", ".join(scenario.id for scenario in target_scenarios)
                 )
                 backfill_count += 1
                 call_index += 1
-                before = audit_coverage(plan, merged_cases)
                 outcome = _generate_batch(
                     adapter,
                     target_requirements,
@@ -255,6 +292,12 @@ def generate_test_suite(
             if not current_audit.missing_scenario_ids:
                 break
             if round_provider_unavailable and backfill_batches:
+                if round_skipped_no_progress:
+                    diagnostics.append(
+                        f"backfill stopped after round {attempt + 1}: repeated prompt "
+                        "produced no new coverage"
+                    )
+                    break
                 diagnostics.append(
                     f"backfill stopped after round {attempt + 1}: every batch "
                     "failed with provider unavailability"
