@@ -276,7 +276,7 @@ def test_web_serializes_safe_batch_diagnostics_without_changing_csv_contract() -
 
     payload = web_router._serialize_result(generated, "comprehensive")
 
-    assert payload["batch_diagnostics_schema_version"] == 1
+    assert payload["batch_diagnostics_schema_version"] == 2
     assert payload["batch_diagnostics"] == [
         {
             "call_index": 2,
