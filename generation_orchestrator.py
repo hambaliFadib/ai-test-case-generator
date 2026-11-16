@@ -211,7 +211,7 @@ def generate_test_suite(
                 requirements,
                 missing_scenarios,
             )
-            round_provider_unavailable = True
+            round_all_provider_unavailable = True
             round_skipped_no_progress = False
             round_provider_calls = 0
             for backfill_batch in backfill_batches:
@@ -278,10 +278,8 @@ def generate_test_suite(
                     coverage_before=before,
                 )
                 merged_cases.extend(outcome.test_cases)
-                if outcome.provider_unavailable:
-                    round_provider_unavailable = True
-                else:
-                    round_provider_unavailable = False
+                if not outcome.provider_unavailable:
+                    round_all_provider_unavailable = False
                     attempted_backfill_prompts.add(prompt_hash)
                 current_audit = audit_coverage(plan, merged_cases)
                 if outcome.diagnostic is not None:
@@ -300,7 +298,7 @@ def generate_test_suite(
                     "produced no new coverage"
                 )
                 break
-            if round_provider_calls > 0 and round_provider_unavailable and not round_skipped_no_progress:
+            if round_provider_calls > 0 and round_all_provider_unavailable and not round_skipped_no_progress:
                 diagnostics.append(
                     f"backfill stopped after round {attempt + 1}: every attempted batch "
                     "failed with provider unavailability"
