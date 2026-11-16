@@ -112,7 +112,6 @@ class CoveragePlan:
     requirements: list[RequirementCoveragePlan] = field(default_factory=list)
     evidence_atoms: list[EvidenceAtom] = field(default_factory=list)
     unresolved_baseline: list[UnresolvedBaselineItem] = field(default_factory=list)
-    batch_diagnostics: list[BatchDiagnostic] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -193,3 +192,4 @@ class GenerationResult:
     diagnostics: list[str] = field(default_factory=list)
     llm_results: list[LLMResult] = field(default_factory=list)
     unresolved_baseline: list[UnresolvedBaselineItem] = field(default_factory=list)
+    batch_diagnostics: list[BatchDiagnostic] = field(default_factory=list)
