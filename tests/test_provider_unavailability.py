@@ -366,3 +366,34 @@ def test_secret_sentinel_not_exposed_through_redaction_path() -> None:
     assert "[REDACTED]" in redact_sensitive_detail(
         f"OpenAI request failed: {sentinel}"
     )
+
+
+def test_provider_unavailable_backfill_prompt_can_be_retried_after_mixed_round() -> None:
+    def responder(prompt: str, call_number: int) -> LLMResult:
+        if call_number in {1, 3, 5}:
+            raise _http_error(503)
+        if call_number in {2, 4}:
+            return LLMResult("[]", "fake")
+        return _success_responder(prompt, call_number)
+
+    adapter = FakeAdapter(responder)
+    result = generate_test_suite(parsed_input(9), None, adapter=adapter)
+
+    # The first backfill batch failed at call 3. It must be retried
+    # unchanged at call 5 rather than suppressed by its prior hash.
+    assert adapter.prompts[2] == adapter.prompts[4]
+    assert result.backfill_count == 3
+    assert result.status == "partial"
+    assert len(result.missing_scenarios) == 9
+
+    provider_call_records = [
+        record for record in result.batch_diagnostics
+        if record.outcome != "skipped_no_progress"
+    ]
+    assert [record.call_index for record in provider_call_records] == [1, 2, 3, 4, 5]
+    skipped_records = [
+        record for record in result.batch_diagnostics
+        if record.outcome == "skipped_no_progress"
+    ]
+    assert skipped_records
+    assert all(record.call_index is None for record in skipped_records)
