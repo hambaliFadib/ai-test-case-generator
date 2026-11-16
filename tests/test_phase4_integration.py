@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 import main
 from app_version import APP_VERSION
 from csv_exporter import export_to_csv, export_traceable_to_csv
-from models.coverage_model import GenerationResult
+from models.coverage_model import BatchDiagnostic, GenerationResult, ScenarioRejection
 from models.input_model import ParsedInput
 from models.test_case_model import TestCase
 from web.app import app
@@ -247,3 +247,64 @@ def test_cli_and_web_redact_credential_shaped_failure_details(monkeypatch, capsy
     assert "[REDACTED]" in captured.err
     assert "fake-bearer-token" not in web_router._redact(diagnostic)
     assert "sk-test-secret-value" not in web_router._redact(diagnostic)
+
+def test_web_serializes_safe_batch_diagnostics_without_changing_csv_contract() -> None:
+    diagnostic = BatchDiagnostic(
+        call_index=2,
+        phase="backfill",
+        round_number=1,
+        batch_id="BACKFILL-BATCH-001",
+        target_scenario_ids=["REQ-001-S02"],
+        accepted_scenario_ids=[],
+        rejected_scenarios=[
+            ScenarioRejection("REQ-001-S02", "provider_response", "scenario_omitted")
+        ],
+        outcome="rejected_content",
+        prompt_sha256="a" * 64,
+        finish_reason="stop",
+        input_tokens=50,
+        output_tokens=10,
+        coverage_before_count=1,
+        coverage_after_count=1,
+        missing_before=["REQ-001-S02"],
+        missing_after=["REQ-001-S02"],
+    )
+    generated = replace(
+        result("partial", scenario_count=2, generated_count=1, missing=["REQ-001-S02"]),
+        batch_diagnostics=[diagnostic],
+    )
+
+    payload = web_router._serialize_result(generated, "comprehensive")
+
+    assert payload["batch_diagnostics_schema_version"] == 1
+    assert payload["batch_diagnostics"] == [
+        {
+            "call_index": 2,
+            "phase": "backfill",
+            "round_number": 1,
+            "batch_id": "BACKFILL-BATCH-001",
+            "target_scenario_ids": ["REQ-001-S02"],
+            "accepted_scenario_ids": [],
+            "rejected_scenarios": [
+                {
+                    "scenario_ref": "REQ-001-S02",
+                    "stage": "provider_response",
+                    "reason_code": "scenario_omitted",
+                }
+            ],
+            "outcome": "rejected_content",
+            "prompt_sha256": "a" * 64,
+            "finish_reason": "stop",
+            "input_tokens": 50,
+            "output_tokens": 10,
+            "provider_status_code": None,
+            "provider_unavailable": False,
+            "error_code": None,
+            "error_type": None,
+            "coverage_before_count": 1,
+            "coverage_after_count": 0,
+            "missing_before": ["REQ-001-S02"],
+            "missing_after": ["REQ-001-S02"],
+        }
+    ]
+
