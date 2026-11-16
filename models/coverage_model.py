@@ -23,7 +23,7 @@ SCENARIO_TECHNIQUES: tuple[str, ...] = (
 )
 
 
-BATCH_DIAGNOSTICS_SCHEMA_VERSION = 1
+BATCH_DIAGNOSTICS_SCHEMA_VERSION = 2
 
 
 @dataclass(frozen=True)
@@ -148,7 +148,7 @@ class ScenarioRejection:
 class BatchDiagnostic:
     """Safe, structured provenance for one initial or backfill provider call."""
 
-    call_index: int
+    call_index: int | None
     phase: str
     round_number: int | None
     batch_id: str
