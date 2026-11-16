@@ -628,7 +628,7 @@ def test_orchestrator_skips_identical_backfill_prompt_without_progress() -> None
         return LLMResult(response_for(scenarios[:-1]), "fake")
 
     adapter = FakeAdapter(responder)
-    result = generate_test_suite(parsed_input(1), None, adapter=adapter)
+    result = generate_test_suite(parsed_input(2), None, adapter=adapter)
 
     assert result.status == "partial"
     assert result.missing_scenarios == ["REQ-001-S01"]
