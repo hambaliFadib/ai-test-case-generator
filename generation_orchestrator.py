@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
+import hashlib
 import re
 import unicodedata
 from typing import Any
@@ -16,7 +17,7 @@ from coverage_auditor import audit_coverage
 from coverage_planner import plan_coverage
 from generation_utils import is_truncated
 from llm_adapter import LLMError, create_adapter
-from models.coverage_model import CoveragePlan, EvidenceAtom, GenerationResult, ScenarioIntent
+from models.coverage_model import BatchDiagnostic, CoveragePlan, EvidenceAtom, GenerationResult, ScenarioIntent, ScenarioRejection
 from models.input_model import ParsedInput
 from models.llm_result import LLMResult
 from models.requirement_model import Requirement
@@ -24,7 +25,7 @@ from models.test_case_model import TestCase
 from prompt_builder import build_batch_prompt
 from profiles import DEFAULT_PROFILE, resolve_profile
 from requirement_analyzer import analyze_requirements
-from response_parser import parse_batch_response_result
+from response_parser import ParseError, ValidationError, parse_batch_response_result
 from validator import (
     TestCaseValidationError,
     validate_batch_traceability,
@@ -93,6 +94,8 @@ def generate_test_suite(
 
     diagnostics: list[str] = []
     llm_results: list[LLMResult] = []
+    batch_diagnostics: list[BatchDiagnostic] = []
+    call_index = 0
     try:
         resolved_profile = resolve_profile(profile)
     except Exception as exc:
@@ -147,6 +150,8 @@ def generate_test_suite(
     merged_cases: list[TestCase] = []
     initial_wave_provider_unavailable = True
     for batch in batches:
+        call_index += 1
+        before = audit_coverage(plan, merged_cases)
         outcome = _generate_batch(
             adapter,
             [requirement_by_id[requirement_id] for requirement_id in batch.requirement_ids],
@@ -157,8 +162,20 @@ def generate_test_suite(
             llm_results,
             evidence_atoms=plan.evidence_atoms,
             existing_cases=merged_cases,
+            call_index=call_index,
+            phase="initial",
+            round_number=None,
+            batch_id=batch.id,
+            coverage_before=before,
         )
         merged_cases.extend(outcome.test_cases)
+        after = audit_coverage(plan, merged_cases)
+        if outcome.diagnostic is not None:
+            batch_diagnostics.append(replace(
+                outcome.diagnostic,
+                coverage_after_count=len(after.generated_scenario_ids),
+                missing_after=list(after.missing_scenario_ids),
+            ))
         if not outcome.provider_unavailable:
             initial_wave_provider_unavailable = False
 
@@ -205,6 +222,8 @@ def generate_test_suite(
                     + ", ".join(scenario.id for scenario in target_scenarios)
                 )
                 backfill_count += 1
+                call_index += 1
+                before = audit_coverage(plan, merged_cases)
                 outcome = _generate_batch(
                     adapter,
                     target_requirements,
@@ -215,11 +234,22 @@ def generate_test_suite(
                     llm_results,
                     evidence_atoms=plan.evidence_atoms,
                     existing_cases=merged_cases,
+                    call_index=call_index,
+                    phase="backfill",
+                    round_number=attempt + 1,
+                    batch_id=backfill_batch.id,
+                    coverage_before=before,
                 )
                 merged_cases.extend(outcome.test_cases)
                 if not outcome.provider_unavailable:
                     round_provider_unavailable = False
                 current_audit = audit_coverage(plan, merged_cases)
+                if outcome.diagnostic is not None:
+                    batch_diagnostics.append(replace(
+                        outcome.diagnostic,
+                        coverage_after_count=len(current_audit.generated_scenario_ids),
+                        missing_after=list(current_audit.missing_scenario_ids),
+                    ))
                 if not current_audit.missing_scenario_ids:
                     break
             if not current_audit.missing_scenario_ids:
@@ -272,6 +302,7 @@ def generate_test_suite(
         initial_missing_scenarios=initial_missing,
         diagnostics=diagnostics,
         llm_results=llm_results,
+        batch_diagnostics=batch_diagnostics,
         unresolved_baseline=(
             [] if status == "failed" else list(plan.unresolved_baseline)
         ),
@@ -285,6 +316,7 @@ class BatchOutcome:
     test_cases: list[TestCase] = field(default_factory=list)
     provider_unavailable: bool = False
     provider_error: bool = False
+    diagnostic: BatchDiagnostic | None = None
 
 
 def _generate_batch(
@@ -297,8 +329,48 @@ def _generate_batch(
     llm_results: list[LLMResult],
     evidence_atoms: list[EvidenceAtom] | None = None,
     existing_cases: list[TestCase] | None = None,
+    *,
+    call_index: int = 1,
+    phase: str = "initial",
+    round_number: int | None = None,
+    batch_id: str = "BATCH-UNKNOWN",
+    coverage_before: Any | None = None,
 ) -> BatchOutcome:
-    """Generate one strict batch; failures return no cases and remain auditable."""
+    """Generate one batch and return privacy-safe, scenario-level provenance."""
+
+    target_ids = [scenario.id for scenario in scenarios]
+    prompt_hash: str | None = None
+    result: LLMResult | None = None
+    rejected: list[ScenarioRejection] = []
+    duplicate_ids: list[str] = []
+    accepted_ids: list[str] = []
+    provider_status: int | None = None
+    provider_unavailable = False
+    error_code: str | None = None
+    error_type: str | None = None
+    outcome_name = "unknown"
+
+    def diagnostic() -> BatchDiagnostic:
+        return BatchDiagnostic(
+            call_index=call_index,
+            phase=phase,
+            round_number=round_number,
+            batch_id=batch_id,
+            target_scenario_ids=target_ids,
+            accepted_scenario_ids=accepted_ids,
+            rejected_scenarios=rejected,
+            outcome=outcome_name,
+            prompt_sha256=prompt_hash,
+            finish_reason=result.finish_reason if result else None,
+            input_tokens=result.input_tokens if result else None,
+            output_tokens=result.output_tokens if result else None,
+            provider_status_code=provider_status,
+            provider_unavailable=provider_unavailable,
+            error_code=error_code,
+            error_type=error_type,
+            coverage_before_count=len(coverage_before.generated_scenario_ids) if coverage_before else len(existing_cases or []),
+            missing_before=list(coverage_before.missing_scenario_ids) if coverage_before else target_ids,
+        )
 
     try:
         prompt = build_batch_prompt(
@@ -308,6 +380,7 @@ def _generate_batch(
             output_language=output_language,
             evidence_atoms=evidence_atoms,
         )
+        prompt_hash = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
         raw_result = (
             adapter.generate_result(prompt)
             if callable(getattr(adapter, "generate_result", None))
@@ -316,15 +389,36 @@ def _generate_batch(
         result = _coerce_result(raw_result)
         llm_results.append(result)
         if is_truncated(result):
-            raise ValueError(
-                f"provider result was truncated (finish_reason={result.finish_reason})"
+            outcome_name = "rejected_truncated"
+            error_code = "provider_output_truncated"
+            error_type = "truncation"
+            rejected = [ScenarioRejection(item, "provider", error_code) for item in target_ids]
+            diagnostics.append("batch generation failed: provider result was truncated")
+            return BatchOutcome(diagnostic=diagnostic())
+        try:
+            parsed = parse_batch_response_result(
+                result.text,
+                scenarios,
+                language_target=language_target,
+                evidence_atoms=evidence_atoms,
             )
-        parsed = parse_batch_response_result(
-            result.text,
-            scenarios,
-            language_target=language_target,
-            evidence_atoms=evidence_atoms,
-        )
+        except ParseError as exc:
+            outcome_name = "rejected_parse"
+            error_code = "invalid_json"
+            error_type = type(exc).__name__
+            rejected = [ScenarioRejection(item, "parse", error_code) for item in target_ids]
+            diagnostics.append(f"batch generation failed: {type(exc).__name__}")
+            return BatchOutcome(diagnostic=diagnostic())
+        except ValidationError as exc:
+            outcome_name = "rejected_traceability"
+            error_code = "batch_traceability_invalid"
+            error_type = type(exc).__name__
+            rejected = [ScenarioRejection(item, "traceability", error_code) for item in target_ids]
+            diagnostics.append(f"batch generation failed: {type(exc).__name__}")
+            return BatchOutcome(diagnostic=diagnostic())
+
+        for scenario_id in parsed.invalid_scenario_ids:
+            rejected.append(ScenarioRejection(scenario_id, "content_validation", "semantic_or_contract_rejection"))
         diagnostics.extend(f"batch item rejected: {error}" for error in parsed.item_errors)
         validate_batch_traceability(parsed.test_cases, scenarios)
         unique_cases = _retain_unique_content(
@@ -332,22 +426,38 @@ def _generate_batch(
             existing_cases or [],
             diagnostics,
         )
-        return BatchOutcome(test_cases=unique_cases)
+        retained_ids = {case.scenario_ref for case in unique_cases}
+        parsed_ids = {case.scenario_ref for case in parsed.test_cases}
+        for scenario_id in sorted(parsed_ids - retained_ids):
+            duplicate_ids.append(scenario_id)
+            rejected.append(ScenarioRejection(scenario_id, "deduplication", "duplicate_operational_content"))
+        accepted_ids = [case.scenario_ref for case in unique_cases]
+        returned_ids = parsed_ids | set(parsed.invalid_scenario_ids)
+        for scenario_id in target_ids:
+            if scenario_id not in returned_ids:
+                rejected.append(ScenarioRejection(scenario_id, "provider_response", "scenario_omitted"))
+        outcome_name = "accepted" if not rejected else ("partial_accepted" if accepted_ids else "rejected_content")
+        return BatchOutcome(test_cases=unique_cases, diagnostic=diagnostic())
     except LLMError as exc:
+        provider_status = exc.status_code
         provider_unavailable = bool(exc.provider_unavailable)
-        detail = (
-            "provider unavailable"
-            if provider_unavailable
-            else str(exc)
-        )
-        diagnostics.append(f"batch generation failed: {detail}")
+        outcome_name = "provider_unavailable" if provider_unavailable else "provider_error"
+        error_code = "provider_http_error" if provider_status is not None else "provider_transport_error"
+        error_type = type(exc).__name__
+        rejected = [ScenarioRejection(item, "provider", error_code) for item in target_ids]
+        diagnostics.append("batch generation failed: provider unavailable" if provider_unavailable else f"batch generation failed: {type(exc).__name__}")
         return BatchOutcome(
             provider_unavailable=provider_unavailable,
             provider_error=True,
+            diagnostic=diagnostic(),
         )
     except Exception as exc:
-        diagnostics.append(f"batch generation failed: {exc}")
-        return BatchOutcome()
+        outcome_name = "rejected_batch"
+        error_code = "batch_processing_error"
+        error_type = type(exc).__name__
+        rejected = [ScenarioRejection(item, "batch", error_code) for item in target_ids]
+        diagnostics.append(f"batch generation failed: {type(exc).__name__}")
+        return BatchOutcome(diagnostic=diagnostic())
 
 
 def _coerce_result(value: Any) -> LLMResult:
