@@ -25,7 +25,7 @@ from models.test_case_model import TestCase
 from prompt_builder import build_batch_prompt
 from profiles import DEFAULT_PROFILE, resolve_profile
 from requirement_analyzer import analyze_requirements
-from response_parser import ParseError, ValidationError, parse_batch_response_result
+from response_parser import ParseError, ResponseSchemaError, ValidationError, parse_batch_response_result
 from validator import (
     TestCaseValidationError,
     validate_batch_traceability,
@@ -213,6 +213,7 @@ def generate_test_suite(
             )
             round_provider_unavailable = True
             round_skipped_no_progress = False
+            round_provider_calls = 0
             for backfill_batch in backfill_batches:
                 target_scenarios = backfill_batch.scenarios
                 target_requirements = [
@@ -235,7 +236,7 @@ def generate_test_suite(
                         f"(round {attempt + 1}, {backfill_batch.id})"
                     )
                     batch_diagnostics.append(BatchDiagnostic(
-                        call_index=call_index + 1,
+                        call_index=None,
                         phase="backfill",
                         round_number=attempt + 1,
                         batch_id=backfill_batch.id,
@@ -253,13 +254,13 @@ def generate_test_suite(
                         missing_after=list(before.missing_scenario_ids),
                     ))
                     continue
-                attempted_backfill_prompts.add(prompt_hash)
                 diagnostics.append(
                     f"backfill round {attempt + 1} {backfill_batch.id} targeting "
                     + ", ".join(scenario.id for scenario in target_scenarios)
                 )
                 backfill_count += 1
                 call_index += 1
+                round_provider_calls += 1
                 outcome = _generate_batch(
                     adapter,
                     target_requirements,
@@ -277,8 +278,11 @@ def generate_test_suite(
                     coverage_before=before,
                 )
                 merged_cases.extend(outcome.test_cases)
-                if not outcome.provider_unavailable:
+                if outcome.provider_unavailable:
+                    round_provider_unavailable = True
+                else:
                     round_provider_unavailable = False
+                    attempted_backfill_prompts.add(prompt_hash)
                 current_audit = audit_coverage(plan, merged_cases)
                 if outcome.diagnostic is not None:
                     batch_diagnostics.append(replace(
@@ -290,15 +294,15 @@ def generate_test_suite(
                     break
             if not current_audit.missing_scenario_ids:
                 break
-            if round_provider_unavailable and backfill_batches:
-                if round_skipped_no_progress:
-                    diagnostics.append(
-                        f"backfill stopped after round {attempt + 1}: repeated prompt "
-                        "produced no new coverage"
-                    )
-                    break
+            if round_provider_calls == 0 and round_skipped_no_progress:
                 diagnostics.append(
-                    f"backfill stopped after round {attempt + 1}: every batch "
+                    f"backfill stopped after round {attempt + 1}: repeated prompt "
+                    "produced no new coverage"
+                )
+                break
+            if round_provider_calls > 0 and round_provider_unavailable and not round_skipped_no_progress:
+                diagnostics.append(
+                    f"backfill stopped after round {attempt + 1}: every attempted batch "
                     "failed with provider unavailability"
                 )
                 break
@@ -449,6 +453,13 @@ def _generate_batch(
             error_code = "invalid_json"
             error_type = type(exc).__name__
             rejected = [ScenarioRejection(item, "parse", error_code) for item in target_ids]
+            diagnostics.append(f"batch generation failed: {type(exc).__name__}")
+            return BatchOutcome(diagnostic=diagnostic())
+        except ResponseSchemaError as exc:
+            outcome_name = "rejected_schema"
+            error_code = "response_schema_invalid"
+            error_type = type(exc).__name__
+            rejected = [ScenarioRejection(item, "response_schema", error_code) for item in target_ids]
             diagnostics.append(f"batch generation failed: {type(exc).__name__}")
             return BatchOutcome(diagnostic=diagnostic())
         except ValidationError as exc:
