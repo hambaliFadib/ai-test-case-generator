@@ -26,6 +26,10 @@ class ValidationError(ValueError):
         super().__init__(prefix + reason)
 
 
+class ResponseSchemaError(ValidationError):
+    """Raised when the provider response has an invalid batch JSON shape."""
+
+
 LLM_BATCH_CONTENT_FIELDS: tuple[str, ...] = (
     "scenario_ref",
     "title",
@@ -111,7 +115,7 @@ def parse_batch_response_result(
     except json.JSONDecodeError as exc:
         raise ParseError(f"Could not parse batch JSON response: {exc}") from exc
     if not isinstance(decoded, list):
-        raise ValidationError("expected a JSON array of batch test case objects")
+        raise ResponseSchemaError("expected a JSON array of batch test case objects")
 
     # Traceability is batch-fatal. Validate every join key before salvaging
     # item-local natural-language defects so no valid sibling is merged from a
@@ -120,7 +124,7 @@ def parse_batch_response_result(
     normalized_items: list[tuple[int, dict[str, Any], ScenarioIntent]] = []
     for index, item in enumerate(decoded):
         if not isinstance(item, dict):
-            raise ValidationError("expected an object", index)
+            raise ResponseSchemaError("expected an object", index)
         if "scenario_ref" not in item:
             raise ValidationError("missing required field(s): scenario_ref", index)
         scenario_ref = item["scenario_ref"]
