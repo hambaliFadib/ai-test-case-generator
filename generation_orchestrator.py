@@ -184,7 +184,7 @@ def generate_test_suite(
     initial_missing = list(initial_audit.missing_scenario_ids)
     backfill_count = 0
     current_audit = initial_audit
-    attempted_backfill_prompts: dict[str, int] = {}
+    attempted_backfill_prompts: set[str] = set()
 
     planned_by_id = {
         scenario.id: scenario
@@ -228,8 +228,7 @@ def generate_test_suite(
                     evidence_atoms=plan.evidence_atoms,
                 )
                 prompt_hash = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
-                previous_coverage = attempted_backfill_prompts.get(prompt_hash)
-                if previous_coverage is not None and len(before.generated_scenario_ids) <= previous_coverage:
+                if prompt_hash in attempted_backfill_prompts:
                     round_skipped_no_progress = True
                     diagnostics.append(
                         f"backfill skipped: repeated prompt without coverage progress "
@@ -254,7 +253,7 @@ def generate_test_suite(
                         missing_after=list(before.missing_scenario_ids),
                     ))
                     continue
-                attempted_backfill_prompts[prompt_hash] = len(before.generated_scenario_ids)
+                attempted_backfill_prompts.add(prompt_hash)
                 diagnostics.append(
                     f"backfill round {attempt + 1} {backfill_batch.id} targeting "
                     + ", ".join(scenario.id for scenario in target_scenarios)
