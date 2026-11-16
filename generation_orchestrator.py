@@ -494,6 +494,13 @@ def _generate_batch(
             provider_error=True,
             diagnostic=diagnostic(),
         )
+    except TestCaseValidationError as exc:
+        outcome_name = "rejected_traceability"
+        error_code = "batch_traceability_invalid"
+        error_type = type(exc).__name__
+        rejected = [ScenarioRejection(item, "traceability", error_code) for item in target_ids]
+        diagnostics.append(f"batch generation failed: {type(exc).__name__}")
+        return BatchOutcome(diagnostic=diagnostic())
     except Exception as exc:
         outcome_name = "rejected_batch"
         error_code = "batch_processing_error"
