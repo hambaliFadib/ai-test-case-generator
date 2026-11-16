@@ -631,7 +631,7 @@ def test_orchestrator_skips_identical_backfill_prompt_without_progress() -> None
     result = generate_test_suite(parsed_input(2), None, adapter=adapter)
 
     assert result.status == "partial"
-    assert result.missing_scenarios == ["REQ-001-S01"]
+    assert result.missing_scenarios == ["REQ-002-S01"]
     assert result.backfill_count == 1
     assert len(adapter.prompts) == 2
     assert any(
