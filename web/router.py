@@ -197,6 +197,8 @@ def _serialize_result(result: Any, profile: str) -> dict[str, Any]:
         "duplicate_scenarios": list(result.duplicate_scenarios),
         "initial_generated_count": result.initial_generated_count,
         "initial_missing_scenarios": list(result.initial_missing_scenarios),
+        "batch_diagnostics_schema_version": 1,
+        "batch_diagnostics": [asdict(item) for item in result.batch_diagnostics],
         "unresolved_baseline": [
             asdict(item) for item in result.unresolved_baseline
         ],
