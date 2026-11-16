@@ -352,12 +352,17 @@ def test_secret_sentinel_not_exposed_through_redaction_path() -> None:
     )
     result = generate_test_suite(parsed_input(7), None, adapter=adapter)
 
-    # Raw diagnostics carry the provider message verbatim; the API
-    # serialization path is the redaction boundary.
+    # Generation diagnostics must not retain raw exception messages.
+    raw_diagnostics = " ".join(result.diagnostics)
+    assert sentinel not in raw_diagnostics
+
+    # The API redaction helper remains a defense-in-depth boundary for any
+    # legacy or externally supplied detail that still contains a credential.
     redacted = [
         redact_sensitive_detail(diagnostic)
         for diagnostic in result.diagnostics
     ]
-    for diagnostic in redacted:
-        assert sentinel not in diagnostic
-    assert "[REDACTED]" in " ".join(redacted)
+    assert all(sentinel not in diagnostic for diagnostic in redacted)
+    assert "[REDACTED]" in redact_sensitive_detail(
+        f"OpenAI request failed: {sentinel}"
+    )
