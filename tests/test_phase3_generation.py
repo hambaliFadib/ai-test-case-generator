@@ -617,8 +617,14 @@ def test_orchestrator_persistent_missing_is_partial_and_backfill_is_bounded() ->
 
     assert result.status == "partial"
     assert result.missing_scenarios == ["REQ-010-S01"]
-    assert result.backfill_count == 2
+    assert result.backfill_count == 1
     assert result.coverage_percentage == 90.0
+    assert len(adapter.prompts) == 2
+    assert any(
+        record.outcome == "skipped_no_progress"
+        and record.error_code == "repeated_prompt_no_progress"
+        for record in result.batch_diagnostics
+    )
 
 
 def test_orchestrator_truncation_does_not_accept_parseable_json() -> None:
