@@ -717,3 +717,43 @@ def test_legacy_parser_remains_compatible_without_scenario_ref() -> None:
     )
     cases = parse_response(raw)
     assert cases[0].scenario_ref == ""
+
+def test_batch_diagnostics_capture_scenario_outcomes_and_coverage_without_content() -> None:
+    def responder(prompt: str, call_number: int) -> LLMResult:
+        refs = prompt_scenario_refs(prompt)
+        scenarios = [
+            scenario(ref.rsplit("-S", 1)[0], int(ref.rsplit("-S", 1)[1]))
+            for ref in refs
+        ]
+        if call_number == 1:
+            return LLMResult(response_for(scenarios[:1]), "fake", finish_reason="stop", input_tokens=123, output_tokens=45)
+        return LLMResult("[]", "fake", finish_reason="stop", input_tokens=67, output_tokens=8)
+
+    result = generate_test_suite(parsed_input(3), None, adapter=FakeAdapter(responder))
+
+    assert result.status == "partial"
+    assert result.batch_diagnostics
+    initial = result.batch_diagnostics[0]
+    assert initial.call_index == 1
+    assert initial.phase == "initial"
+    assert initial.round_number is None
+    assert initial.target_scenario_ids
+    assert len(initial.prompt_sha256 or "") == 64
+    assert initial.accepted_scenario_ids == ["REQ-001-S01"]
+    assert initial.coverage_before_count == 0
+    assert initial.coverage_after_count == 1
+    assert initial.input_tokens == 123
+    assert initial.output_tokens == 45
+    assert any(
+        rejected.reason_code == "scenario_omitted"
+        for rejected in initial.rejected_scenarios
+    )
+    assert all(
+        not hasattr(record, "raw_response") and not hasattr(record, "prompt")
+        for record in result.batch_diagnostics
+    )
+    assert all(
+        record.phase == "backfill"
+        for record in result.batch_diagnostics[1:]
+    )
+
