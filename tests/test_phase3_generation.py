@@ -14,6 +14,7 @@ from models.llm_result import LLMResult
 from models.test_case_model import TestCase
 from llm_adapter import AnthropicAdapter, LLMAdapter, OpenAIAdapter
 from response_parser import (
+    ResponseSchemaError,
     ValidationError,
     parse_batch_response,
     parse_batch_response_result,
@@ -776,4 +777,40 @@ def test_batch_diagnostics_capture_scenario_outcomes_and_coverage_without_conten
         record.phase == "backfill"
         for record in result.batch_diagnostics[1:]
     )
+    provider_call_records = [
+        record for record in result.batch_diagnostics
+        if record.outcome != "skipped_no_progress"
+    ]
+    assert [record.call_index for record in provider_call_records] == [1, 2]
+    skipped_records = [
+        record for record in result.batch_diagnostics
+        if record.outcome == "skipped_no_progress"
+    ]
+    assert skipped_records
+    assert all(record.call_index is None for record in skipped_records)
 
+
+
+def test_batch_parser_classifies_non_array_root_as_response_schema_error() -> None:
+    with pytest.raises(ResponseSchemaError, match="expected a JSON array"):
+        parse_batch_response_result("{}", [scenario("REQ-001")])
+
+
+def test_orchestrator_records_response_schema_failure_separately() -> None:
+    def responder(prompt: str, call_number: int) -> LLMResult:
+        if call_number == 1:
+            return LLMResult("{}", "fake")
+        refs = prompt_scenario_refs(prompt)
+        scenarios = [
+            scenario(ref.rsplit("-S", 1)[0], int(ref.rsplit("-S", 1)[1]))
+            for ref in refs
+        ]
+        return LLMResult(response_for(scenarios), "fake")
+
+    result = generate_test_suite(parsed_input(1), None, adapter=FakeAdapter(responder))
+
+    assert result.status == "complete"
+    first = result.batch_diagnostics[0]
+    assert first.outcome == "rejected_schema"
+    assert first.error_code == "response_schema_invalid"
+    assert first.rejected_scenarios[0].stage == "response_schema"
