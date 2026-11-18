@@ -23,6 +23,9 @@ SCENARIO_TECHNIQUES: tuple[str, ...] = (
 )
 
 
+BATCH_DIAGNOSTICS_SCHEMA_VERSION = 2
+
+
 @dataclass(frozen=True)
 class EvidenceAtom:
     """One explicit, testable fact extracted from a requirement block."""
@@ -133,6 +136,41 @@ class CoverageAudit:
 
 
 @dataclass(frozen=True)
+class ScenarioRejection:
+    """One planned scenario rejected at a deterministic generation stage."""
+
+    scenario_ref: str
+    stage: str
+    reason_code: str
+
+
+@dataclass(frozen=True)
+class BatchDiagnostic:
+    """Safe, structured provenance for one initial or backfill provider call."""
+
+    call_index: int | None
+    phase: str
+    round_number: int | None
+    batch_id: str
+    target_scenario_ids: list[str] = field(default_factory=list)
+    accepted_scenario_ids: list[str] = field(default_factory=list)
+    rejected_scenarios: list[ScenarioRejection] = field(default_factory=list)
+    outcome: str = "unknown"
+    prompt_sha256: str | None = None
+    finish_reason: str | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    provider_status_code: int | None = None
+    provider_unavailable: bool = False
+    error_code: str | None = None
+    error_type: str | None = None
+    coverage_before_count: int = 0
+    coverage_after_count: int = 0
+    missing_before: list[str] = field(default_factory=list)
+    missing_after: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
 class GenerationResult:
     """Final Phase 3 generation outcome and completeness evidence."""
 
@@ -154,3 +192,4 @@ class GenerationResult:
     diagnostics: list[str] = field(default_factory=list)
     llm_results: list[LLMResult] = field(default_factory=list)
     unresolved_baseline: list[UnresolvedBaselineItem] = field(default_factory=list)
+    batch_diagnostics: list[BatchDiagnostic] = field(default_factory=list)

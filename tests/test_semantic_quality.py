@@ -509,11 +509,16 @@ def test_backfill_cannot_bypass_the_semantic_quality_gate() -> None:
 
     assert result.status == "partial"
     assert result.missing_scenarios == ["REQ-002-S01"]
-    assert result.backfill_count == 2
+    assert result.backfill_count == 1
     assert result.generated_count == 1
     diagnostics = " ".join(result.diagnostics)
     assert "semantic quality" in diagnostics
     assert "internal/meta" in diagnostics
+    assert any(
+        record.outcome == "skipped_no_progress"
+        and record.error_code == "repeated_prompt_no_progress"
+        for record in result.batch_diagnostics
+    )
 
 
 # ---------------------------------------------------------------------------

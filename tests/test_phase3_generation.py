@@ -14,6 +14,7 @@ from models.llm_result import LLMResult
 from models.test_case_model import TestCase
 from llm_adapter import AnthropicAdapter, LLMAdapter, OpenAIAdapter
 from response_parser import (
+    ResponseSchemaError,
     ValidationError,
     parse_batch_response,
     parse_batch_response_result,
@@ -621,6 +622,26 @@ def test_orchestrator_persistent_missing_is_partial_and_backfill_is_bounded() ->
     assert result.coverage_percentage == 90.0
 
 
+def test_orchestrator_skips_identical_backfill_prompt_without_progress() -> None:
+    def responder(prompt: str, _: int) -> LLMResult:
+        refs = prompt_scenario_refs(prompt)
+        scenarios = [scenario(ref.rsplit("-S", 1)[0], int(ref.rsplit("-S", 1)[1])) for ref in refs]
+        return LLMResult(response_for(scenarios[:-1]), "fake")
+
+    adapter = FakeAdapter(responder)
+    result = generate_test_suite(parsed_input(2), None, adapter=adapter)
+
+    assert result.status == "partial"
+    assert result.missing_scenarios == ["REQ-002-S01"]
+    assert result.backfill_count == 1
+    assert len(adapter.prompts) == 2
+    assert any(
+        record.outcome == "skipped_no_progress"
+        and record.error_code == "repeated_prompt_no_progress"
+        for record in result.batch_diagnostics
+    )
+
+
 def test_orchestrator_truncation_does_not_accept_parseable_json() -> None:
     def responder(prompt: str, call_number: int) -> LLMResult:
         refs = prompt_scenario_refs(prompt)
@@ -717,3 +738,79 @@ def test_legacy_parser_remains_compatible_without_scenario_ref() -> None:
     )
     cases = parse_response(raw)
     assert cases[0].scenario_ref == ""
+
+def test_batch_diagnostics_capture_scenario_outcomes_and_coverage_without_content() -> None:
+    def responder(prompt: str, call_number: int) -> LLMResult:
+        refs = prompt_scenario_refs(prompt)
+        scenarios = [
+            scenario(ref.rsplit("-S", 1)[0], int(ref.rsplit("-S", 1)[1]))
+            for ref in refs
+        ]
+        if call_number == 1:
+            return LLMResult(response_for(scenarios[:1]), "fake", finish_reason="stop", input_tokens=123, output_tokens=45)
+        return LLMResult("[]", "fake", finish_reason="stop", input_tokens=67, output_tokens=8)
+
+    result = generate_test_suite(parsed_input(3), None, adapter=FakeAdapter(responder))
+
+    assert result.status == "partial"
+    assert result.batch_diagnostics
+    initial = result.batch_diagnostics[0]
+    assert initial.call_index == 1
+    assert initial.phase == "initial"
+    assert initial.round_number is None
+    assert initial.target_scenario_ids
+    assert len(initial.prompt_sha256 or "") == 64
+    assert initial.accepted_scenario_ids == ["REQ-001-S01"]
+    assert initial.coverage_before_count == 0
+    assert initial.coverage_after_count == 1
+    assert initial.input_tokens == 123
+    assert initial.output_tokens == 45
+    assert any(
+        rejected.reason_code == "scenario_omitted"
+        for rejected in initial.rejected_scenarios
+    )
+    assert all(
+        not hasattr(record, "raw_response") and not hasattr(record, "prompt")
+        for record in result.batch_diagnostics
+    )
+    assert all(
+        record.phase == "backfill"
+        for record in result.batch_diagnostics[1:]
+    )
+    provider_call_records = [
+        record for record in result.batch_diagnostics
+        if record.outcome != "skipped_no_progress"
+    ]
+    assert [record.call_index for record in provider_call_records] == [1, 2]
+    skipped_records = [
+        record for record in result.batch_diagnostics
+        if record.outcome == "skipped_no_progress"
+    ]
+    assert skipped_records
+    assert all(record.call_index is None for record in skipped_records)
+
+
+
+def test_batch_parser_classifies_non_array_root_as_response_schema_error() -> None:
+    with pytest.raises(ResponseSchemaError, match="expected a JSON array"):
+        parse_batch_response_result("{}", [scenario("REQ-001")])
+
+
+def test_orchestrator_records_response_schema_failure_separately() -> None:
+    def responder(prompt: str, call_number: int) -> LLMResult:
+        if call_number == 1:
+            return LLMResult("{}", "fake")
+        refs = prompt_scenario_refs(prompt)
+        scenarios = [
+            scenario(ref.rsplit("-S", 1)[0], int(ref.rsplit("-S", 1)[1]))
+            for ref in refs
+        ]
+        return LLMResult(response_for(scenarios), "fake")
+
+    result = generate_test_suite(parsed_input(1), None, adapter=FakeAdapter(responder))
+
+    assert result.status == "complete"
+    first = result.batch_diagnostics[0]
+    assert first.outcome == "rejected_schema"
+    assert first.error_code == "response_schema_invalid"
+    assert first.rejected_scenarios[0].stage == "response_schema"
