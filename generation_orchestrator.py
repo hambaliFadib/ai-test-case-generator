@@ -298,7 +298,7 @@ def generate_test_suite(
                     "produced no new coverage"
                 )
                 break
-            if round_provider_calls > 0 and round_all_provider_unavailable and not round_skipped_no_progress:
+            if round_provider_calls > 0 and round_all_provider_unavailable:
                 diagnostics.append(
                     f"backfill stopped after round {attempt + 1}: every attempted batch "
                     "failed with provider unavailability"
