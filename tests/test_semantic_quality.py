@@ -32,6 +32,115 @@ from semantic_quality import build_authorities, validate_content
 
 FIXTURE = Path(__file__).parent / "fixtures" / "ui_partial_result_mock.json"
 
+_ECHO_ACTION_OPENER_CASES = (
+    ("memilih", "selected"),
+    ("mengklik", "clicked"),
+    ("menekan", "pressed"),
+    ("memasukkan", "entered"),
+    ("menginput", "entered"),
+    ("mengetik", "typed"),
+    ("mengisi", "filled"),
+    ("membuka", "opened"),
+    ("menutup", "closed"),
+    ("membuat", "created"),
+    ("menghapus", "deleted"),
+    ("tambahkan", "added"),
+    ("menambahkan", "added"),
+    ("mengosongkan", "cleared"),
+    ("mengunggah", "uploaded"),
+    ("mengunduh", "downloaded"),
+    ("update", "updated"),
+    ("ubah", "updated"),
+    ("mengubah", "updated"),
+    ("perbarui", "updated"),
+    ("memperbarui", "updated"),
+    ("submitkan", "submitted"),
+    ("kirimkan", "submitted"),
+    ("mengirim", "submitted"),
+    ("mengirimkan", "submitted"),
+    ("menyimpan", "saved"),
+    ("filter", "filtered"),
+    ("sort", "sorted"),
+    ("search", "searched"),
+    ("back", "back"),
+    ("retry", "retried"),
+    ("reset", "reset"),
+    ("toggle", "toggled"),
+    ("switch", "switched"),
+    ("drop", "dropped"),
+)
+
+_ACTION_CASE_OVERRIDES = {
+    "filter": (
+        "Filter the table by name.",
+        "The table displays only matching rows.",
+        "Filter the table by name.",
+        "The table is filtered by name.",
+    ),
+    "sort": (
+        "Sort the table by date.",
+        "The table displays rows ordered by date.",
+        "Sort the table by date.",
+        "The table is sorted by date.",
+    ),
+    "search": (
+        "Search the records list.",
+        "The records list displays matching records.",
+        "Search the records list.",
+        "The records list is searched.",
+    ),
+    "reset": (
+        "Reset the form.",
+        "The form is displayed with default values.",
+        "Reset the form.",
+        "The form is reset.",
+    ),
+    "toggle": (
+        'Toggle the "Marketing" checkbox.',
+        'The "Marketing" checkbox is selected.',
+        'Toggle the "Marketing" checkbox.',
+        'The "Marketing" checkbox is toggled.',
+    ),
+    "switch": (
+        'Switch to the "Compact" tab.',
+        'The "Compact" tab is displayed.',
+        'Switch to the "Compact" tab.',
+        'The "Compact" tab is switched.',
+    ),
+    "retry": (
+        "Retry the failed upload request.",
+        'The "Upload complete" message is displayed.',
+        "Retry the failed upload request.",
+        "The failed upload request is retried.",
+    ),
+    "drop": (
+        'Drop the "report.csv" file onto the "Upload" area.',
+        'The "report.csv" file appears in the "Upload" area.',
+        'Drop the "report.csv" file.',
+        'The "report.csv" file is dropped.',
+    ),
+    "back": (
+        "Back to the previous page.",
+        "The previous page is displayed.",
+        "Back to the previous page.",
+        "The browser went back to the previous page.",
+    ),
+}
+
+
+def _action_case(verb: str, result_verb: str) -> tuple[str, str, str, str]:
+    """Return representative distinct and repeated-action regression pairs."""
+    override = _ACTION_CASE_OVERRIDES.get(verb)
+    if override is not None:
+        return override
+    step = f'{verb} the "Test" button.'
+    return (
+        step,
+        'The "Ready" status is displayed.',
+        step,
+        f'The "Test" button is {result_verb}.',
+    )
+
 
 def atom(requirement_ref: str, number: int, text: str, kind: str = "explicit_behavior") -> EvidenceAtom:
     return EvidenceAtom(
@@ -1720,6 +1829,118 @@ def test_action_echo_detects_filter_echo_with_trailing_preposition() -> None:
     error = check(repeated_filter, scn, atoms)
     assert error is not None
     assert "repeats the tester action" in error
+
+
+@pytest.mark.parametrize(("verb", "result_verb"), _ECHO_ACTION_OPENER_CASES)
+def test_echo_recognized_actions_allow_distinct_evidence_backed_outcomes(
+    verb: str,
+    result_verb: str,
+) -> None:
+    req_id = f"V133-OPENER-{verb.upper()}"
+    step, distinct_result, _, _ = _action_case(verb, result_verb)
+    evidence = f"{step} {distinct_result}"
+    scn = scenario(
+        req_id,
+        intent=evidence,
+        refs=(f"{req_id}-E01",),
+    )
+    atoms = [atom(req_id, 1, evidence, kind="explicit_behavior")]
+
+    distinct_outcome = item(
+        steps=[step],
+        expected_result=distinct_result,
+    )
+
+    assert check(distinct_outcome, scn, atoms) is None, (verb, result_verb)
+
+    if verb == "filter":
+        assert step == "Filter the table by name."
+        assert distinct_result == "The table displays only matching rows."
+    elif verb == "back":
+        # A returned page/button state can contain "back" without echoing
+        # the navigation action; it remains a distinct observable outcome.
+        state_step = 'Back to the "Test" page.'
+        state_result = 'The "Test" page is back and remains visible.'
+        state_evidence = f"{state_step} {state_result}"
+        state_scn = scenario(
+            f"{req_id}-STATE",
+            intent=state_evidence,
+            refs=(f"{req_id}-STATE-E01",),
+        )
+        state_atoms = [atom(f"{req_id}-STATE", 1, state_evidence)]
+        assert check(
+            item(steps=[state_step], expected_result=state_result),
+            state_scn,
+            state_atoms,
+        ) is None
+
+
+@pytest.mark.parametrize(("verb", "result_verb"), _ECHO_ACTION_OPENER_CASES)
+def test_echo_recognized_actions_still_reject_repeated_tester_actions(
+    verb: str,
+    result_verb: str,
+) -> None:
+    req_id = f"V133-ECHO-OPENER-{verb.upper()}"
+    _, _, step, repeated_result = _action_case(verb, result_verb)
+    evidence = f"{step} {repeated_result}"
+    scn = scenario(
+        req_id,
+        intent=evidence,
+        refs=(f"{req_id}-E01",),
+    )
+    atoms = [atom(req_id, 1, evidence, kind="explicit_behavior")]
+    repeated_action = item(
+        steps=[step],
+        expected_result=repeated_result,
+    )
+
+    error = check(repeated_action, scn, atoms)
+    assert error is not None, (verb, result_verb)
+    assert "repeats the tester action" in error, (verb, result_verb, error)
+
+
+@pytest.mark.parametrize(("verb", "result_verb"), _ECHO_ACTION_OPENER_CASES)
+def test_echo_recognized_actions_still_require_a_concrete_target(
+    verb: str,
+    result_verb: str,
+) -> None:
+    req_id = f"V133-OPENER-TARGET-{verb.upper()}"
+    step = f"{verb}."
+    evidence = f'{step} The "Ready" status is displayed.'
+    scn = scenario(
+        req_id,
+        intent=evidence,
+        refs=(f"{req_id}-E01",),
+    )
+    atoms = [atom(req_id, 1, evidence, kind="explicit_behavior")]
+
+    targetless_action = item(
+        steps=[step],
+        expected_result='The "Ready" status is displayed.',
+    )
+
+    error = check(targetless_action, scn, atoms)
+    assert error is not None, (verb, result_verb)
+    assert "lacks a concrete target" in error, (verb, error)
+
+
+def test_new_filter_opener_does_not_authorize_an_unsupported_result_literal() -> None:
+    req_id = "V133-OPENER-EVIDENCE"
+    evidence = 'Filter the "Test" table. The table is available.'
+    scn = scenario(
+        req_id,
+        intent=evidence,
+        refs=(f"{req_id}-E01",),
+    )
+    atoms = [atom(req_id, 1, evidence, kind="explicit_behavior")]
+    unsupported_result = item(
+        steps=['Filter the "Test" table.'],
+        expected_result='The "Operation complete" message is displayed.',
+    )
+
+    error = check(unsupported_result, scn, atoms)
+    assert error is not None
+    assert "not authorized by the scenario's evidence" in error
 
 
 def test_action_echo_does_not_match_distinct_targets_sharing_prefix() -> None:

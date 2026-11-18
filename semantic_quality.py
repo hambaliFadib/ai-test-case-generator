@@ -132,16 +132,19 @@ META_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
 _STEP_OPENER = re.compile(
     r"^(?:\d+[\.\)]\s*|[-*•]\s*)*(?:please\s+)?"
     r"(?:open|navigate|go\s+to|select|choose|click|press|enter|type|input|fill|"
-    r"clear|submit|save|observe|view|verify|check|confirm|review|attempt|try|"
-    r"leave|set|add|remove|delete|create|upload|download|log\s*(?:in|out)|"
+    r"clear|submit|submitkan|save|observe|view|verify|check|confirm|review|attempt|try|"
+    r"leave|set|add|remove|delete|create|update|upload|download|log\s*(?:in|out)|"
     r"sign\s*(?:in|out)|scroll|hover|drag|double[\s-]click|reload|refresh|run|"
     r"trigger|restore|close|access|inspect|compare|wait|locate|find|identify|"
-    r"search\s+for|"
-    r"buka|akses|navigasi|pilih|klik|tekan|masukkan|isi|ketik|kirim|simpan|"
+    r"filter|sort|search(?:\s+for)?|back|retry|reset|toggle|switch|drop|"
+    r"buka|membuka|akses|navigasi|pilih|memilih|klik|mengklik|tekan|menekan|"
+    r"masukkan|memasukkan|input|menginput|isi|mengisi|ketik|mengetik|"
+    r"kirim|kirimkan|mengirim|mengirimkan|submitkan|simpan|menyimpan|"
     r"amati|lihat|periksa|verifikasi|konfirmasi|tinjau|coba|kosongkan|hapus|"
-    r"tambah|buat|unggah|unduh|masuk|keluar|gulir|muat\s+ulang|jalankan|"
-    r"biarkan|tinggalkan|tutup|perhatikan|bandingkan|tunggu|lacak|temukan|"
-    r"cari|kenali)\b",
+    r"mengosongkan|menghapus|tambahkan|menambahkan|tambah|buat|membuat|"
+    r"unggah|mengunggah|unduh|mengunduh|ubah|mengubah|perbarui|memperbarui|"
+    r"masuk|keluar|gulir|muat\s+ulang|jalankan|biarkan|tinggalkan|tutup|menutup|"
+    r"perhatikan|bandingkan|tunggu|lacak|temukan|cari|kenali)\b",
     re.IGNORECASE,
 )
 
@@ -149,7 +152,7 @@ _STEP_ANCHOR = re.compile(
     r"[\"'“”‘’]|"
     r"\b(?:tombol|button|halaman|page|screen|layar|form|menu|tabs?|dialog|"
     r"pesan|message|label|teks|text|tabel|table|rows?|baris|columns?|kolom|"
-    r"icons?|ikon|dropdown|checkbox|radio|lists?|detail|username|user\s+name|"
+    r"icons?|ikon|dropdown|checkbox|radio|lists?|views?|detail|workspaces?|username|user\s+name|"
     r"password|passcode|email|kata\s+sandi|\bsandi\b|nilai|value|data|file|"
     r"gambar|image|nama|name|nomor|number|period|tanggal|date|cari|search|"
     r"filter|login|log-in|logout|dashboard|sessions?|sesi|tokens?|result|hasil|"
@@ -196,6 +199,12 @@ _ACTION_RESULT_ECHO = re.compile(
     r"^(?:the\s+)?(?P<target>.+?)\s+"
     r"(?:(?:is|are|was|were|has\s+been|have\s+been|had\s+been)\s+)?"
     r"(?P<verb>selected|chosen|clicked|pressed|entered|typed|filled|opened|closed|created|removed|deleted|added|cleared|uploaded|downloaded|updated|logged\s+in|logged\s+out|navigated|filtered|sorted|searched|viewed|hovered|refreshed|retried|reset|toggled|switched|dragged|dropped|scrolled|waited|attempted|tried|reviewed|inspected|confirmed|accessed|set|left|saved|submitted|dihapus|terhapus|dibuat|terbuat|ditambahkan|dikosongkan|diunggah|terunggah|diunduh|terunduh|diperbarui|diubah|disubmit|disubmitkan|diajukan|disimpan|tersimpan|ditutup|tertutup|dipilih|terpilih|diklik|ditekan|dimasukkan|dimasukan|diinput|diketik|diisi|terisi|dibuka|terbuka|dikirim|terkirim)(\s+to|\s+by\s+.+|\s+for\s+.+|\s+over\s+.+)?[.!?]*$",
+    re.IGNORECASE,
+)
+_BACK_ACTION_RESULT_ECHO = re.compile(
+    r"^(?:the\s+)?(?:user|browser|tester)\s+"
+    r"(?:went\s+back|navigated\s+back|returned)\s+to\s+"
+    r"(?P<target>.+?)[.!?]*$",
     re.IGNORECASE,
 )
 _STEP_TO_ACTION = {
@@ -321,6 +330,22 @@ def _normalize_echo_target(value: str) -> tuple[str, ...]:
 
 def _action_echo_error(steps: list[str], expected_result: str) -> str | None:
     """Reject expected results that merely restate the tester's own action."""
+    back_expected = _BACK_ACTION_RESULT_ECHO.fullmatch(expected_result.strip())
+    if back_expected is not None:
+        result_target = _normalize_echo_target(back_expected.group("target"))
+        for index, step in enumerate(steps, start=1):
+            action = _ACTION_STEP_FOR_ECHO.fullmatch(step.strip())
+            if action is None:
+                continue
+            if _STEP_TO_ACTION.get(action.group("verb").casefold()) != "back":
+                continue
+            step_target = _normalize_echo_target(action.group("target"))
+            if result_target and step_target and result_target == step_target:
+                return (
+                    f"expected_result repeats the tester action from step {index}; "
+                    "state a distinct observable outcome"
+                )
+
     expected = _ACTION_RESULT_ECHO.fullmatch(expected_result.strip())
     if expected is None:
         return None
@@ -622,12 +647,15 @@ def validate_content(
 
     for position, step in enumerate(steps, start=1):
         stripped = step.strip()
-        if not _STEP_OPENER.match(stripped):
+        opener = _STEP_OPENER.match(stripped)
+        if opener is None:
             return (
                 f"step {position} is not a concrete test action "
                 f"(no accepted action verb): {step!r}"
             )
-        if not _STEP_ANCHOR.search(stripped):
+        # Do not let an action word that is also an anchor (e.g. "filter",
+        # "search", "toggle", or "switch") satisfy the target check itself.
+        if not _STEP_ANCHOR.search(stripped[opener.end():]):
             return (
                 f"step {position} lacks a concrete target "
                 f"(button, field, page, message, value, ...): {step!r}"
