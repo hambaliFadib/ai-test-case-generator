@@ -279,7 +279,7 @@ def test_backfill_round_all_unavailable_prevents_next_round() -> None:
     assert result.initial_generated_count == 6
     assert result.backfill_count == 1
     assert any(
-        "backfill stopped after round 1: every batch "
+        "backfill stopped after round 1: every attempted batch "
         "failed with provider unavailability" in diagnostic
         for diagnostic in result.diagnostics
     )
@@ -383,7 +383,10 @@ def test_provider_unavailable_backfill_prompt_can_be_retried_after_mixed_round()
     # unchanged at call 5 rather than suppressed by its prior hash.
     assert adapter.prompts[2] == adapter.prompts[4]
     assert result.backfill_count == 3
-    assert result.status == "partial"
+    # Every provider response was either unavailable or an empty array;
+    # no test cases were accepted, so the established status is failed.
+    assert result.status == "failed"
+    assert result.generated_count == 0
     assert len(result.missing_scenarios) == 9
 
     provider_call_records = [
