@@ -350,9 +350,17 @@ def _action_echo_error(steps: list[str], expected_result: str) -> str | None:
     if expected is None:
         return None
     # Preserve meaningful result-side qualifiers (e.g. "for administrators")
-    # during comparison. Optional filters such as "by name" remain normalized
-    # by _normalize_echo_target, while audience/context modifiers stay distinct.
-    result_target_text = expected.group("target") + (expected.group("qualifier") or "")
+    # during comparison. A bare "to" after "navigated" belongs to the phrasal
+    # verb ("navigated to"), not to the target; keep it out of target matching.
+    # Optional filters such as "by name" remain normalized by
+    # _normalize_echo_target, while audience/context modifiers stay distinct.
+    result_qualifier = expected.group("qualifier") or ""
+    if (
+        expected.group("verb").casefold() == "navigated"
+        and result_qualifier.strip().casefold() == "to"
+    ):
+        result_qualifier = ""
+    result_target_text = expected.group("target") + result_qualifier
     result_target = _normalize_echo_target(result_target_text)
     if not result_target:
         return None

@@ -1782,6 +1782,20 @@ def test_action_echo_detects_navigate_login_filter_sort_search_actions() -> None
         assert "repeats the tester action" in error, (step, expected, error)
 
 
+
+def test_action_echo_treats_stranded_to_as_part_of_navigated_verb() -> None:
+    """A trailing 'to' in 'navigated to' must not hide an action echo."""
+    from semantic_quality import _action_echo_error
+
+    repeated = (
+        ["Navigate to the Dashboard page."],
+        "The Dashboard page is navigated to.",
+    )
+    error = _action_echo_error(*repeated)
+    assert error is not None
+    assert "repeats the tester action" in error
+
+
 def test_action_echo_detects_login_logout_echo() -> None:
     """Regression: 'login'/'logout' echo detection with phrasal verbs."""
     scn = scenario(
