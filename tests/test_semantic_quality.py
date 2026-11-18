@@ -2110,6 +2110,27 @@ def test_action_echo_does_not_match_save_with_meaningful_target_modifier_for() -
     assert _action_echo_error(*distinct) is None
 
 
+def test_action_echo_preserves_qualifier_after_result_verb_for() -> None:
+    """A meaningful qualifier after the passive result verb must remain distinct."""
+    scn = scenario(
+        "V133-ECHO-SAVE-FOR",
+        intent="Verify the report file is saved for administrators.",
+    )
+    distinct = item(
+        steps=["Save the report file."],
+        expected_result="The report file is saved for administrators.",
+    )
+    assert check(distinct, scn, []) is None
+
+    repeated = item(
+        steps=["Save the report file."],
+        expected_result="The report file is saved.",
+    )
+    error = check(repeated, scn, [])
+    assert error is not None
+    assert "repeats the tester action" in error
+
+
 def test_action_echo_does_not_match_with_on_in_from_modifiers() -> None:
     """`on`, `in`, and `from` introduce meaningful target modifiers/contexts,
     not optional filters: 'report on dashboard', 'items in cart', and

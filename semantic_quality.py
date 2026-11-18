@@ -198,7 +198,7 @@ _ACTION_STEP_FOR_ECHO = re.compile(
 _ACTION_RESULT_ECHO = re.compile(
     r"^(?:the\s+)?(?P<target>.+?)\s+"
     r"(?:(?:is|are|was|were|has\s+been|have\s+been|had\s+been)\s+)?"
-    r"(?P<verb>selected|chosen|clicked|pressed|entered|typed|filled|opened|closed|created|removed|deleted|added|cleared|uploaded|downloaded|updated|logged\s+in|logged\s+out|navigated|filtered|sorted|searched|viewed|hovered|refreshed|retried|reset|toggled|switched|dragged|dropped|scrolled|waited|attempted|tried|reviewed|inspected|confirmed|accessed|set|left|saved|submitted|dihapus|terhapus|dibuat|terbuat|ditambahkan|dikosongkan|diunggah|terunggah|diunduh|terunduh|diperbarui|diubah|disubmit|disubmitkan|diajukan|disimpan|tersimpan|ditutup|tertutup|dipilih|terpilih|diklik|ditekan|dimasukkan|dimasukan|diinput|diketik|diisi|terisi|dibuka|terbuka|dikirim|terkirim)(\s+to|\s+by\s+.+|\s+for\s+.+|\s+over\s+.+)?[.!?]*$",
+    r"(?P<verb>selected|chosen|clicked|pressed|entered|typed|filled|opened|closed|created|removed|deleted|added|cleared|uploaded|downloaded|updated|logged\s+in|logged\s+out|navigated|filtered|sorted|searched|viewed|hovered|refreshed|retried|reset|toggled|switched|dragged|dropped|scrolled|waited|attempted|tried|reviewed|inspected|confirmed|accessed|set|left|saved|submitted|dihapus|terhapus|dibuat|terbuat|ditambahkan|dikosongkan|diunggah|terunggah|diunduh|terunduh|diperbarui|diubah|disubmit|disubmitkan|diajukan|disimpan|tersimpan|ditutup|tertutup|dipilih|terpilih|diklik|ditekan|dimasukkan|dimasukan|diinput|diketik|diisi|terisi|dibuka|terbuka|dikirim|terkirim)(?P<qualifier>\s+to|\s+by\s+.+|\s+for\s+.+|\s+over\s+.+)?[.!?]*$",
     re.IGNORECASE,
 )
 _BACK_ACTION_RESULT_ECHO = re.compile(
@@ -349,7 +349,11 @@ def _action_echo_error(steps: list[str], expected_result: str) -> str | None:
     expected = _ACTION_RESULT_ECHO.fullmatch(expected_result.strip())
     if expected is None:
         return None
-    result_target = _normalize_echo_target(expected.group("target"))
+    # Preserve meaningful result-side qualifiers (e.g. "for administrators")
+    # during comparison. Optional filters such as "by name" remain normalized
+    # by _normalize_echo_target, while audience/context modifiers stay distinct.
+    result_target_text = expected.group("target") + (expected.group("qualifier") or "")
+    result_target = _normalize_echo_target(result_target_text)
     if not result_target:
         return None
     for index, step in enumerate(steps, start=1):
