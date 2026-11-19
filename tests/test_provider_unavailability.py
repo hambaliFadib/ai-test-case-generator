@@ -203,9 +203,18 @@ def test_unrelated_http_error_is_not_systemic() -> None:
     assert result.status == "failed"
     assert result.backfill_count > 0
     assert not any(
-        "backfill skipped" in diagnostic
+        "backfill skipped: every initial batch failed with provider unavailability"
+        in diagnostic
         for diagnostic in result.diagnostics
     )
+    attempted = [
+        record
+        for record in result.batch_diagnostics
+        if record.provider_status_code is not None
+    ]
+    assert attempted
+    assert {record.provider_status_code for record in attempted} == {401}
+    assert not any(record.provider_unavailable for record in attempted)
 
 
 def test_generic_runtime_error_is_not_systemic() -> None:
@@ -270,7 +279,7 @@ def test_backfill_round_all_unavailable_prevents_next_round() -> None:
     assert result.initial_generated_count == 6
     assert result.backfill_count == 1
     assert any(
-        "backfill stopped after round 1: every batch "
+        "backfill stopped after round 1: every attempted batch "
         "failed with provider unavailability" in diagnostic
         for diagnostic in result.diagnostics
     )
@@ -343,12 +352,51 @@ def test_secret_sentinel_not_exposed_through_redaction_path() -> None:
     )
     result = generate_test_suite(parsed_input(7), None, adapter=adapter)
 
-    # Raw diagnostics carry the provider message verbatim; the API
-    # serialization path is the redaction boundary.
+    # Generation diagnostics must not retain raw exception messages.
+    raw_diagnostics = " ".join(result.diagnostics)
+    assert sentinel not in raw_diagnostics
+
+    # The API redaction helper remains a defense-in-depth boundary for any
+    # legacy or externally supplied detail that still contains a credential.
     redacted = [
         redact_sensitive_detail(diagnostic)
         for diagnostic in result.diagnostics
     ]
-    for diagnostic in redacted:
-        assert sentinel not in diagnostic
-    assert "[REDACTED]" in " ".join(redacted)
+    assert all(sentinel not in diagnostic for diagnostic in redacted)
+    assert "[REDACTED]" in redact_sensitive_detail(
+        f"OpenAI request failed: {sentinel}"
+    )
+
+
+def test_provider_unavailable_backfill_prompt_can_be_retried_after_mixed_round() -> None:
+    def responder(prompt: str, call_number: int) -> LLMResult:
+        if call_number in {1, 3, 5}:
+            raise _http_error(503)
+        if call_number in {2, 4}:
+            return LLMResult("[]", "fake")
+        return _success_responder(prompt, call_number)
+
+    adapter = FakeAdapter(responder)
+    result = generate_test_suite(parsed_input(9), None, adapter=adapter)
+
+    # The first backfill batch failed at call 3. It must be retried
+    # unchanged at call 5 rather than suppressed by its prior hash.
+    assert adapter.prompts[2] == adapter.prompts[4]
+    assert result.backfill_count == 3
+    # Every provider response was either unavailable or an empty array;
+    # no test cases were accepted, so the established status is failed.
+    assert result.status == "failed"
+    assert result.generated_count == 0
+    assert len(result.missing_scenarios) == 9
+
+    provider_call_records = [
+        record for record in result.batch_diagnostics
+        if record.outcome != "skipped_no_progress"
+    ]
+    assert [record.call_index for record in provider_call_records] == [1, 2, 3, 4, 5]
+    skipped_records = [
+        record for record in result.batch_diagnostics
+        if record.outcome == "skipped_no_progress"
+    ]
+    assert skipped_records
+    assert all(record.call_index is None for record in skipped_records)

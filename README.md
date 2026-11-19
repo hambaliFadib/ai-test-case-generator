@@ -210,6 +210,19 @@ Provider generation receives a minimal contract containing planned scenario inte
 
 The Web API returns the status, requirement counts, planned and generated scenario counts, coverage percentage, initial batch count, backfill call count, missing IDs, the resolved canonical profile, the `unresolved_baseline` list, and traceable test cases. The production CLI and Web export use the v1.3 traceable CSV schema below.
 
+### Batch diagnostics and privacy
+
+The Web generation response also includes `batch_diagnostics_schema_version` and `batch_diagnostics`. The current diagnostics schema version is `2`; clients should use the version to interpret this additive JSON metadata. These fields do not change the CSV schema or its columns.
+
+Each `batch_diagnostics` entry describes one initial or backfill provider call:
+
+- Call context: `call_index`, `phase`, `round_number`, and `batch_id`.
+- Scenario coverage: `target_scenario_ids`, `accepted_scenario_ids`, `rejected_scenarios` (each with `scenario_ref`, `stage`, and `reason_code`), `coverage_before_count`, `coverage_after_count`, `missing_before`, and `missing_after`.
+- Outcome metadata: `outcome`, `finish_reason`, `input_tokens`, `output_tokens`, `provider_status_code`, `provider_unavailable`, `error_code`, and `error_type`.
+- Prompt correlation: `prompt_sha256` records a hash, not the prompt text.
+
+Batch diagnostics are designed to omit prompt text, provider response bodies, raw exception messages, request headers, and credential values. They contain scenario identifiers, reason codes, provider metadata, token counts, and a prompt hash; treat those metadata as run-linked information rather than anonymous data. This privacy boundary applies to `batch_diagnostics`; other response fields such as `test_cases` intentionally contain generated test content. The schema version should be incremented when the shape or meaning of these diagnostic records changes.
+
 ---
 
 ## CSV Output Schema

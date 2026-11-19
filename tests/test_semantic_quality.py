@@ -32,6 +32,115 @@ from semantic_quality import build_authorities, validate_content
 
 FIXTURE = Path(__file__).parent / "fixtures" / "ui_partial_result_mock.json"
 
+_ECHO_ACTION_OPENER_CASES = (
+    ("memilih", "selected"),
+    ("mengklik", "clicked"),
+    ("menekan", "pressed"),
+    ("memasukkan", "entered"),
+    ("menginput", "entered"),
+    ("mengetik", "typed"),
+    ("mengisi", "filled"),
+    ("membuka", "opened"),
+    ("menutup", "closed"),
+    ("membuat", "created"),
+    ("menghapus", "deleted"),
+    ("tambahkan", "added"),
+    ("menambahkan", "added"),
+    ("mengosongkan", "cleared"),
+    ("mengunggah", "uploaded"),
+    ("mengunduh", "downloaded"),
+    ("update", "updated"),
+    ("ubah", "updated"),
+    ("mengubah", "updated"),
+    ("perbarui", "updated"),
+    ("memperbarui", "updated"),
+    ("submitkan", "submitted"),
+    ("kirimkan", "submitted"),
+    ("mengirim", "submitted"),
+    ("mengirimkan", "submitted"),
+    ("menyimpan", "saved"),
+    ("filter", "filtered"),
+    ("sort", "sorted"),
+    ("search", "searched"),
+    ("back", "back"),
+    ("retry", "retried"),
+    ("reset", "reset"),
+    ("toggle", "toggled"),
+    ("switch", "switched"),
+    ("drop", "dropped"),
+)
+
+_ACTION_CASE_OVERRIDES = {
+    "filter": (
+        "Filter the table by name.",
+        "The table displays only matching rows.",
+        "Filter the table by name.",
+        "The table is filtered by name.",
+    ),
+    "sort": (
+        "Sort the table by date.",
+        "The table displays rows ordered by date.",
+        "Sort the table by date.",
+        "The table is sorted by date.",
+    ),
+    "search": (
+        "Search the records list.",
+        "The records list displays matching records.",
+        "Search the records list.",
+        "The records list is searched.",
+    ),
+    "reset": (
+        "Reset the form.",
+        "The form is displayed with default values.",
+        "Reset the form.",
+        "The form is reset.",
+    ),
+    "toggle": (
+        'Toggle the "Marketing" checkbox.',
+        'The "Marketing" checkbox is selected.',
+        'Toggle the "Marketing" checkbox.',
+        'The "Marketing" checkbox is toggled.',
+    ),
+    "switch": (
+        'Switch to the "Compact" tab.',
+        'The "Compact" tab is displayed.',
+        'Switch to the "Compact" tab.',
+        'The "Compact" tab is switched.',
+    ),
+    "retry": (
+        "Retry the failed upload request.",
+        'The "Upload complete" message is displayed.',
+        "Retry the failed upload request.",
+        "The failed upload request is retried.",
+    ),
+    "drop": (
+        'Drop the "report.csv" file onto the "Upload" area.',
+        'The "report.csv" file appears in the "Upload" area.',
+        'Drop the "report.csv" file.',
+        'The "report.csv" file is dropped.',
+    ),
+    "back": (
+        "Back to the previous page.",
+        "The previous page is displayed.",
+        "Back to the previous page.",
+        "The browser went back to the previous page.",
+    ),
+}
+
+
+def _action_case(verb: str, result_verb: str) -> tuple[str, str, str, str]:
+    """Return representative distinct and repeated-action regression pairs."""
+    override = _ACTION_CASE_OVERRIDES.get(verb)
+    if override is not None:
+        return override
+    step = f'{verb} the "Test" button.'
+    return (
+        step,
+        'The "Ready" status is displayed.',
+        step,
+        f'The "Test" button is {result_verb}.',
+    )
+
 
 def atom(requirement_ref: str, number: int, text: str, kind: str = "explicit_behavior") -> EvidenceAtom:
     return EvidenceAtom(
@@ -509,11 +618,16 @@ def test_backfill_cannot_bypass_the_semantic_quality_gate() -> None:
 
     assert result.status == "partial"
     assert result.missing_scenarios == ["REQ-002-S01"]
-    assert result.backfill_count == 2
+    assert result.backfill_count == 1
     assert result.generated_count == 1
     diagnostics = " ".join(result.diagnostics)
     assert "semantic quality" in diagnostics
     assert "internal/meta" in diagnostics
+    assert any(
+        record.outcome == "skipped_no_progress"
+        and record.error_code == "repeated_prompt_no_progress"
+        for record in result.batch_diagnostics
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1569,3 +1683,502 @@ def test_indonesian_distinct_outcome_is_not_treated_as_action_echo() -> None:
     )
 
     assert check(distinct_outcome, scn, atoms) is None
+
+
+def test_action_echo_detects_save_and_close_actions_in_english_and_indonesian() -> None:
+    """Regression: 'save'/'saved' were in the mapping dicts but missing from
+    the _ACTION_STEP_FOR_ECHO and _ACTION_RESULT_ECHO regex patterns on the
+    initial v1.3.3 edit, so save/close echoes were not detected."""
+    cases = [
+        (
+            "V133-ECHO-SAVE-EN",
+            "The user saves the form.",
+            "Save the form.",
+            "The form is saved.",
+        ),
+        (
+            "V133-ECHO-SAVE-ID",
+            "Pengguna menyimpan formulir.",
+            "Simpan formulir.",
+            "Formulir disimpan.",
+        ),
+        (
+            "V133-ECHO-CLOSE-EN",
+            "The user closes the dialog.",
+            "Close the dialog.",
+            "The dialog is closed.",
+        ),
+        (
+            "V133-ECHO-CLOSE-ID",
+            "Pengguna menutup dialog.",
+            "Tutup dialog.",
+            "Dialog ditutup.",
+        ),
+    ]
+    for req_id, evidence, step, expected_result in cases:
+        scn = scenario(
+            req_id,
+            intent=evidence,
+            refs=(f"{req_id}-E01",),
+        )
+        atoms = [atom(req_id, 1, evidence, kind="explicit_behavior")]
+        repeated_action = item(
+            steps=[step],
+            expected_result=expected_result,
+        )
+        error = check(repeated_action, scn, atoms)
+        assert error is not None, (step, expected_result)
+        assert "repeats the tester action" in error
+
+
+def test_action_echo_detects_navigate_login_filter_sort_search_actions() -> None:
+    """Regression: common testing verbs (navigate, login, filter, sort,
+    view) were missing from the echo detection patterns."""
+    cases = [
+        (
+            "V133-ECHO-NAVIGATE",
+            "The user navigates to the Dashboard page.",
+            "Navigate to the Dashboard page.",
+            "The Dashboard page is navigated to.",
+        ),
+        (
+            "V133-ECHO-LOGIN",
+            "The user logs in to the application.",
+            "Log in to the application.",
+            "The application is logged in.",
+        ),
+        (
+            "V133-ECHO-FILTER",
+            "The user filters the table by name.",
+            "Filter the table by name.",
+            "The table is filtered by name.",
+        ),
+        (
+            "V133-ECHO-SORT",
+            "The user sorts the table by date.",
+            "Sort the table by date.",
+            "The table is sorted by date.",
+        ),
+        (
+            "V133-ECHO-VIEW",
+            "The user views the report.",
+            "View the report.",
+            "The report is viewed.",
+        ),
+    ]
+    for req_id, evidence, step, expected in cases:
+        scn = scenario(
+            req_id,
+            intent=evidence,
+            refs=(f"{req_id}-E01",),
+        )
+        atoms = [atom(req_id, 1, evidence, kind="explicit_behavior")]
+        repeated_action = item(
+            steps=[step],
+            expected_result=expected,
+        )
+        error = check(repeated_action, scn, atoms)
+        assert error is not None, (step, expected)
+        assert "repeats the tester action" in error, (step, expected, error)
+
+
+
+def test_action_echo_treats_stranded_to_as_part_of_navigated_verb() -> None:
+    """A trailing 'to' in 'navigated to' must not hide an action echo."""
+    from semantic_quality import _action_echo_error
+
+    repeated = (
+        ["Navigate to the Dashboard page."],
+        "The Dashboard page is navigated to.",
+    )
+    error = _action_echo_error(*repeated)
+    assert error is not None
+    assert "repeats the tester action" in error
+
+
+def test_action_echo_detects_login_logout_echo() -> None:
+    """Regression: 'login'/'logout' echo detection with phrasal verbs."""
+    scn = scenario(
+        "V133-ECHO-LOGINOUT",
+        intent="Verify the user logs in and logs out.",
+        refs=("V133-ECHO-LOGINOUT-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-LOGINOUT",
+            1,
+            "The user logs in with valid credentials.",
+            kind="explicit_behavior",
+        )
+    ]
+    repeated_login = item(
+        steps=["Log in to the application page."],
+        expected_result="The application page is logged in.",
+    )
+    error = check(repeated_login, scn, atoms)
+    assert error is not None, "Log in echo should be detected"
+    assert "repeats the tester action" in error
+
+
+def test_action_echo_detects_filter_echo_with_trailing_preposition() -> None:
+    """Regression: 'filtered by name' has a trailing prepositional phrase
+    that must be handled by the result regex."""
+    scn = scenario(
+        "V133-ECHO-FILTER-PREPOS",
+        intent="Verify the user filters records by name.",
+        refs=("V133-ECHO-FILTER-PREPOS-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-FILTER-PREPOS",
+            1,
+            "The user filters records by name.",
+            kind="explicit_behavior",
+        )
+    ]
+    repeated_filter = item(
+        steps=["Filter records by name."],
+        expected_result="The records are filtered by name.",
+    )
+    error = check(repeated_filter, scn, atoms)
+    assert error is not None
+    assert "repeats the tester action" in error
+
+
+@pytest.mark.parametrize(("verb", "result_verb"), _ECHO_ACTION_OPENER_CASES)
+def test_echo_recognized_actions_allow_distinct_evidence_backed_outcomes(
+    verb: str,
+    result_verb: str,
+) -> None:
+    req_id = f"V133-OPENER-{verb.upper()}"
+    step, distinct_result, _, _ = _action_case(verb, result_verb)
+    evidence = f"{step} {distinct_result}"
+    scn = scenario(
+        req_id,
+        intent=evidence,
+        refs=(f"{req_id}-E01",),
+    )
+    atoms = [atom(req_id, 1, evidence, kind="explicit_behavior")]
+
+    distinct_outcome = item(
+        steps=[step],
+        expected_result=distinct_result,
+    )
+
+    assert check(distinct_outcome, scn, atoms) is None, (verb, result_verb)
+
+    if verb == "filter":
+        assert step == "Filter the table by name."
+        assert distinct_result == "The table displays only matching rows."
+    elif verb == "back":
+        # A returned page/button state can contain "back" without echoing
+        # the navigation action; it remains a distinct observable outcome.
+        state_step = 'Back to the "Test" page.'
+        state_result = 'The "Test" page is back and remains visible.'
+        state_evidence = f"{state_step} {state_result}"
+        state_scn = scenario(
+            f"{req_id}-STATE",
+            intent=state_evidence,
+            refs=(f"{req_id}-STATE-E01",),
+        )
+        state_atoms = [atom(f"{req_id}-STATE", 1, state_evidence)]
+        assert check(
+            item(steps=[state_step], expected_result=state_result),
+            state_scn,
+            state_atoms,
+        ) is None
+
+
+@pytest.mark.parametrize(("verb", "result_verb"), _ECHO_ACTION_OPENER_CASES)
+def test_echo_recognized_actions_still_reject_repeated_tester_actions(
+    verb: str,
+    result_verb: str,
+) -> None:
+    req_id = f"V133-ECHO-OPENER-{verb.upper()}"
+    _, _, step, repeated_result = _action_case(verb, result_verb)
+    evidence = f"{step} {repeated_result}"
+    scn = scenario(
+        req_id,
+        intent=evidence,
+        refs=(f"{req_id}-E01",),
+    )
+    atoms = [atom(req_id, 1, evidence, kind="explicit_behavior")]
+    repeated_action = item(
+        steps=[step],
+        expected_result=repeated_result,
+    )
+
+    error = check(repeated_action, scn, atoms)
+    assert error is not None, (verb, result_verb)
+    assert "repeats the tester action" in error, (verb, result_verb, error)
+
+
+@pytest.mark.parametrize(("verb", "result_verb"), _ECHO_ACTION_OPENER_CASES)
+def test_echo_recognized_actions_still_require_a_concrete_target(
+    verb: str,
+    result_verb: str,
+) -> None:
+    req_id = f"V133-OPENER-TARGET-{verb.upper()}"
+    step = f"{verb}."
+    evidence = f'{step} The "Ready" status is displayed.'
+    scn = scenario(
+        req_id,
+        intent=evidence,
+        refs=(f"{req_id}-E01",),
+    )
+    atoms = [atom(req_id, 1, evidence, kind="explicit_behavior")]
+
+    targetless_action = item(
+        steps=[step],
+        expected_result='The "Ready" status is displayed.',
+    )
+
+    error = check(targetless_action, scn, atoms)
+    assert error is not None, (verb, result_verb)
+    assert "lacks a concrete target" in error, (verb, error)
+
+
+def test_new_filter_opener_does_not_authorize_an_unsupported_result_literal() -> None:
+    req_id = "V133-OPENER-EVIDENCE"
+    evidence = 'Filter the "Test" table. The table is available.'
+    scn = scenario(
+        req_id,
+        intent=evidence,
+        refs=(f"{req_id}-E01",),
+    )
+    atoms = [atom(req_id, 1, evidence, kind="explicit_behavior")]
+    unsupported_result = item(
+        steps=['Filter the "Test" table.'],
+        expected_result='The "Operation complete" message is displayed.',
+    )
+
+    error = check(unsupported_result, scn, atoms)
+    assert error is not None
+    assert "not authorized by the scenario's evidence" in error
+
+
+def test_action_echo_does_not_match_distinct_targets_sharing_prefix() -> None:
+    """Negative regression: prefix matching must not equate targets that
+    share a textual prefix but identify different objects (e.g. 'form' vs
+    'format', 'user' vs 'username', 'view' vs 'view and table')."""
+    scn = scenario(
+        "V133-ECHO-FP-NEG",
+        intent="Verify form, format, and user operations are distinct.",
+        refs=("V133-ECHO-FP-NEG-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-FP-NEG",
+            1,
+            "Save the form and format records and select the username field.",
+            kind="explicit_behavior",
+        )
+    ]
+    # 'form' and 'format' share a prefix but are different nouns
+    distinct_form = item(
+        steps=["Save the form."],
+        expected_result="The format is saved.",
+    )
+    assert check(distinct_form, scn, atoms) is None
+
+    # 'user' and 'username' share a prefix but are different nouns
+    distinct_user = item(
+        steps=["Select the username field."],
+        expected_result="The user is selected.",
+    )
+    assert check(distinct_user, scn, atoms) is None
+
+    # 'view' is a prefix of 'view and table' (conjunction, not preposition)
+    distinct_view = item(
+        steps=["Save the view and table."],
+        expected_result="The view is saved.",
+    )
+    assert check(distinct_view, scn, atoms) is None
+
+
+def test_action_echo_prefix_match_is_safe_for_trailing_prepositional_phrases() -> None:
+    """Verify that trailing prepositional phrases in step targets are
+    stripped, so 'Filter the table by name' correctly matches
+    'The table is filtered by name'."""
+    scn = scenario(
+        "V133-ECHO-PREPOS-OK",
+        intent="Verify the table is filtered by name.",
+        refs=("V133-ECHO-PREPOS-OK-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-PREPOS-OK",
+            1,
+            "The table is filtered by name.",
+            kind="explicit_behavior",
+        )
+    ]
+    # Step has trailing 'by name' which should be stripped
+    repeated = item(
+        steps=["Filter the table by name."],
+        expected_result="The table is filtered by name.",
+    )
+    error = check(repeated, scn, atoms)
+    assert error is not None
+    assert "repeats the tester action" in error
+
+    # But 'view and table' should NOT match 'view' (conjunction, not preposition)
+    distinct = item(
+        steps=["Save view and table."],
+        expected_result="The view is saved.",
+    )
+    assert check(distinct, scn, atoms) is None
+
+
+def test_action_echo_does_not_match_resettled_as_reset_echo() -> None:
+    """Negative regression: 'resettled' is not a valid past-tense form of 'reset'.
+    An expected result using 'resettled' must not be classified as a reset-action echo."""
+    scn = scenario(
+        "V133-ECHO-RESETTLED-NEG",
+        intent="Verify the workspace is saved for the next test run.",
+        refs=("V133-ECHO-RESETTLED-NEG-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-RESETTLED-NEG",
+            1,
+            "The workspace is saved between test runs.",
+            kind="explicit_behavior",
+        )
+    ]
+    # 'resettled' is not recognized as any action verb; result still observable
+    not_echo = item(
+        steps=["Save the workspace."],
+        expected_result="The workspace is resettled and the error message is displayed.",
+    )
+    assert check(not_echo, scn, atoms) is None
+
+
+def test_action_echo_does_not_match_backed_as_back_echo() -> None:
+    """Negative regression: 'backed' does not represent the navigation-back action.
+    An expected result using 'backed' must not be classified as a back-action echo."""
+    scn = scenario(
+        "V133-ECHO-BACKED-NEG",
+        intent="Verify the view is saved after navigation.",
+        refs=("V133-ECHO-BACKED-NEG-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-BACKED-NEG",
+            1,
+            "The view is saved after navigation.",
+            kind="explicit_behavior",
+        )
+    ]
+    # 'backed' is not recognized as an action verb; result still observable
+    not_echo = item(
+        steps=["Save the view."],
+        expected_result="The view is backed by analytics and the title is displayed.",
+    )
+    assert check(not_echo, scn, atoms) is None
+
+
+def test_action_echo_matches_reset_step_and_result() -> None:
+    """Positive regression: 'Reset the form.' paired with result 'The form is reset.'
+    must be classified as a reset-action echo."""
+    scn = scenario(
+        "V133-ECHO-RESET-POS",
+        intent="Verify the form can be reset after editing.",
+        refs=("V133-ECHO-RESET-POS-E01",),
+    )
+    atoms = [
+        atom(
+            "V133-ECHO-RESET-POS",
+            1,
+            "The form can be reset after editing.",
+            kind="explicit_behavior",
+        )
+    ]
+    echo_item = item(
+        steps=["Reset the form."],
+        expected_result="The form is reset.",
+    )
+    assert check(echo_item, scn, atoms) is not None
+
+
+def test_normalize_echo_target_preserves_single_word_preposition() -> None:
+    """A single-word target that is a preposition (e.g. 'for') is preserved intact;
+    stripping must only occur when a meaningful target remains."""
+    from semantic_quality import _normalize_echo_target
+
+    assert _normalize_echo_target("for") == ("for",)
+    assert _normalize_echo_target("a") == ("a",)
+    assert _normalize_echo_target("to the page") == ("page",)
+    assert _normalize_echo_target("table by name") == ("table",)
+
+
+def test_action_echo_does_not_match_save_with_meaningful_target_modifier_for() -> None:
+    """Semantic decision: a trailing `for <entity>` (e.g. 'report for administrators')
+    is a meaningful target modifier, not an optional filter. It must NOT be stripped,
+    so 'Save the report.' and 'The report for administrators is saved.' are distinct
+    targets and must not be classified as a save-action echo (which would be a
+    false positive). Known filters like 'by name' and 'to the page' are still stripped."""
+    from semantic_quality import _action_echo_error
+
+    distinct = ["Save the report."], "The report for administrators is saved."
+    assert _action_echo_error(*distinct) is None
+
+
+def test_action_echo_preserves_qualifier_after_result_verb_for() -> None:
+    """A meaningful qualifier after the passive result verb must remain distinct."""
+    scn = scenario(
+        "V133-ECHO-SAVE-FOR",
+        intent="Verify the report file is saved for administrators.",
+    )
+    distinct = item(
+        steps=["Save the report file."],
+        expected_result="The report file is saved for administrators.",
+    )
+    assert check(distinct, scn, []) is None
+
+    repeated = item(
+        steps=["Save the report file."],
+        expected_result="The report file is saved.",
+    )
+    error = check(repeated, scn, [])
+    assert error is not None
+    assert "repeats the tester action" in error
+
+
+def test_action_echo_does_not_match_with_on_in_from_modifiers() -> None:
+    """`on`, `in`, and `from` introduce meaningful target modifiers/contexts,
+    not optional filters: 'report on dashboard', 'items in cart', and
+    'report from billing' must each be preserved as distinct targets so the
+    corresponding echo checks return None (no false positive)."""
+    from semantic_quality import _normalize_echo_target, _action_echo_error as aee
+
+    # Normalization preserves the modifier tokens.
+    assert _normalize_echo_target("report on dashboard") == ("report", "on", "dashboard")
+    assert _normalize_echo_target("items in cart") == ("items", "in", "cart")
+    assert _normalize_echo_target("report from billing") == ("report", "from", "billing")
+    # Corresponding echo checks do not false-positive.
+    assert aee(["Save the report."], "The report on dashboard is saved.") is None
+    assert aee(["Select the items."], "The items in cart are selected.") is None
+    assert aee(["Save the report."], "The report from billing is saved.") is None
+
+
+def test_action_echo_does_not_match_reset_with_different_target() -> None:
+    """The reset echo requires matching step and result targets.
+    Step 'Reset the form.' with result 'The page is reset.' targets mismatch
+    ('form' vs 'page') and must not be classified as a reset-action echo.
+    Assert against the echo helper directly: 'Reset' is a valid action-echo
+    verb but is not a step-opener verb, so a full check() would fail later
+    on the step-opener rule rather than on echo detection."""
+    from semantic_quality import _action_echo_error
+
+    mismatched = ["Reset the form."], "The page is reset."
+    assert _action_echo_error(*mismatched) is None
+
+
+def test_action_echo_does_not_match_different_canonical_action() -> None:
+    """Same target, different canonical action: 'Reset the form.' vs
+    'The form is submitted.' must not be classified as an echo."""
+    from semantic_quality import _action_echo_error
+
+    different_action = ["Reset the form."], "The form is submitted."
+    assert _action_echo_error(*different_action) is None

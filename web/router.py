@@ -16,6 +16,7 @@ from config import SUPPORTED_PROVIDERS, load_settings
 from csv_exporter import export_to_csv, export_traceable_to_csv
 from generation_orchestrator import generate_test_suite
 from input_resolver import resolve_input
+from models.coverage_model import BATCH_DIAGNOSTICS_SCHEMA_VERSION
 from models.test_case_model import TestCase
 from profiles import DEFAULT_PROFILE, resolve_profile
 from security_utils import redact_sensitive_detail
@@ -197,6 +198,8 @@ def _serialize_result(result: Any, profile: str) -> dict[str, Any]:
         "duplicate_scenarios": list(result.duplicate_scenarios),
         "initial_generated_count": result.initial_generated_count,
         "initial_missing_scenarios": list(result.initial_missing_scenarios),
+        "batch_diagnostics_schema_version": BATCH_DIAGNOSTICS_SCHEMA_VERSION,
+        "batch_diagnostics": [asdict(item) for item in result.batch_diagnostics],
         "unresolved_baseline": [
             asdict(item) for item in result.unresolved_baseline
         ],
